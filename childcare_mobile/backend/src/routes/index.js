@@ -1,0 +1,32 @@
+const router = require('express').Router();
+const { health } = require('../controllers/healthController');
+const authRoutes = require('./authRoutes');
+const parentRoutes = require('./parentRoutes');
+const babysitterRoutes = require('./babysitterRoutes');
+const agencyRoutes = require('./agencyRoutes');
+const bookingRoutes = require('./bookingRoutes');
+const availabilityRoutes = require('./availabilityRoutes');
+const paymentRoutes = require('./paymentRoutes');
+const messageRoutes = require('./messageRoutes');
+const notificationRoutes = require('./notificationRoutes');
+const reviewRoutes = require('./reviewRoutes');
+const reportRoutes = require('./reportRoutes');
+const verificationRoutes = require('./verificationRoutes');
+const trackingRoutes = require('./trackingRoutes');
+
+router.get('/health', health);
+router.use('/auth', authRoutes);
+router.use('/parents', parentRoutes);
+router.use('/babysitters', babysitterRoutes);
+router.use('/agencies', agencyRoutes);
+router.use('/bookings', bookingRoutes);
+router.use('/availability', availabilityRoutes);
+router.use('/payments', paymentRoutes);
+router.use('/messages', messageRoutes);
+router.use('/notifications', notificationRoutes);
+router.use('/reviews', reviewRoutes);
+router.use('/reports', reportRoutes);
+router.use('/verifications', verificationRoutes);
+router.use('/tracking', trackingRoutes);
+
+module.exports = router;

@@ -1,0 +1,3 @@
+class AuthInterceptor {
+  const AuthInterceptor();
+}
