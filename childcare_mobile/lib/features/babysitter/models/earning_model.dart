@@ -70,18 +70,18 @@ class EarningItemModel {
 
 class EarningSummaryModel {
   const EarningSummaryModel({
-    this.totalEarnings = 1850.0,
-    this.currentMonthEarnings = 620.0,
-    this.weeklyEarnings = 275.0,
-    this.completedBookings = 24,
-    this.pendingPayout = 125.0,
-    this.hourlyRateAverage = 25.0,
+    this.totalEarnings = 0.0,
+    this.currentMonthEarnings = 0.0,
+    this.weeklyEarnings = 0.0,
+    this.completedBookings = 0,
+    this.pendingPayout = 0.0,
+    this.hourlyRateAverage = 0.0,
     this.weeklyData = const [
-      DailyEarningPoint(day: 'Mon', amount: 50.0),
-      DailyEarningPoint(day: 'Tue', amount: 75.0),
+      DailyEarningPoint(day: 'Mon', amount: 0.0),
+      DailyEarningPoint(day: 'Tue', amount: 0.0),
       DailyEarningPoint(day: 'Wed', amount: 0.0),
-      DailyEarningPoint(day: 'Thu', amount: 60.0),
-      DailyEarningPoint(day: 'Fri', amount: 90.0),
+      DailyEarningPoint(day: 'Thu', amount: 0.0),
+      DailyEarningPoint(day: 'Fri', amount: 0.0),
       DailyEarningPoint(day: 'Sat', amount: 0.0),
       DailyEarningPoint(day: 'Sun', amount: 0.0),
     ],
@@ -107,11 +107,11 @@ class EarningSummaryModel {
           .toList();
     } else {
       points = const [
-        DailyEarningPoint(day: 'Mon', amount: 50.0),
-        DailyEarningPoint(day: 'Tue', amount: 75.0),
+        DailyEarningPoint(day: 'Mon', amount: 0.0),
+        DailyEarningPoint(day: 'Tue', amount: 0.0),
         DailyEarningPoint(day: 'Wed', amount: 0.0),
-        DailyEarningPoint(day: 'Thu', amount: 60.0),
-        DailyEarningPoint(day: 'Fri', amount: 90.0),
+        DailyEarningPoint(day: 'Thu', amount: 0.0),
+        DailyEarningPoint(day: 'Fri', amount: 0.0),
         DailyEarningPoint(day: 'Sat', amount: 0.0),
         DailyEarningPoint(day: 'Sun', amount: 0.0),
       ];
@@ -127,12 +127,12 @@ class EarningSummaryModel {
     }
 
     return EarningSummaryModel(
-      totalEarnings: (json['totalEarnings'] as num?)?.toDouble() ?? 1850.0,
-      currentMonthEarnings: (json['currentMonthEarnings'] as num?)?.toDouble() ?? 620.0,
-      weeklyEarnings: (json['weeklyEarnings'] as num?)?.toDouble() ?? 275.0,
-      completedBookings: (json['completedBookings'] as num?)?.toInt() ?? 24,
-      pendingPayout: (json['pendingPayout'] as num?)?.toDouble() ?? 125.0,
-      hourlyRateAverage: (json['hourlyRateAverage'] as num?)?.toDouble() ?? 25.0,
+      totalEarnings: (json['totalEarnings'] as num?)?.toDouble() ?? 0.0,
+      currentMonthEarnings: (json['currentMonthEarnings'] as num?)?.toDouble() ?? 0.0,
+      weeklyEarnings: (json['weeklyEarnings'] as num?)?.toDouble() ?? 0.0,
+      completedBookings: (json['completedBookings'] as num?)?.toInt() ?? 0,
+      pendingPayout: (json['pendingPayout'] as num?)?.toDouble() ?? 0.0,
+      hourlyRateAverage: (json['hourlyRateAverage'] as num?)?.toDouble() ?? 0.0,
       weeklyData: points,
       recentEarnings: recent,
     );

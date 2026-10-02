@@ -1,7 +1,14 @@
+const mongoose = require('mongoose');
+const Booking = require('../models/Booking');
+const Notification = require('../models/Notification');
 const ApiResponse = require('../utils/ApiResponse');
 const generateToken = require('../utils/generateToken');
 const babysitterService = require('../services/babysitterService');
 const ROLES = require('../constants/roles');
+
+function isDbConnected() {
+  return mongoose.connection.readyState === 1;
+}
 
 function getUserId(req) {
   return req.user?.sub || req.user?.id;
@@ -47,10 +54,41 @@ async function getDashboard(req, res, next) {
     const userId = getUserId(req);
     const profile = await babysitterService.getProfileByUserId(userId);
 
+    let totalEarnings = 0;
+    let completedBookingsCount = 0;
+    let upcomingBooking = null;
+    let newRequests = [];
+    let unreadCount = 0;
+
+    if (isDbConnected()) {
+      const completed = await Booking.find({ babysitter: userId, status: 'completed' });
+      totalEarnings = completed.reduce(
+        (sum, b) => sum + (b.total || (b.hourlyRate * b.durationHours)),
+        0
+      );
+      completedBookingsCount = completed.length;
+
+      upcomingBooking = await Booking.findOne({
+        babysitter: userId,
+        status: { $in: ['accepted', 'confirmed', 'travelling', 'arrived', 'in_progress'] },
+      })
+        .populate('parent', 'name email phone avatar')
+        .sort({ date: 1, startTime: 1 });
+
+      newRequests = await Booking.find({
+        babysitter: userId,
+        status: 'pending',
+      })
+        .populate('parent', 'name email phone avatar')
+        .sort({ date: 1, startTime: 1 });
+
+      unreadCount = await Notification.countDocuments({ user: userId, isRead: false });
+    }
+
     const stats = {
-      totalEarnings: 1850.0,
-      rating: profile?.averageRating || 4.9,
-      completedBookings: profile?.totalCompletedBookings || 24,
+      totalEarnings: Number(totalEarnings.toFixed(2)),
+      rating: profile?.averageRating || 5.0,
+      completedBookings: completedBookingsCount,
     };
 
     return ApiResponse.success(
@@ -59,9 +97,9 @@ async function getDashboard(req, res, next) {
         profile,
         stats,
         isAvailable: profile?.isAvailable ?? true,
-        upcomingBooking: null,
-        newRequests: [],
-        unreadNotificationsCount: 2,
+        upcomingBooking,
+        newRequests,
+        unreadNotificationsCount: unreadCount,
       },
       'Dashboard data retrieved'
     );

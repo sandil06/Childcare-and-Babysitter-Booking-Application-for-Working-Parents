@@ -102,23 +102,15 @@ class _SitterRegistrationScreenState extends State<SitterRegistrationScreen> {
   @override
   void initState() {
     super.initState();
-    _firstNameController.text = 'Maya';
-    _lastNameController.text = 'Johnson';
-    _emailController.text = 'maya.johnson@example.com';
-    _phoneController.text = '+1 (555) 234-8901';
-    _passwordController.text = 'Password123!';
-    _confirmPasswordController.text = 'Password123!';
-    _addressController.text = '142 Park Avenue, Brooklyn, NY';
-    _selectedDob = DateTime(1996, 5, 14);
-    _bioController.text =
-        'Certified early childhood educator with 4 years of babysitting experience.';
+    _selectedDob = DateTime(1998, 6, 15);
   }
 
   void _fillSampleData() {
+    final timestamp = DateTime.now().millisecondsSinceEpoch % 10000;
     setState(() {
       _firstNameController.text = 'Maya';
       _lastNameController.text = 'Johnson';
-      _emailController.text = 'maya.johnson@example.com';
+      _emailController.text = 'maya.johnson$timestamp@example.com';
       _phoneController.text = '+1 (555) 234-8901';
       _passwordController.text = 'Password123!';
       _confirmPasswordController.text = 'Password123!';

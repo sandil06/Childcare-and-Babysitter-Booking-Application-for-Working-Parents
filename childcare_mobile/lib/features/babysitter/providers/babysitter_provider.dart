@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import '../../../core/network/api_client.dart';
+import '../../../core/storage/local_storage.dart';
 import '../models/availability_model.dart';
 import '../models/babysitter_model.dart';
 import '../models/booking_request_model.dart';
@@ -53,6 +55,10 @@ class BabysitterProvider extends ChangeNotifier {
       _bookings.where((b) => b.isCompleted || b.isCancelled).toList();
 
   Future<void> _init() async {
+    final token = await LocalStorage.instance.read('auth_token');
+    if (token != null && token.toString().isNotEmpty) {
+      ApiClient.authToken = token.toString();
+    }
     await fetchProfile();
   }
 
