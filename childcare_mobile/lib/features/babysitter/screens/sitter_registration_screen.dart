@@ -4,6 +4,8 @@ import '../../../config/routes.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../providers/babysitter_provider.dart';
+import '../widgets/document_upload_card.dart';
+import '../widgets/verification_badge.dart';
 
 class SitterRegistrationScreen extends StatefulWidget {
   const SitterRegistrationScreen({super.key});
@@ -15,7 +17,22 @@ class SitterRegistrationScreen extends StatefulWidget {
 
 class _SitterRegistrationScreenState extends State<SitterRegistrationScreen> {
   int _currentStep = 0;
-  final int _totalSteps = 3;
+  final int _totalSteps = 4;
+
+  // Document Upload States
+  final Map<String, DocumentUploadStatus> _docStatuses = {
+    'id': DocumentUploadStatus.notUploaded,
+    'police': DocumentUploadStatus.notUploaded,
+    'cpr': DocumentUploadStatus.notUploaded,
+    'photo': DocumentUploadStatus.notUploaded,
+  };
+
+  final Map<String, String?> _docFiles = {
+    'id': null,
+    'police': null,
+    'cpr': null,
+    'photo': null,
+  };
 
   // Form Keys
   final _personalFormKey = GlobalKey<FormState>();
@@ -122,6 +139,17 @@ class _SitterRegistrationScreenState extends State<SitterRegistrationScreen> {
       if (_selectedSkills.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Please select at least one skill')),
+        );
+        return;
+      }
+      setState(() => _currentStep++);
+    } else if (_currentStep == 3) {
+      if (_docStatuses['id'] == DocumentUploadStatus.notUploaded) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please upload at least your Government ID before submitting.'),
+            backgroundColor: AppColors.coral,
+          ),
         );
         return;
       }
@@ -329,6 +357,7 @@ class _SitterRegistrationScreenState extends State<SitterRegistrationScreen> {
                   if (_currentStep == 0) _buildPersonalDetailsStep(),
                   if (_currentStep == 1) _buildProfessionalDetailsStep(),
                   if (_currentStep == 2) _buildSkillsAndQualificationsStep(),
+                  if (_currentStep == 3) _buildDocumentsStep(),
                 ],
               ),
             ),
@@ -413,9 +442,116 @@ class _SitterRegistrationScreenState extends State<SitterRegistrationScreen> {
         return 'Professional Info';
       case 2:
         return 'Skills & Qualifications';
+      case 3:
+        return 'Verification Documents';
       default:
         return '';
     }
+  }
+
+  void _simulateUpload(String docKey, String defaultFileName) async {
+    setState(() {
+      _docStatuses[docKey] = DocumentUploadStatus.uploading;
+    });
+
+    await Future.delayed(const Duration(milliseconds: 600));
+
+    if (mounted) {
+      setState(() {
+        _docStatuses[docKey] = DocumentUploadStatus.uploaded;
+        _docFiles[docKey] = defaultFileName;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('$defaultFileName uploaded successfully!'),
+          backgroundColor: AppColors.teal,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  Widget _buildDocumentsStep() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: Text(
+                'Verification Documents',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.ink,
+                ),
+              ),
+            ),
+            VerificationBadge(status: 'pending', compact: true),
+          ],
+        ),
+        const SizedBox(height: 6),
+        const Text(
+          'Please submit official verification files. Verified sitters receive up to 4x more booking requests.',
+          style: TextStyle(color: AppColors.muted, fontSize: 14),
+        ),
+        const SizedBox(height: 20),
+        DocumentUploadCard(
+          title: 'National ID / Passport',
+          description: 'Official government-issued photo ID (front and back).',
+          icon: Icons.badge_outlined,
+          status: _docStatuses['id']!,
+          fileName: _docFiles['id'],
+          onUpload: () => _simulateUpload('id', 'national_id_card.pdf'),
+          onRemove: () => setState(() {
+            _docStatuses['id'] = DocumentUploadStatus.notUploaded;
+            _docFiles['id'] = null;
+          }),
+        ),
+        DocumentUploadCard(
+          title: 'Police Clearance / Background Check',
+          description:
+              'Official criminal record check issued within the last 12 months.',
+          icon: Icons.security_rounded,
+          status: _docStatuses['police']!,
+          fileName: _docFiles['police'],
+          onUpload: () =>
+              _simulateUpload('police', 'police_clearance_certificate.pdf'),
+          onRemove: () => setState(() {
+            _docStatuses['police'] = DocumentUploadStatus.notUploaded;
+            _docFiles['police'] = null;
+          }),
+        ),
+        DocumentUploadCard(
+          title: 'CPR & First Aid Certificate',
+          description:
+              'Valid pediatric CPR & First Aid certificate from an accredited provider.',
+          icon: Icons.medical_services_outlined,
+          status: _docStatuses['cpr']!,
+          fileName: _docFiles['cpr'],
+          onUpload: () => _simulateUpload('cpr', 'cpr_redcross_cert.pdf'),
+          onRemove: () => setState(() {
+            _docStatuses['cpr'] = DocumentUploadStatus.notUploaded;
+            _docFiles['cpr'] = null;
+          }),
+        ),
+        DocumentUploadCard(
+          title: 'Profile Photograph',
+          description:
+              'Clear, high-resolution front-facing photo with a neutral background.',
+          icon: Icons.camera_alt_outlined,
+          status: _docStatuses['photo']!,
+          fileName: _docFiles['photo'],
+          onUpload: () =>
+              _simulateUpload('photo', 'profile_photo_headshot.jpg'),
+          onRemove: () => setState(() {
+            _docStatuses['photo'] = DocumentUploadStatus.notUploaded;
+            _docFiles['photo'] = null;
+          }),
+        ),
+      ],
+    );
   }
 
   // STEP 1: Personal Details
