@@ -5,9 +5,12 @@ import '../features/auth/screens/onboarding_screen.dart';
 import '../features/babysitter/screens/availability_screen.dart';
 import '../features/babysitter/screens/booking_requests_screen.dart';
 import '../features/babysitter/screens/earnings_screen.dart';
+import '../features/babysitter/screens/edit_sitter_profile_screen.dart';
 import '../features/babysitter/screens/sitter_dashboard_screen.dart';
+import '../features/babysitter/screens/sitter_details_screen.dart';
 import '../features/babysitter/screens/sitter_profile_screen.dart';
 import '../features/babysitter/screens/sitter_registration_screen.dart';
+import '../features/babysitter/providers/babysitter_provider.dart';
 import '../features/parent/screens/parent_home_screen.dart';
 
 class AppRoutes {
@@ -45,8 +48,12 @@ class AppRoutes {
           case sitterRegistration:
             return const SitterRegistrationScreen();
           case sitterProfile:
-          case sitterDetails:
             return const SitterProfileScreen();
+          case sitterDetails:
+            return const SitterDetailsScreen();
+          case editSitterProfile:
+            final p = BabysitterProvider.instance.profile;
+            return EditSitterProfileScreen(profile: p!);
           case sitterAvailability:
             return const AvailabilityScreen();
           case sitterBookingRequests:
