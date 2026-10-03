@@ -269,6 +269,11 @@ class BabysitterProvider extends ChangeNotifier {
       if (_selectedBooking?.id == id) {
         _selectedBooking = updated;
       }
+      if (status == 'completed' && _profile != null) {
+        _profile = _profile!.copyWith(
+          totalCompletedBookings: _profile!.totalCompletedBookings + 1,
+        );
+      }
       return true;
     } catch (e) {
       _errorMessage = e.toString();
@@ -277,6 +282,14 @@ class BabysitterProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  Future<void> refreshDashboardSilently() async {
+    try {
+      _dashboardData = await _service.getDashboardData();
+      await fetchBookings();
+    } catch (_) {}
+    notifyListeners();
   }
 
   Future<void> fetchEarnings({String range = 'weekly'}) async {

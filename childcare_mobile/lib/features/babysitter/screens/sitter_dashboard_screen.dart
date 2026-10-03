@@ -156,6 +156,7 @@ class _SitterDashboardScreenState extends State<SitterDashboardScreen> {
           onRefresh: _handleRefresh,
           color: AppColors.teal,
           child: ListView(
+            key: const PageStorageKey<String>('sitter_dashboard_scroll'),
             padding: const EdgeInsets.fromLTRB(
               AppSizes.pagePadding,
               16,
@@ -163,6 +164,43 @@ class _SitterDashboardScreenState extends State<SitterDashboardScreen> {
               32,
             ),
             children: [
+              if (_provider.errorMessage != null) ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 14, vertical: 10),
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFDE8E8),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: AppColors.coral.withValues(alpha: 0.5),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.error_outline_rounded,
+                          color: AppColors.coral, size: 18),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          _provider.errorMessage!,
+                          style: const TextStyle(
+                            color: AppColors.coral,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.refresh_rounded,
+                            size: 18, color: AppColors.coral),
+                        onPressed: _handleRefresh,
+                        tooltip: 'Retry',
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               // Header
               _buildHeader(profile, unreadNotifs),
               const SizedBox(height: 20),
