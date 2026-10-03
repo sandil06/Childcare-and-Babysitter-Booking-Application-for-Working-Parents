@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../features/auth/screens/login_screen.dart';
 import '../features/auth/screens/onboarding_screen.dart';
 import '../features/babysitter/screens/availability_screen.dart';
+import '../features/babysitter/screens/booking_request_details_screen.dart';
 import '../features/babysitter/screens/booking_requests_screen.dart';
 import '../features/babysitter/screens/earnings_screen.dart';
 import '../features/babysitter/screens/edit_sitter_profile_screen.dart';
@@ -58,6 +59,8 @@ class AppRoutes {
             return const AvailabilityScreen();
           case sitterBookingRequests:
             return const BookingRequestsScreen();
+          case sitterBookingRequestDetails:
+            return const BookingRequestDetailsScreen();
           case sitterEarnings:
             return const EarningsScreen();
           case home:
