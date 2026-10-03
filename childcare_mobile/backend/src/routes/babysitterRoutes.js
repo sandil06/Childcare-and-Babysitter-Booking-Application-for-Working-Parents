@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const babysitterController = require('../controllers/babysitterController');
 const availabilityController = require('../controllers/availabilityController');
+const bookingController = require('../controllers/bookingController');
 const { validateRegister, validateUpdate } = require('../validators/babysitterValidator');
 const { validateCreate: validateCreateAvailability } = require('../validators/availabilityValidator');
 const authMiddleware = require('../middleware/authMiddleware');
@@ -19,6 +20,10 @@ router.get('/me/dashboard', authMiddleware, roleMiddleware(ROLES.BABYSITTER), ba
 // Availability endpoints
 router.get('/me/availability', authMiddleware, roleMiddleware(ROLES.BABYSITTER), availabilityController.getMeAvailability);
 router.post('/me/availability', authMiddleware, roleMiddleware(ROLES.BABYSITTER), validateCreateAvailability, availabilityController.createMeAvailability);
+
+// Bookings & Requests endpoints
+router.get('/me/bookings', authMiddleware, roleMiddleware(ROLES.BABYSITTER), bookingController.getMeBookings);
+router.get('/me/booking-requests', authMiddleware, roleMiddleware(ROLES.BABYSITTER), bookingController.getMeBookingRequests);
 
 // Details by ID
 router.get('/:id', babysitterController.getById);
