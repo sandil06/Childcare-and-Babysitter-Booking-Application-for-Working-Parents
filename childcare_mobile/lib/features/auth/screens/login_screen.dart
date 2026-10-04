@@ -20,9 +20,24 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _obscurePassword = true;
   bool _isLoading = false;
   bool _isSitterMode = false;
+  bool _isEmailInput = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _identifierController.addListener(_onIdentifierChanged);
+  }
+
+  void _onIdentifierChanged() {
+    final text = _identifierController.text.trim();
+    if (text.contains('@') && !_isEmailInput) {
+      setState(() => _isEmailInput = true);
+    }
+  }
 
   @override
   void dispose() {
+    _identifierController.removeListener(_onIdentifierChanged);
     _identifierController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -365,14 +380,37 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Mobile Number Input Field
-              const Text(
-                'Mobile Number',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.ink,
-                ),
+              // Mobile Number or Email Label
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Mobile Number or Email',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.ink,
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _isEmailInput = !_isEmailInput;
+                      });
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 2),
+                      child: Text(
+                        _isEmailInput ? 'Use Mobile Number' : 'Use Email',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF005B60),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 8),
               Container(
@@ -383,76 +421,106 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 child: Row(
                   children: [
-                    // Sri Lanka prefix badge [LK] +94
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 14,
-                      ),
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFF8FAFC),
-                        borderRadius: BorderRadius.horizontal(
-                          left: Radius.circular(14),
+                    if (!_isEmailInput) ...[
+                      // Sri Lanka prefix badge [LK] +94
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 14,
+                        ),
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.horizontal(
+                            left: Radius.circular(14),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 4,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border.all(
+                                  color: const Color(0xFFCBD5E1),
+                                ),
+                              ),
+                              child: const Text(
+                                'LK',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w800,
+                                  color: Color(0xFF475569),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            const Text(
+                              '+94',
+                              style: TextStyle(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.ink,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 4,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(4),
-                              border: Border.all(
-                                color: const Color(0xFFCBD5E1),
-                              ),
-                            ),
-                            child: const Text(
-                              'LK',
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w800,
-                                color: Color(0xFF475569),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          const Text(
-                            '+94',
-                            style: TextStyle(
-                              fontSize: 13.5,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.ink,
-                            ),
-                          ),
-                        ],
+                      Container(
+                        width: 1,
+                        height: 26,
+                        color: const Color(0xFFE2E8F0),
                       ),
-                    ),
-                    Container(
-                      width: 1,
-                      height: 26,
-                      color: const Color(0xFFE2E8F0),
-                    ),
+                    ] else ...[
+                      // Email prefix icon
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 14,
+                        ),
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.horizontal(
+                            left: Radius.circular(14),
+                          ),
+                        ),
+                        child: const Icon(
+                          Icons.email_outlined,
+                          size: 18,
+                          color: Color(0xFF005B60),
+                        ),
+                      ),
+                      Container(
+                        width: 1,
+                        height: 26,
+                        color: const Color(0xFFE2E8F0),
+                      ),
+                    ],
                     Expanded(
                       child: TextFormField(
                         controller: _identifierController,
-                        keyboardType: TextInputType.phone,
+                        keyboardType: _isEmailInput
+                            ? TextInputType.emailAddress
+                            : TextInputType.phone,
                         style: const TextStyle(
                           fontSize: 14.5,
                           fontWeight: FontWeight.w500,
                           color: AppColors.ink,
                         ),
-                        decoration: const InputDecoration(
-                          hintText: '77 123 4567',
-                          hintStyle: TextStyle(
+                        decoration: InputDecoration(
+                          hintText: _isEmailInput
+                              ? 'name@example.com'
+                              : '77 123 4567',
+                          hintStyle: const TextStyle(
                             color: Color(0xFF94A3B8),
                             fontSize: 14,
                           ),
                           border: InputBorder.none,
-                          contentPadding: EdgeInsets.symmetric(
+                          contentPadding: const EdgeInsets.symmetric(
                             horizontal: 14,
                             vertical: 14,
                           ),
@@ -463,9 +531,11 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
               const SizedBox(height: 6),
-              const Text(
-                'Registered with Dialog, Mobitel, Airtel or Hutch',
-                style: TextStyle(
+              Text(
+                _isEmailInput
+                    ? 'Registered email address on LittleHands'
+                    : 'Registered with Dialog, Mobitel, Airtel or Hutch',
+                style: const TextStyle(
                   fontSize: 11,
                   color: Color(0xFF94A3B8),
                 ),

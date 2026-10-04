@@ -40,14 +40,32 @@ async function register(req, res, next) {
 
 async function login(req, res, next) {
   try {
-    const { email, password } = req.body;
-    if (!email || !password) return next(new ApiError(400, 'Email and password are required'));
+    const { email, identifier, phone, password } = req.body;
+    const loginKey = (email || identifier || phone || '').trim();
+    if (!loginKey || !password) return next(new ApiError(400, 'Mobile number/email and password are required'));
 
     if (mongoose.connection.readyState === 1) {
-      const user = await User.findOne({ email });
-      if (!user) return next(new ApiError(401, 'Invalid email or password'));
+      let user = await User.findOne({ email: loginKey.toLowerCase() });
+      if (!user) {
+        try {
+          const BabysitterProfile = require('../models/BabysitterProfile');
+          const cleanKey = loginKey.replace(/[\s\-]/g, '');
+          const profile = await BabysitterProfile.findOne({
+            $or: [
+              { phone: loginKey },
+              { phone: cleanKey },
+              { phone: cleanKey.startsWith('+94') ? '0' + cleanKey.substring(3) : cleanKey },
+              { phone: cleanKey.startsWith('0') ? '+94' + cleanKey.substring(1) : cleanKey }
+            ]
+          });
+          if (profile) {
+            user = await User.findById(profile.userId);
+          }
+        } catch (_) {}
+      }
+      if (!user) return next(new ApiError(401, 'Invalid mobile number/email or password'));
       const valid = await bcrypt.compare(password, user.passwordHash);
-      if (!valid) return next(new ApiError(401, 'Invalid email or password'));
+      if (!valid) return next(new ApiError(401, 'Invalid mobile number/email or password'));
 
       const token = generateToken({ sub: user._id.toString(), role: user.role });
       return ApiResponse.success(
