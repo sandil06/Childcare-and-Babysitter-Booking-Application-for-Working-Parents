@@ -97,8 +97,40 @@ class _SitterRegistrationScreenState extends State<SitterRegistrationScreen> {
     'Early Childhood Education Associate',
   ];
   final _qualificationInputController = TextEditingController();
-
   bool _isSubmitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _firstNameController.text = 'Maya';
+    _lastNameController.text = 'Johnson';
+    _emailController.text = 'maya.johnson@example.com';
+    _phoneController.text = '+1 (555) 234-8901';
+    _passwordController.text = 'Password123!';
+    _confirmPasswordController.text = 'Password123!';
+    _addressController.text = '142 Park Avenue, Brooklyn, NY';
+    _selectedDob = DateTime(1996, 5, 14);
+    _bioController.text =
+        'Certified early childhood educator with 4 years of babysitting experience.';
+  }
+
+  void _fillSampleData() {
+    setState(() {
+      _firstNameController.text = 'Maya';
+      _lastNameController.text = 'Johnson';
+      _emailController.text = 'maya.johnson@example.com';
+      _phoneController.text = '+1 (555) 234-8901';
+      _passwordController.text = 'Password123!';
+      _confirmPasswordController.text = 'Password123!';
+      _addressController.text = '142 Park Avenue, Brooklyn, NY';
+      _selectedDob = DateTime(1996, 5, 14);
+      _selectedGender = 'Female';
+      _bioController.text =
+          'Certified early childhood educator with 4 years of babysitting experience.';
+      _experienceController.text = '4';
+      _hourlyRateController.text = '28';
+    });
+  }
 
   @override
   void dispose() {
@@ -561,13 +593,31 @@ class _SitterRegistrationScreenState extends State<SitterRegistrationScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Personal Details',
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w700,
-              color: AppColors.ink,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Personal Details',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.ink,
+                ),
+              ),
+              TextButton.icon(
+                onPressed: _fillSampleData,
+                icon: const Icon(Icons.auto_fix_high_rounded,
+                    size: 16, color: AppColors.teal),
+                label: const Text(
+                  'Auto-fill',
+                  style: TextStyle(
+                    color: AppColors.teal,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 6),
           const Text(
@@ -1095,6 +1145,7 @@ class _SitterRegistrationScreenState extends State<SitterRegistrationScreen> {
     required String label,
     String? hint,
     TextInputType? keyboardType,
+    TextInputAction textInputAction = TextInputAction.next,
     int maxLines = 1,
     bool obscureText = false,
     Widget? prefixIcon,
@@ -1104,9 +1155,13 @@ class _SitterRegistrationScreenState extends State<SitterRegistrationScreen> {
     return TextFormField(
       controller: controller,
       keyboardType: keyboardType,
+      textInputAction: textInputAction,
       maxLines: maxLines,
       obscureText: obscureText,
       validator: validator,
+      enableInteractiveSelection: true,
+      enabled: true,
+      autocorrect: false,
       style: const TextStyle(fontSize: 15, color: AppColors.ink),
       decoration: InputDecoration(
         labelText: label,
