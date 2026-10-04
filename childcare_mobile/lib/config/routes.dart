@@ -21,6 +21,32 @@ import '../features/babysitter/screens/upcoming_bookings_screen.dart';
 import '../features/babysitter/providers/babysitter_provider.dart';
 import '../features/parent/screens/parent_home_screen.dart';
 import '../features/parent/screens/parent_profile_screen.dart';
+import '../features/parent/screens/babysitter_search_screen.dart';
+import '../features/parent/screens/babysitter_list_screen.dart';
+import '../features/parent/screens/babysitter_profile_screen.dart';
+import '../features/parent/screens/filter_screen.dart';
+import '../features/parent/screens/booking_date_screen.dart';
+import '../features/parent/screens/booking_time_screen.dart';
+import '../features/parent/screens/booking_summary_screen.dart';
+import '../features/bookings/screens/booking_details_screen.dart';
+import '../features/bookings/screens/booking_history_screen.dart'
+    as parent_bookings;
+import '../features/bookings/screens/cancel_booking_screen.dart';
+import '../features/bookings/screens/reschedule_booking_screen.dart';
+import '../features/bookings/screens/upcoming_bookings_screen.dart'
+    as parent_bookings;
+import '../features/chat/screens/chat_screen.dart' as parent_chat;
+import '../features/chat/screens/inbox_screen.dart';
+import '../features/notifications/screens/notifications_screen.dart'
+    as parent_notifications;
+import '../features/payments/screens/payment_method_screen.dart';
+import '../features/payments/screens/payment_receipt_screen.dart';
+import '../features/tracking/screens/live_tracking_screen.dart';
+import '../features/agency/screens/agency_dashboard_screen.dart';
+import '../features/agency/screens/agency_login_screen.dart';
+import '../features/agency/screens/reports_screen.dart';
+import '../features/agency/screens/sitter_verification_screen.dart';
+import '../features/agency/screens/verification_requests_screen.dart';
 
 class AppRoutes {
   static const splash = '/splash';
@@ -30,6 +56,30 @@ class AppRoutes {
   static const register = '/register';
   static const parentProfile = '/parent/profile';
   static const customerProfile = '/customer/profile';
+  static const babysitterSearch = '/parent/babysitters/search';
+  static const babysitterList = '/parent/babysitters';
+  static const parentFilters = '/parent/babysitters/filters';
+  static const babysitterProfile = '/parent/babysitters/profile';
+  static const bookingDate = '/parent/booking/date';
+  static const bookingStartTime = '/parent/booking/start-time';
+  static const bookingEndTime = '/parent/booking/end-time';
+  static const bookingSummary = '/parent/booking/summary';
+  static const parentUpcomingBookings = '/parent/bookings/upcoming';
+  static const parentBookingHistory = '/parent/bookings/history';
+  static const parentBookingDetails = '/parent/bookings/details';
+  static const parentRescheduleBooking = '/parent/bookings/reschedule';
+  static const parentCancelBooking = '/parent/bookings/cancel';
+  static const parentPaymentMethod = '/parent/payments/method';
+  static const parentPaymentReceipt = '/parent/payments/receipt';
+  static const parentMessages = '/parent/messages';
+  static const parentChat = '/parent/chat';
+  static const parentNotifications = '/parent/notifications';
+  static const liveTracking = '/tracking/live';
+  static const agencyLogin = '/agency/login';
+  static const agencyDashboard = '/agency/dashboard';
+  static const agencyReports = '/agency/reports';
+  static const agencyVerificationRequests = '/agency/verification-requests';
+  static const agencySitterVerification = '/agency/sitter-verification';
 
   // Babysitter module routes
   static const sitterDashboard = '/babysitter/dashboard';
@@ -39,7 +89,8 @@ class AppRoutes {
   static const editSitterProfile = '/babysitter/profile/edit';
   static const sitterAvailability = '/babysitter/availability';
   static const sitterBookingRequests = '/babysitter/booking-requests';
-  static const sitterBookingRequestDetails = '/babysitter/booking-requests/details';
+  static const sitterBookingRequestDetails =
+      '/babysitter/booking-requests/details';
   static const sitterUpcomingBookings = '/babysitter/upcoming-bookings';
   static const sitterBookingHistory = '/babysitter/booking-history';
   static const sitterEarnings = '/babysitter/earnings';
@@ -63,6 +114,54 @@ class AppRoutes {
           case parentProfile:
           case customerProfile:
             return const ParentProfileScreen();
+          case babysitterSearch:
+            return const BabysitterSearchScreen();
+          case babysitterList:
+            return const BabysitterListScreen();
+          case parentFilters:
+            return const FilterScreen();
+          case babysitterProfile:
+            return const BabysitterProfileScreen();
+          case bookingDate:
+            return const BookingDateScreen();
+          case bookingStartTime:
+            return const BookingTimeScreen(mode: BookingTimeMode.start);
+          case bookingEndTime:
+            return const BookingTimeScreen(mode: BookingTimeMode.end);
+          case bookingSummary:
+            return const BookingSummaryScreen();
+          case parentUpcomingBookings:
+            return const parent_bookings.UpcomingBookingsScreen();
+          case parentBookingHistory:
+            return const parent_bookings.BookingHistoryScreen();
+          case parentBookingDetails:
+            return const BookingDetailsScreen();
+          case parentRescheduleBooking:
+            return const RescheduleBookingScreen();
+          case parentCancelBooking:
+            return const CancelBookingScreen();
+          case parentPaymentMethod:
+            return const PaymentMethodScreen();
+          case parentPaymentReceipt:
+            return const PaymentReceiptScreen();
+          case parentMessages:
+            return const InboxScreen();
+          case parentChat:
+            return const parent_chat.ChatScreen();
+          case parentNotifications:
+            return const parent_notifications.NotificationsScreen();
+          case liveTracking:
+            return const LiveTrackingScreen();
+          case agencyLogin:
+            return const AgencyLoginScreen();
+          case agencyDashboard:
+            return const AgencyDashboardScreen();
+          case agencyReports:
+            return const ReportsScreen();
+          case agencyVerificationRequests:
+            return const VerificationRequestsScreen();
+          case agencySitterVerification:
+            return const SitterVerificationScreen();
           case sitterDashboard:
             return const SitterDashboardScreen();
           case sitterRegistration:
@@ -73,7 +172,8 @@ class AppRoutes {
             return const SitterDetailsScreen();
           case editSitterProfile:
             final p = BabysitterProvider.instance.profile;
-            return EditSitterProfileScreen(profile: p!);
+            if (p != null) return EditSitterProfileScreen(profile: p);
+            return const SitterProfileScreen();
           case sitterAvailability:
             return const AvailabilityScreen();
           case sitterBookingRequests:

@@ -25,8 +25,10 @@ class _SitterDashboardScreenState extends State<SitterDashboardScreen> {
     super.initState();
     _loadUserName();
     _provider.addListener(_onStateChanged);
-    _provider.fetchDashboard();
-    _provider.fetchNotifications();
+    if (_provider.isAuthenticated) {
+      _provider.fetchDashboard();
+      _provider.fetchNotifications();
+    }
   }
 
   Future<void> _loadUserName() async {
@@ -200,79 +202,79 @@ class _SitterDashboardScreenState extends State<SitterDashboardScreen> {
                 AppSizes.pagePadding,
                 32,
               ),
-            children: [
-              if (_provider.errorMessage != null) ...[
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 10,
-                  ),
-                  margin: const EdgeInsets.only(bottom: 16),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFDE8E8),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: AppColors.coral.withValues(alpha: 0.5),
+              children: [
+                if (_provider.errorMessage != null) ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 10,
                     ),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(
-                        Icons.error_outline_rounded,
-                        color: AppColors.coral,
-                        size: 18,
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFDE8E8),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: AppColors.coral.withValues(alpha: 0.5),
                       ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          _provider.errorMessage!,
-                          style: const TextStyle(
-                            color: AppColors.coral,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.error_outline_rounded,
+                          color: AppColors.coral,
+                          size: 18,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            _provider.errorMessage!,
+                            style: const TextStyle(
+                              color: AppColors.coral,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                         ),
-                      ),
-                      IconButton(
-                        icon: const Icon(
-                          Icons.refresh_rounded,
-                          size: 18,
-                          color: AppColors.coral,
+                        IconButton(
+                          icon: const Icon(
+                            Icons.refresh_rounded,
+                            size: 18,
+                            color: AppColors.coral,
+                          ),
+                          onPressed: _handleRefresh,
+                          tooltip: 'Retry',
                         ),
-                        onPressed: _handleRefresh,
-                        tooltip: 'Retry',
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
+                ],
+                // Header
+                _buildHeader(profile, unreadNotifs),
+                const SizedBox(height: 20),
+
+                // Availability Toggle Card
+                _buildAvailabilityCard(profile),
+                const SizedBox(height: 20),
+
+                // Summary Stats Cards
+                _buildSummaryStats(profile),
+                const SizedBox(height: 24),
+
+                // Quick Actions
+                _buildQuickActions(),
+                const SizedBox(height: 28),
+
+                // Upcoming Booking Card
+                _buildUpcomingSection(upcomingBooking),
+                const SizedBox(height: 28),
+
+                // New Booking Requests Section
+                _buildNewRequestsSection(newRequests),
               ],
-              // Header
-              _buildHeader(profile, unreadNotifs),
-              const SizedBox(height: 20),
-
-              // Availability Toggle Card
-              _buildAvailabilityCard(profile),
-              const SizedBox(height: 20),
-
-              // Summary Stats Cards
-              _buildSummaryStats(profile),
-              const SizedBox(height: 24),
-
-              // Quick Actions
-              _buildQuickActions(),
-              const SizedBox(height: 28),
-
-              // Upcoming Booking Card
-              _buildUpcomingSection(upcomingBooking),
-              const SizedBox(height: 28),
-
-              // New Booking Requests Section
-              _buildNewRequestsSection(newRequests),
-            ],
+            ),
           ),
         ),
       ),
-    ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: 0,
         backgroundColor: Colors.white,
@@ -514,8 +516,7 @@ class _SitterDashboardScreenState extends State<SitterDashboardScreen> {
   }
 
   Widget _buildSummaryStats(BabysitterModel profile) {
-    final earnings =
-        _provider.dashboardData?['stats']?['totalEarnings'] ?? 0.0;
+    final earnings = _provider.dashboardData?['stats']?['totalEarnings'] ?? 0.0;
     return Row(
       children: [
         Expanded(

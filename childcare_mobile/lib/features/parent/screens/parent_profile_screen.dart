@@ -7,6 +7,7 @@ import '../../../core/network/api_client.dart';
 import '../../../core/storage/local_storage.dart';
 import '../../babysitter/providers/babysitter_provider.dart';
 import '../../babysitter/services/babysitter_service.dart';
+import '../providers/parent_provider.dart';
 
 class ParentProfileScreen extends StatefulWidget {
   const ParentProfileScreen({super.key});
@@ -54,9 +55,8 @@ class _ParentProfileScreenState extends State<ParentProfileScreen> {
 
     try {
       final token = await LocalStorage.instance.read('auth_token');
-      if (token != null && token.toString().isNotEmpty) {
-        ApiClient.authToken = token.toString();
-      }
+      if (token == null || token.toString().isEmpty) return;
+      ApiClient.authToken = token.toString();
       final res = await ApiClient().get('parents/profile');
       final data = (res is Map<String, dynamic> && res['data'] != null)
           ? res['data'] as Map<String, dynamic>
@@ -77,22 +77,32 @@ class _ParentProfileScreenState extends State<ParentProfileScreen> {
             _parentProfile['address'] = data['address'].toString();
           }
           if (data['emergencyContact'] != null) {
-            _parentProfile['emergencyContact'] = data['emergencyContact'].toString();
+            _parentProfile['emergencyContact'] = data['emergencyContact']
+                .toString();
           }
           if (data['isNicVerified'] != null) {
             _parentProfile['isNicVerified'] = data['isNicVerified'] == true;
           }
           if (data['children'] is List) {
-            _parentProfile['children'] = List<dynamic>.from(data['children'] as List);
-            _parentProfile['childrenCount'] = (_parentProfile['children'] as List).length;
+            _parentProfile['children'] = List<dynamic>.from(
+              data['children'] as List,
+            );
+            _parentProfile['childrenCount'] =
+                (_parentProfile['children'] as List).length;
           }
         });
 
         if (data['name'] != null && data['name'].toString().isNotEmpty) {
-          await LocalStorage.instance.write('user_name', data['name'].toString());
+          await LocalStorage.instance.write(
+            'user_name',
+            data['name'].toString(),
+          );
         }
         if (data['phone'] != null && data['phone'].toString().isNotEmpty) {
-          await LocalStorage.instance.write('user_phone', data['phone'].toString());
+          await LocalStorage.instance.write(
+            'user_phone',
+            data['phone'].toString(),
+          );
         }
       }
     } catch (e) {
@@ -132,22 +142,32 @@ class _ParentProfileScreenState extends State<ParentProfileScreen> {
             _parentProfile['address'] = data['address'].toString();
           }
           if (data['emergencyContact'] != null) {
-            _parentProfile['emergencyContact'] = data['emergencyContact'].toString();
+            _parentProfile['emergencyContact'] = data['emergencyContact']
+                .toString();
           }
           if (data['isNicVerified'] != null) {
             _parentProfile['isNicVerified'] = data['isNicVerified'] == true;
           }
           if (data['children'] is List) {
-            _parentProfile['children'] = List<dynamic>.from(data['children'] as List);
-            _parentProfile['childrenCount'] = (_parentProfile['children'] as List).length;
+            _parentProfile['children'] = List<dynamic>.from(
+              data['children'] as List,
+            );
+            _parentProfile['childrenCount'] =
+                (_parentProfile['children'] as List).length;
           }
         });
 
         if (data['name'] != null && data['name'].toString().isNotEmpty) {
-          await LocalStorage.instance.write('user_name', data['name'].toString());
+          await LocalStorage.instance.write(
+            'user_name',
+            data['name'].toString(),
+          );
         }
         if (data['phone'] != null && data['phone'].toString().isNotEmpty) {
-          await LocalStorage.instance.write('user_phone', data['phone'].toString());
+          await LocalStorage.instance.write(
+            'user_phone',
+            data['phone'].toString(),
+          );
         }
 
         if (mounted) {
@@ -172,10 +192,18 @@ class _ParentProfileScreenState extends State<ParentProfileScreen> {
   }
 
   void _showEditProfileDialog() {
-    final nameCtrl = TextEditingController(text: _parentProfile['name'] as String? ?? '');
-    final phoneCtrl = TextEditingController(text: _parentProfile['phone'] as String? ?? '');
-    final addressCtrl = TextEditingController(text: _parentProfile['address'] as String? ?? '');
-    final emergencyCtrl = TextEditingController(text: _parentProfile['emergencyContact'] as String? ?? '');
+    final nameCtrl = TextEditingController(
+      text: _parentProfile['name'] as String? ?? '',
+    );
+    final phoneCtrl = TextEditingController(
+      text: _parentProfile['phone'] as String? ?? '',
+    );
+    final addressCtrl = TextEditingController(
+      text: _parentProfile['address'] as String? ?? '',
+    );
+    final emergencyCtrl = TextEditingController(
+      text: _parentProfile['emergencyContact'] as String? ?? '',
+    );
     final formKey = GlobalKey<FormState>();
 
     showModalBottomSheet(
@@ -225,7 +253,9 @@ class _ParentProfileScreenState extends State<ParentProfileScreen> {
                       labelText: 'Full Name',
                       prefixIcon: Icon(Icons.person_outline_rounded),
                     ),
-                    validator: (v) => (v == null || v.trim().isEmpty) ? 'Please enter your name' : null,
+                    validator: (v) => (v == null || v.trim().isEmpty)
+                        ? 'Please enter your name'
+                        : null,
                   ),
                   const SizedBox(height: 14),
                   TextFormField(
@@ -277,7 +307,10 @@ class _ParentProfileScreenState extends State<ParentProfileScreen> {
                           borderRadius: BorderRadius.circular(14),
                         ),
                       ),
-                      child: const Text('Save Changes', style: TextStyle(fontWeight: FontWeight.w700)),
+                      child: const Text(
+                        'Save Changes',
+                        style: TextStyle(fontWeight: FontWeight.w700),
+                      ),
                     ),
                   ),
                 ],
@@ -300,7 +333,9 @@ class _ParentProfileScreenState extends State<ParentProfileScreen> {
       builder: (ctx) {
         return AlertDialog(
           backgroundColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
           title: const Text(
             'Add Child',
             style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.ink),
@@ -316,7 +351,9 @@ class _ParentProfileScreenState extends State<ParentProfileScreen> {
                     labelText: "Child's Name",
                     prefixIcon: Icon(Icons.child_care_rounded),
                   ),
-                  validator: (v) => (v == null || v.trim().isEmpty) ? "Enter child's name" : null,
+                  validator: (v) => (v == null || v.trim().isEmpty)
+                      ? "Enter child's name"
+                      : null,
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
@@ -342,13 +379,18 @@ class _ParentProfileScreenState extends State<ParentProfileScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel', style: TextStyle(color: AppColors.muted)),
+              child: const Text(
+                'Cancel',
+                style: TextStyle(color: AppColors.muted),
+              ),
             ),
             FilledButton(
               onPressed: () async {
                 if (!formKey.currentState!.validate()) return;
                 Navigator.pop(ctx);
-                final currentChildren = List<dynamic>.from((_parentProfile['children'] as List?) ?? []);
+                final currentChildren = List<dynamic>.from(
+                  (_parentProfile['children'] as List?) ?? [],
+                );
                 currentChildren.add({
                   'name': nameCtrl.text.trim(),
                   'age': ageCtrl.text.trim(),
@@ -358,7 +400,9 @@ class _ParentProfileScreenState extends State<ParentProfileScreen> {
               },
               style: FilledButton.styleFrom(
                 backgroundColor: AppColors.teal,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
               child: const Text('Add'),
             ),
@@ -384,12 +428,17 @@ class _ParentProfileScreenState extends State<ParentProfileScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel', style: TextStyle(color: AppColors.muted)),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: AppColors.muted),
+            ),
           ),
           FilledButton(
             onPressed: () async {
               Navigator.pop(ctx);
-              final currentChildren = List<dynamic>.from((_parentProfile['children'] as List?) ?? []);
+              final currentChildren = List<dynamic>.from(
+                (_parentProfile['children'] as List?) ?? [],
+              );
               if (index < currentChildren.length) {
                 currentChildren.removeAt(index);
                 await _updateProfileOnServer({'children': currentChildren});
@@ -397,7 +446,9 @@ class _ParentProfileScreenState extends State<ParentProfileScreen> {
             },
             style: FilledButton.styleFrom(
               backgroundColor: AppColors.coral,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
             child: const Text('Remove'),
           ),
@@ -420,7 +471,10 @@ class _ParentProfileScreenState extends State<ParentProfileScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel', style: TextStyle(color: AppColors.muted)),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: AppColors.muted),
+            ),
           ),
           FilledButton(
             onPressed: () async {
@@ -434,6 +488,7 @@ class _ParentProfileScreenState extends State<ParentProfileScreen> {
               ApiClient.authToken = null;
               BabysitterService.clearCurrentProfile();
               BabysitterProvider.instance.reset();
+              ParentProvider.instance.reset();
               if (mounted) {
                 Navigator.pushNamedAndRemoveUntil(
                   context,
@@ -472,7 +527,10 @@ class _ParentProfileScreenState extends State<ParentProfileScreen> {
         elevation: 0,
         leading: Navigator.canPop(context)
             ? IconButton(
-                icon: const Icon(Icons.arrow_back_rounded, color: AppColors.ink),
+                icon: const Icon(
+                  Icons.arrow_back_rounded,
+                  color: AppColors.ink,
+                ),
                 onPressed: () => Navigator.pop(context),
               )
             : null,
@@ -530,10 +588,16 @@ class _ParentProfileScreenState extends State<ParentProfileScreen> {
                 child: OutlinedButton.icon(
                   onPressed: () =>
                       Navigator.pushNamed(context, AppRoutes.sitterDashboard),
-                  icon: const Icon(Icons.swap_horiz_rounded, color: AppColors.teal),
+                  icon: const Icon(
+                    Icons.swap_horiz_rounded,
+                    color: AppColors.teal,
+                  ),
                   label: const Text(
                     'Switch to Sitter Mode',
-                    style: TextStyle(color: AppColors.teal, fontWeight: FontWeight.w700),
+                    style: TextStyle(
+                      color: AppColors.teal,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                   style: OutlinedButton.styleFrom(
                     side: const BorderSide(color: AppColors.teal),
@@ -608,7 +672,10 @@ class _ParentProfileScreenState extends State<ParentProfileScreen> {
                 ],
                 const SizedBox(height: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFFE6F5F2),
                     borderRadius: BorderRadius.circular(20),
@@ -634,7 +701,8 @@ class _ParentProfileScreenState extends State<ParentProfileScreen> {
     final isNicVerified = _parentProfile['isNicVerified'] == true;
     final phone = (_parentProfile['phone'] as String?)?.trim() ?? '';
     final hasPhone = phone.isNotEmpty;
-    final emergency = (_parentProfile['emergencyContact'] as String?)?.trim() ?? '';
+    final emergency =
+        (_parentProfile['emergencyContact'] as String?)?.trim() ?? '';
     final hasEmergency = emergency.isNotEmpty;
 
     return Container(
@@ -683,7 +751,11 @@ class _ParentProfileScreenState extends State<ParentProfileScreen> {
     );
   }
 
-  Widget _buildStatusRow(String label, String status, {bool isVerified = true}) {
+  Widget _buildStatusRow(
+    String label,
+    String status, {
+    bool isVerified = true,
+  }) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -691,7 +763,9 @@ class _ParentProfileScreenState extends State<ParentProfileScreen> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
           decoration: BoxDecoration(
-            color: isVerified ? const Color(0xFFE6F5F2) : const Color(0xFFF3F4F6),
+            color: isVerified
+                ? const Color(0xFFE6F5F2)
+                : const Color(0xFFF3F4F6),
             borderRadius: BorderRadius.circular(6),
           ),
           child: Text(
@@ -699,7 +773,9 @@ class _ParentProfileScreenState extends State<ParentProfileScreen> {
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w700,
-              color: isVerified ? const Color(0xFF005B60) : const Color(0xFF6B7280),
+              color: isVerified
+                  ? const Color(0xFF005B60)
+                  : const Color(0xFF6B7280),
             ),
           ),
         ),
@@ -736,8 +812,8 @@ class _ParentProfileScreenState extends State<ParentProfileScreen> {
                     children.isEmpty
                         ? '0 registered'
                         : (children.length == 1
-                            ? '1 registered'
-                            : '${children.length} registered'),
+                              ? '1 registered'
+                              : '${children.length} registered'),
                     style: const TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
@@ -778,7 +854,11 @@ class _ParentProfileScreenState extends State<ParentProfileScreen> {
                       color: AppColors.sand,
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(Icons.child_care_rounded, size: 20, color: AppColors.muted),
+                    child: const Icon(
+                      Icons.child_care_rounded,
+                      size: 20,
+                      color: AppColors.muted,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   const Expanded(
@@ -799,10 +879,15 @@ class _ParentProfileScreenState extends State<ParentProfileScreen> {
               final age = childMap['age']?.toString() ?? '';
               final notes = childMap['notes']?.toString() ?? '';
               final ageText = age.isNotEmpty ? '$age years old' : '';
-              final sub = [ageText, notes].where((s) => s.isNotEmpty).join(' · ');
+              final sub = [
+                ageText,
+                notes,
+              ].where((s) => s.isNotEmpty).join(' · ');
 
               return Padding(
-                padding: EdgeInsets.only(bottom: index < children.length - 1 ? 12.0 : 0),
+                padding: EdgeInsets.only(
+                  bottom: index < children.length - 1 ? 12.0 : 0,
+                ),
                 child: Row(
                   children: [
                     Container(
@@ -812,7 +897,11 @@ class _ParentProfileScreenState extends State<ParentProfileScreen> {
                         color: AppColors.mint,
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Icon(Icons.child_care_rounded, size: 20, color: AppColors.teal),
+                      child: const Icon(
+                        Icons.child_care_rounded,
+                        size: 20,
+                        color: AppColors.teal,
+                      ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -830,13 +919,20 @@ class _ParentProfileScreenState extends State<ParentProfileScreen> {
                           const SizedBox(height: 2),
                           Text(
                             sub.isNotEmpty ? sub : 'No notes provided',
-                            style: const TextStyle(fontSize: 12, color: AppColors.muted),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppColors.muted,
+                            ),
                           ),
                         ],
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.delete_outline_rounded, size: 18, color: AppColors.coral),
+                      icon: const Icon(
+                        Icons.delete_outline_rounded,
+                        size: 18,
+                        color: AppColors.coral,
+                      ),
                       tooltip: 'Remove Child',
                       onPressed: () => _confirmRemoveChild(index),
                     ),
@@ -852,7 +948,8 @@ class _ParentProfileScreenState extends State<ParentProfileScreen> {
   Widget _buildContactCard() {
     final phone = (_parentProfile['phone'] as String?)?.trim() ?? '';
     final address = (_parentProfile['address'] as String?)?.trim() ?? '';
-    final emergency = (_parentProfile['emergencyContact'] as String?)?.trim() ?? '';
+    final emergency =
+        (_parentProfile['emergencyContact'] as String?)?.trim() ?? '';
 
     return Container(
       padding: const EdgeInsets.all(18),
@@ -878,7 +975,10 @@ class _ParentProfileScreenState extends State<ParentProfileScreen> {
                 onTap: _showEditProfileDialog,
                 borderRadius: BorderRadius.circular(8),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.mint,
                     borderRadius: BorderRadius.circular(8),

@@ -122,7 +122,7 @@ async function list(req, res, next) {
 
 async function getById(req, res, next) {
   try {
-    const profile = await babysitterService.getProfileByUserId(req.params.id);
+    const profile = await babysitterService.getProfileById(req.params.id);
     return ApiResponse.success(res, profile, 'Profile retrieved');
   } catch (err) {
     next(err);
