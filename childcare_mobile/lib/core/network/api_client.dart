@@ -12,18 +12,20 @@ class ApiClient {
     }
     return 'http://localhost:4000/api/v1';
   }
+
   final String baseUrl;
   static String? authToken;
 
   final HttpClient _httpClient = HttpClient()
     ..connectionTimeout = const Duration(seconds: 10);
+  static const _responseTimeout = Duration(seconds: 5);
 
   Map<String, String> get _headers => {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        if (authToken != null && authToken!.isNotEmpty)
-          'Authorization': 'Bearer $authToken',
-      };
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+    if (authToken != null && authToken!.isNotEmpty)
+      'Authorization': 'Bearer $authToken',
+  };
 
   Uri _resolveUri(String path, [Map<String, dynamic>? queryParams]) {
     final cleanPath = path.startsWith('/') ? path.substring(1) : path;
@@ -43,7 +45,7 @@ class ApiClient {
       final uri = _resolveUri(path, queryParams);
       final request = await _httpClient.getUrl(uri);
       _headers.forEach((k, v) => request.headers.set(k, v));
-      final response = await request.close();
+      final response = await request.close().timeout(_responseTimeout);
       return _handleResponse(response);
     } catch (e) {
       if (e is ApiException) rethrow;
@@ -59,7 +61,7 @@ class ApiClient {
       if (body != null) {
         request.write(jsonEncode(body));
       }
-      final response = await request.close();
+      final response = await request.close().timeout(_responseTimeout);
       return _handleResponse(response);
     } catch (e) {
       if (e is ApiException) rethrow;
@@ -75,7 +77,7 @@ class ApiClient {
       if (body != null) {
         request.write(jsonEncode(body));
       }
-      final response = await request.close();
+      final response = await request.close().timeout(_responseTimeout);
       return _handleResponse(response);
     } catch (e) {
       if (e is ApiException) rethrow;
@@ -88,7 +90,7 @@ class ApiClient {
       final uri = _resolveUri(path);
       final request = await _httpClient.deleteUrl(uri);
       _headers.forEach((k, v) => request.headers.set(k, v));
-      final response = await request.close();
+      final response = await request.close().timeout(_responseTimeout);
       return _handleResponse(response);
     } catch (e) {
       if (e is ApiException) rethrow;
@@ -114,7 +116,8 @@ class ApiClient {
       return decoded;
     }
 
-    final message = (decoded is Map<String, dynamic> && decoded['message'] != null)
+    final message =
+        (decoded is Map<String, dynamic> && decoded['message'] != null)
         ? decoded['message'].toString()
         : 'Request failed with status: ${response.statusCode}';
     throw ApiException(message);
