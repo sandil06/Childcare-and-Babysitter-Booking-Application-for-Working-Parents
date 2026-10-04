@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../features/auth/screens/login_screen.dart';
 import '../features/auth/screens/onboarding_screen.dart';
+import '../features/auth/screens/splash_screen.dart';
 import '../features/babysitter/screens/availability_screen.dart';
 import '../features/babysitter/screens/booking_history_screen.dart';
 import '../features/babysitter/screens/booking_request_details_screen.dart';
@@ -20,6 +21,7 @@ import '../features/babysitter/providers/babysitter_provider.dart';
 import '../features/parent/screens/parent_home_screen.dart';
 
 class AppRoutes {
+  static const splash = '/splash';
   static const home = '/';
   static const onboarding = '/onboarding';
   static const login = '/login';
@@ -45,6 +47,8 @@ class AppRoutes {
       settings: settings,
       builder: (context) {
         switch (settings.name) {
+          case splash:
+            return const SplashScreen();
           case onboarding:
             return const OnboardingScreen();
           case login:
