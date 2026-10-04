@@ -829,12 +829,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   GestureDetector(
                     onTap: () {
-                      if (_isSitterMode) {
-                        Navigator.pushNamed(context, AppRoutes.sitterRegistration);
-                      } else {
-                        // Register as parent or sitter
-                        Navigator.pushNamed(context, AppRoutes.sitterRegistration);
-                      }
+                      Navigator.pushNamed(context, AppRoutes.register);
                     },
                     child: const Text(
                       'Create account',

@@ -117,18 +117,19 @@ class ApiClient {
       return decoded;
     }
 
-    final message = switch (response.statusCode) {
-      401 => 'Session expired. Please log in again.',
-      403 => 'You do not have permission to perform this action.',
-      404 => 'The requested resource was not found.',
-      409 => 'This request conflicts with existing data.',
-      422 => 'Please check the entered information.',
-      500 => 'Something went wrong on the server.',
-      _ =>
-        (decoded is Map<String, dynamic> && decoded['message'] != null)
-            ? decoded['message'].toString()
-            : 'Request failed with status: ${response.statusCode}',
-    };
+    final serverMsg = (decoded is Map<String, dynamic> && decoded['message'] != null)
+        ? decoded['message'].toString()
+        : null;
+    final message = serverMsg ??
+        switch (response.statusCode) {
+          401 => 'Session expired. Please log in again.',
+          403 => 'You do not have permission to perform this action.',
+          404 => 'The requested resource was not found.',
+          409 => 'This request conflicts with existing data.',
+          422 => 'Please check the entered information.',
+          500 => 'Something went wrong on the server.',
+          _ => 'Request failed with status: ${response.statusCode}',
+        };
     if (response.statusCode == 401) {
       authToken = null;
       await LocalStorage.instance.remove('auth_token');

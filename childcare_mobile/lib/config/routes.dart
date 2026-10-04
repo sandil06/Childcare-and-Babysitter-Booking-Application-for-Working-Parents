@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../features/auth/screens/login_screen.dart';
 import '../features/auth/screens/onboarding_screen.dart';
+import '../features/auth/screens/register_screen.dart';
 import '../features/auth/screens/splash_screen.dart';
 import '../features/babysitter/screens/availability_screen.dart';
 import '../features/babysitter/screens/booking_history_screen.dart';
@@ -26,6 +27,7 @@ class AppRoutes {
   static const home = '/';
   static const onboarding = '/onboarding';
   static const login = '/login';
+  static const register = '/register';
   static const parentProfile = '/parent/profile';
   static const customerProfile = '/customer/profile';
 
@@ -56,6 +58,8 @@ class AppRoutes {
             return const OnboardingScreen();
           case login:
             return const LoginScreen();
+          case register:
+            return const RegisterScreen();
           case parentProfile:
           case customerProfile:
             return const ParentProfileScreen();
