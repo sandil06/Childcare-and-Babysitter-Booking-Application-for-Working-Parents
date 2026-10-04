@@ -33,7 +33,10 @@ class _SitterDashboardScreenState extends State<SitterDashboardScreen> {
   }
 
   void _onStateChanged() {
-    if (mounted) setState(() {});
+    if (!mounted) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(() {});
+    });
   }
 
   Future<void> _handleRefresh() async {

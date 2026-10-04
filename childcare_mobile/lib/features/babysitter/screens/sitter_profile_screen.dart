@@ -23,7 +23,9 @@ class _SitterProfileScreenState extends State<SitterProfileScreen> {
     super.initState();
     _provider.addListener(_onStateChanged);
     if (_provider.profile == null) {
-      _provider.fetchProfile();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _provider.fetchProfile();
+      });
     }
   }
 
@@ -34,7 +36,10 @@ class _SitterProfileScreenState extends State<SitterProfileScreen> {
   }
 
   void _onStateChanged() {
-    if (mounted) setState(() {});
+    if (!mounted) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(() {});
+    });
   }
 
   Future<void> _handleRefresh() async {

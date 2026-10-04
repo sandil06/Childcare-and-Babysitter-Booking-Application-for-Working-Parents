@@ -50,6 +50,7 @@ class BabysitterProvider extends ChangeNotifier {
   List<Map<String, dynamic>> get notifications => _notifications;
   int get unreadNotificationCount =>
       _notifications.where((n) => n['isRead'] == false).length;
+  bool get isAuthenticated => ApiClient.authToken?.isNotEmpty == true;
 
   List<BookingRequestModel> get newRequests =>
       _bookings.where((b) => b.isPending).toList();
@@ -63,10 +64,11 @@ class BabysitterProvider extends ChangeNotifier {
     if (token != null && token.toString().isNotEmpty) {
       ApiClient.authToken = token.toString();
     }
-    await fetchProfile();
+    if (isAuthenticated) await fetchProfile();
   }
 
   Future<void> fetchProfile({bool showLoading = true}) {
+    if (!isAuthenticated) return Future.value();
     final inFlight = _profileRequest;
     if (inFlight != null) return inFlight;
 
@@ -80,6 +82,7 @@ class BabysitterProvider extends ChangeNotifier {
   }
 
   Future<void> _fetchProfile({required bool showLoading}) async {
+    await Future<void>.delayed(Duration.zero);
     if (showLoading) {
       _isLoading = true;
       _errorMessage = null;
@@ -154,6 +157,7 @@ class BabysitterProvider extends ChangeNotifier {
   }
 
   Future<void> fetchDashboard() {
+    if (!isAuthenticated) return Future.value();
     final inFlight = _dashboardRequest;
     if (inFlight != null) return inFlight;
 
@@ -167,6 +171,7 @@ class BabysitterProvider extends ChangeNotifier {
   }
 
   Future<void> _fetchDashboard() async {
+    await Future<void>.delayed(Duration.zero);
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
@@ -190,6 +195,7 @@ class BabysitterProvider extends ChangeNotifier {
   }
 
   Future<void> fetchAvailabilities({DateTime? month}) async {
+    if (!isAuthenticated) return;
     try {
       _availabilities = await _service.getAvailabilities(month: month);
     } catch (e) {
@@ -242,6 +248,7 @@ class BabysitterProvider extends ChangeNotifier {
   }
 
   Future<void> fetchBookings({String? status}) {
+    if (!isAuthenticated) return Future.value();
     final key = status ?? 'all';
     final inFlight = _bookingRequests[key];
     if (inFlight != null) return inFlight;
@@ -381,6 +388,7 @@ class BabysitterProvider extends ChangeNotifier {
   }
 
   Future<void> fetchEarnings({String range = 'weekly'}) async {
+    if (!isAuthenticated) return;
     _isLoading = true;
     notifyListeners();
     try {
@@ -394,6 +402,7 @@ class BabysitterProvider extends ChangeNotifier {
   }
 
   Future<void> fetchNotifications() {
+    if (!isAuthenticated) return Future.value();
     final inFlight = _notificationsRequest;
     if (inFlight != null) return inFlight;
 
