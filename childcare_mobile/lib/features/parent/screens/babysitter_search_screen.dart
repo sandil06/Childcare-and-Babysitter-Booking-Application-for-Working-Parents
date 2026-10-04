@@ -42,9 +42,10 @@ class _BabysitterSearchViewState extends State<_BabysitterSearchView> {
     if (mounted) setState(() {});
   }
 
-  Future<void> _submit() async {
-    await _provider.searchBabysitters(search: _controller.text);
-  }
+ Future<void> _submit() async {
+  final searchText = _controller.text.trim();
+  await _provider.searchBabysitters(search: searchText);
+}
 
   @override
   Widget build(BuildContext context) {
@@ -95,14 +96,18 @@ class _BabysitterSearchViewState extends State<_BabysitterSearchView> {
                     ),
                     const SizedBox(height: 20),
                     _SearchField(
-                      controller: _controller,
-                      isLoading: _provider.isLoading,
-                      onChanged: (_) => setState(() {}),
-                      onSubmitted: (_) => _submit(),
-                      onClear: () => setState(_controller.clear),
-                      onFilter: () =>
-                          Navigator.pushNamed(context, AppRoutes.parentFilters),
-                    ),
+  controller: _controller,
+  isLoading: _provider.isLoading,
+  onChanged: (_) => setState(() {}),
+  onSubmitted: (_) => _submit(),
+  onClear: () {
+    _controller.clear();
+    _submit();
+    setState(() {});
+  },
+  onFilter: () =>
+      Navigator.pushNamed(context, AppRoutes.parentFilters),
+),
                     const SizedBox(height: 12),
                     const _LocationRow(),
                     const SizedBox(height: 16),
