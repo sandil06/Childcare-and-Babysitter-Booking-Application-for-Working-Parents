@@ -174,6 +174,31 @@ async function listBabysitters(filter = {}) {
       ...filter,
     }).populate('user', 'name email phone avatar');
   }
+  if (memoryBabysitters.size === 0) {
+    const defaultSitter = {
+      id: 'sitter-1',
+      _id: 'sitter-1',
+      name: 'Maya Johnson',
+      user: {
+        id: 'sitter-1',
+        _id: 'sitter-1',
+        name: 'Maya Johnson',
+        email: 'maya.johnson@example.com',
+      },
+      bio: 'Professional early childhood educator with 4 years experience.',
+      hourlyRate: 28.0,
+      experienceYears: 4,
+      skills: ['Infant care', 'First aid & CPR', 'Toddler care'],
+      languages: ['English', 'Spanish'],
+      qualifications: ['CPR & First Aid Certified'],
+      verificationStatus: 'verified',
+      averageRating: 4.95,
+      totalReviews: 32,
+      totalCompletedBookings: 48,
+      isAvailable: true,
+    };
+    memoryBabysitters.set('sitter-1', defaultSitter);
+  }
   return Array.from(memoryBabysitters.values());
 }
 

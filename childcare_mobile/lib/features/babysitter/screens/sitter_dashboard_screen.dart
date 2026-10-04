@@ -475,7 +475,7 @@ class _SitterDashboardScreenState extends State<SitterDashboardScreen> {
             subtitle: 'Completed',
             icon: Icons.task_alt_rounded,
             accentColor: AppColors.ink,
-            onTap: () => Navigator.pushNamed(context, AppRoutes.sitterBookingRequests),
+            onTap: () => Navigator.pushNamed(context, AppRoutes.sitterBookingHistory),
           ),
         ),
       ],
@@ -587,7 +587,7 @@ class _SitterDashboardScreenState extends State<SitterDashboardScreen> {
             ),
             TextButton(
               onPressed: () =>
-                  Navigator.pushNamed(context, AppRoutes.sitterBookingRequests),
+                  Navigator.pushNamed(context, AppRoutes.sitterUpcomingBookings),
               child: const Text('View all', style: TextStyle(color: AppColors.teal)),
             ),
           ],
