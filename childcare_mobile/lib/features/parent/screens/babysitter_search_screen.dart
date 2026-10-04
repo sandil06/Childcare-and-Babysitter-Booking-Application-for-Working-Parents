@@ -106,7 +106,7 @@ class _BabysitterSearchViewState extends State<_BabysitterSearchView> {
     setState(() {});
   },
   onFilter: () =>
-      Navigator.pushNamed(context, AppRoutes.parentFilters),
+    Navigator.pushNamed(context, AppRoutes.babysitterList),
 ),
                     const SizedBox(height: 12),
                     const _LocationRow(),
