@@ -113,5 +113,8 @@ bookingSchema.pre('save', function (next) {
   next();
 });
 
+bookingSchema.index({ babysitter: 1, status: 1, date: -1 });
+bookingSchema.index({ parent: 1, status: 1, date: -1 });
+
 module.exports =
   mongoose.models.Booking || mongoose.model('Booking', bookingSchema);

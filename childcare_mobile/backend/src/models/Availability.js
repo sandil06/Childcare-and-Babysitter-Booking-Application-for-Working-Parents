@@ -57,6 +57,8 @@ availabilitySchema.pre('save', function (next) {
   next();
 });
 
+availabilitySchema.index({ babysitter: 1, date: 1, startTime: 1 });
+
 module.exports =
   mongoose.models.Availability ||
   mongoose.model('Availability', availabilitySchema);

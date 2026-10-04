@@ -15,6 +15,12 @@ function getUserId(req) {
   return req.user?.sub || req.user?.id;
 }
 
+function getPageParams(query) {
+  const page = Math.max(1, Number.parseInt(query.page, 10) || 1);
+  const limit = Math.min(50, Math.max(1, Number.parseInt(query.limit, 10) || 20));
+  return { page, limit, skip: (page - 1) * limit };
+}
+
 // Allowed job lifecycle transitions
 const ALLOWED_STATUS_TRANSITIONS = {
   pending: ['accepted', 'rejected', 'cancelled'],
@@ -32,6 +38,7 @@ async function getMeBookings(req, res, next) {
   try {
     const userId = getUserId(req);
     const { status } = req.query;
+    const { page, limit, skip } = getPageParams(req.query);
 
     if (isDbConnected()) {
       const filter = { babysitter: userId };
@@ -40,7 +47,12 @@ async function getMeBookings(req, res, next) {
       }
       const bookings = await Booking.find(filter)
         .populate('parent', 'name email phone avatar')
-        .sort({ date: -1, startTime: 1 });
+        .sort({ date: -1, startTime: 1 })
+        .skip(skip)
+        .limit(limit);
+      res.set('X-Page', String(page));
+      res.set('X-Limit', String(limit));
+      res.set('X-Has-More', String(bookings.length === limit));
       return ApiResponse.success(res, bookings, 'Bookings retrieved');
     }
 
@@ -51,7 +63,11 @@ async function getMeBookings(req, res, next) {
     if (status && status !== 'all') {
       list = list.filter((b) => b.status === status);
     }
-    return ApiResponse.success(res, list, 'Bookings retrieved');
+    const paged = list.slice(skip, skip + limit);
+    res.set('X-Page', String(page));
+    res.set('X-Limit', String(limit));
+    res.set('X-Has-More', String(skip + limit < list.length));
+    return ApiResponse.success(res, paged, 'Bookings retrieved');
   } catch (err) {
     next(err);
   }
@@ -76,11 +92,19 @@ async function getById(req, res, next) {
         'name email phone avatar'
       );
       if (!booking) return next(new ApiError(404, 'Booking not found'));
+      const userId = getUserId(req).toString();
+      if (booking.parent._id.toString() !== userId && booking.babysitter._id.toString() !== userId) {
+        return next(new ApiError(403, 'You are not authorized to view this booking'));
+      }
       return ApiResponse.success(res, booking, 'Booking details retrieved');
     }
 
     const booking = memoryBookings.get(bookingId);
     if (!booking) return next(new ApiError(404, 'Booking not found'));
+    const userId = getUserId(req).toString();
+    if (booking.parent.toString() !== userId && booking.babysitter.toString() !== userId) {
+      return next(new ApiError(403, 'You are not authorized to view this booking'));
+    }
     return ApiResponse.success(res, booking, 'Booking details retrieved');
   } catch (err) {
     next(err);
@@ -272,11 +296,21 @@ async function create(req, res, next) {
 
 async function list(req, res, next) {
   try {
+    const userId = getUserId(req);
+    const { page, limit, skip } = getPageParams(req.query);
     if (isDbConnected()) {
-      const bookings = await Booking.find(req.query).sort({ date: -1 });
+      const filter = { $or: [{ parent: userId }, { babysitter: userId }] };
+      if (req.query.status) filter.status = req.query.status;
+      const bookings = await Booking.find(filter)
+        .sort({ date: -1 })
+        .skip(skip)
+        .limit(limit);
       return ApiResponse.success(res, bookings, 'Bookings retrieved');
     }
-    return ApiResponse.success(res, Array.from(memoryBookings.values()), 'Bookings retrieved');
+    const list = Array.from(memoryBookings.values()).filter(
+      (booking) => booking.parent.toString() === userId.toString() || booking.babysitter.toString() === userId.toString()
+    );
+    return ApiResponse.success(res, list.slice(skip, skip + limit), 'Bookings retrieved');
   } catch (err) {
     next(err);
   }

@@ -167,6 +167,21 @@ async function update(req, res, next) {
       return next(new ApiError(403, 'You are not authorized to modify this availability slot'));
     }
 
+    const newStart = req.body.startTime || slot.startTime;
+    const newEnd = req.body.endTime || slot.endTime;
+    if (parseMinutes(newEnd) <= parseMinutes(newStart)) {
+      return next(new ApiError(400, 'End time must be after start time'));
+    }
+
+    const existingMemory = Array.from(memorySlots.values()).filter(
+      (candidate) =>
+        candidate.babysitter.toString() === userId.toString() &&
+        new Date(candidate.date).toDateString() === new Date(slot.date).toDateString()
+    );
+    if (checkOverlap(existingMemory, newStart, newEnd, slotId)) {
+      return next(new ApiError(400, 'Overlapping availability slot exists for this date'));
+    }
+
     const updated = { ...slot, ...req.body, updatedAt: new Date() };
     memorySlots.set(slotId, updated);
     return ApiResponse.success(res, updated, 'Availability slot updated');

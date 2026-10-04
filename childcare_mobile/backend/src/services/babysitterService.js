@@ -178,11 +178,21 @@ async function registerBabysitter(data) {
 }
 
 async function listBabysitters(filter = {}) {
+  const page = Math.max(1, Number.parseInt(filter.page, 10) || 1);
+  const limit = Math.min(50, Math.max(1, Number.parseInt(filter.limit, 10) || 20));
+  const skip = (page - 1) * limit;
+  const query = { verificationStatus: 'verified' };
+  if (filter.isAvailable !== undefined) query.isAvailable = filter.isAvailable === 'true' || filter.isAvailable === true;
+  if (filter.minHourlyRate != null) query.hourlyRate = { $gte: Number(filter.minHourlyRate) };
+  if (filter.maxHourlyRate != null) query.hourlyRate = { ...query.hourlyRate, $lte: Number(filter.maxHourlyRate) };
+
   if (isDbConnected()) {
-    return BabysitterProfile.find({
-      verificationStatus: 'verified',
-      ...filter,
-    }).populate('user', 'name email phone avatar');
+    return BabysitterProfile.find(query)
+      .populate('user', 'name email phone avatar')
+      .sort({ averageRating: -1, createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean();
   }
   if (memoryBabysitters.size === 0) {
     const defaultSitter = {
@@ -209,7 +219,7 @@ async function listBabysitters(filter = {}) {
     };
     memoryBabysitters.set('sitter-1', defaultSitter);
   }
-  return Array.from(memoryBabysitters.values());
+  return Array.from(memoryBabysitters.values()).slice(skip, skip + limit);
 }
 
 module.exports = {

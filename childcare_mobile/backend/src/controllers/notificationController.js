@@ -17,11 +17,15 @@ function getUserId(req) {
 async function list(req, res, next) {
   try {
     const userId = getUserId(req);
+    const page = Math.max(1, Number.parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(50, Math.max(1, Number.parseInt(req.query.limit, 10) || 20));
+    const skip = (page - 1) * limit;
 
     if (isDbConnected()) {
-      const notifications = await Notification.find({ user: userId }).sort({
-        createdAt: -1,
-      });
+      const notifications = await Notification.find({ user: userId })
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit);
       return ApiResponse.success(res, notifications, 'Notifications retrieved');
     }
 
@@ -77,7 +81,7 @@ async function list(req, res, next) {
       userNotifs.forEach((n) => memoryNotifications.set(n.id, n));
     }
 
-    return ApiResponse.success(res, userNotifs, 'Notifications retrieved');
+    return ApiResponse.success(res, userNotifs.slice(skip, skip + limit), 'Notifications retrieved');
   } catch (err) {
     next(err);
   }
