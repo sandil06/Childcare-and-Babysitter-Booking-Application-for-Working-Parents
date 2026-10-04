@@ -10,7 +10,14 @@ const { notFoundMiddleware, errorMiddleware } = require('./middleware/errorMiddl
 
 const app = express();
 app.use(helmet());
-app.use(cors({ origin: env.clientOrigin === '*' ? true : env.clientOrigin }));
+app.use(cors({
+	origin: (origin, callback) => {
+		if (env.isAllowedClientOrigin(origin)) return callback(null, true);
+		return callback(null, false);
+	},
+	allowedHeaders: ['Content-Type', 'Accept', 'Authorization'],
+	methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+}));
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan(env.nodeEnv === 'production' ? 'combined' : 'dev'));

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 import '../../../config/routes.dart';
@@ -294,9 +295,7 @@ class _LoginScreenState extends State<LoginScreen> {
         );
       }
     } catch (e) {
-      if (e.toString().contains('Network error')) {
-        await _loginSuccessFallback();
-      } else if (mounted) {
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Login failed: ${e.toString()}'),
@@ -309,50 +308,19 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  Future<void> _loginSuccessFallback() async {
-    if (!mounted) return;
-    BabysitterService.clearCurrentProfile();
-    BabysitterProvider.instance.reset();
-
-    final input = _identifierController.text.trim();
-    String fallbackName = 'Caregiver';
-    if (input.contains('@')) {
-      final prefix = input.split('@').first;
-      fallbackName = prefix.isNotEmpty
-          ? '${prefix[0].toUpperCase()}${prefix.substring(1)}'
-          : 'Caregiver';
-    } else if (input.isNotEmpty) {
-      fallbackName = input;
-    }
-    await LocalStorage.instance.write('user_name', fallbackName);
-    await LocalStorage.instance.write(
-      'user_email',
-      input.contains('@') ? input : '$input@childcare.lk',
-    );
-    await LocalStorage.instance.write(
-      'user_role',
-      _isSitterMode ? 'babysitter' : 'parent',
-    );
-
-    if (!mounted) return;
-    if (_isSitterMode) {
-      Navigator.pushNamedAndRemoveUntil(
-        context,
-        AppRoutes.sitterDashboard,
-        (_) => false,
-      );
-    } else {
-      Navigator.pushNamedAndRemoveUntil(context, AppRoutes.home, (_) => false);
-    }
-  }
-
   Future<void> _handleGoogleLogin() async {
     setState(() => _isLoading = true);
     try {
-      final account = await GoogleSignIn(
-        serverClientId:
-            '425057325610-22tf05j6lbot0t5hu7dic4plu5srth81.apps.googleusercontent.com',
-      ).signIn();
+        final googleSignIn = kIsWeb
+          ? GoogleSignIn(
+            clientId:
+              '425057325610-22tf05j6lbot0t5hu7dic4plu5srth81.apps.googleusercontent.com',
+          )
+          : GoogleSignIn(
+            serverClientId:
+              '425057325610-22tf05j6lbot0t5hu7dic4plu5srth81.apps.googleusercontent.com',
+          );
+        final account = await googleSignIn.signIn();
       if (account == null) return;
 
       final authentication = await account.authentication;
@@ -896,7 +864,16 @@ class _LoginScreenState extends State<LoginScreen> {
                   // Apple Button
                   Expanded(
                     child: OutlinedButton(
-                      onPressed: _loginSuccessFallback,
+                      onPressed: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Apple sign-in is not configured for this application.',
+                            ),
+                            backgroundColor: AppColors.muted,
+                          ),
+                        );
+                      },
                       style: OutlinedButton.styleFrom(
                         backgroundColor: Colors.white,
                         foregroundColor: AppColors.ink,

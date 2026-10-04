@@ -35,7 +35,9 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
       final res = await ApiClient().get('babysitters');
       final list = (res is List)
           ? res
-          : (res is Map<String, dynamic> && res['data'] is List ? res['data'] as List : null);
+          : (res is Map<String, dynamic> && res['data'] is List
+                ? res['data'] as List
+                : null);
       if (list != null && mounted) {
         setState(() {
           _sitters = list;
@@ -83,7 +85,8 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                 Row(
                   children: [
                     GestureDetector(
-                      onTap: () => Navigator.pushNamed(context, AppRoutes.parentProfile),
+                      onTap: () =>
+                          Navigator.pushNamed(context, AppRoutes.parentProfile),
                       child: CircleAvatar(
                         radius: 23,
                         backgroundColor: AppColors.sand,
@@ -99,19 +102,31 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                     ),
                     const SizedBox(width: 12),
                     InkWell(
-                      onTap: () => Navigator.pushNamed(context, AppRoutes.sitterDashboard),
+                      onTap: () => Navigator.pushNamed(
+                        context,
+                        AppRoutes.sitterDashboard,
+                      ),
                       borderRadius: BorderRadius.circular(20),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
                         decoration: BoxDecoration(
                           color: AppColors.mint,
                           borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: AppColors.teal.withValues(alpha: 0.3)),
+                          border: Border.all(
+                            color: AppColors.teal.withValues(alpha: 0.3),
+                          ),
                         ),
                         child: const Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.swap_horiz_rounded, size: 16, color: AppColors.teal),
+                            Icon(
+                              Icons.swap_horiz_rounded,
+                              size: 16,
+                              color: AppColors.teal,
+                            ),
                             SizedBox(width: 4),
                             Text(
                               'Sitter Mode',
@@ -127,7 +142,10 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                     ),
                     const Spacer(),
                     IconButton(
-                      onPressed: () => Navigator.pushNamed(context, AppRoutes.sitterNotifications),
+                      onPressed: () => Navigator.pushNamed(
+                        context,
+                        AppRoutes.sitterNotifications,
+                      ),
                       icon: const Icon(Icons.notifications_none_rounded),
                     ),
                   ],
@@ -158,20 +176,24 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                 ),
                 const SizedBox(height: 24),
                 _SearchCard(
-                  onTap: () => Navigator.pushNamed(context, AppRoutes.onboarding),
+                  onTap: () =>
+                      Navigator.pushNamed(context, AppRoutes.babysitterSearch),
                 ),
                 const SizedBox(height: 16),
 
                 // Sitter Portal Quick Access Banner
                 InkWell(
-                  onTap: () => Navigator.pushNamed(context, AppRoutes.sitterDashboard),
+                  onTap: () =>
+                      Navigator.pushNamed(context, AppRoutes.sitterDashboard),
                   borderRadius: BorderRadius.circular(AppSizes.radius),
                   child: Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       color: AppColors.mint.withValues(alpha: 0.5),
                       borderRadius: BorderRadius.circular(AppSizes.radius),
-                      border: Border.all(color: AppColors.teal.withValues(alpha: 0.25)),
+                      border: Border.all(
+                        color: AppColors.teal.withValues(alpha: 0.25),
+                      ),
                     ),
                     child: Row(
                       children: [
@@ -181,7 +203,10 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: const Icon(Icons.child_care_rounded, color: AppColors.teal),
+                          child: const Icon(
+                            Icons.child_care_rounded,
+                            color: AppColors.teal,
+                          ),
                         ),
                         const SizedBox(width: 14),
                         const Expanded(
@@ -207,7 +232,11 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                             ],
                           ),
                         ),
-                        const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: AppColors.teal),
+                        const Icon(
+                          Icons.arrow_forward_ios_rounded,
+                          size: 14,
+                          color: AppColors.teal,
+                        ),
                       ],
                     ),
                   ),
@@ -226,7 +255,10 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                       ),
                     ),
                     TextButton(
-                      onPressed: () => Navigator.pushNamed(context, AppRoutes.onboarding),
+                      onPressed: () => Navigator.pushNamed(
+                        context,
+                        AppRoutes.babysitterSearch,
+                      ),
                       child: const Text('See all'),
                     ),
                   ],
@@ -234,21 +266,33 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                 const SizedBox(height: 10),
                 if (_sitters.isNotEmpty)
                   ..._sitters.take(4).map((sitter) {
-                    final sitterMap = sitter is Map<String, dynamic> ? sitter : <String, dynamic>{};
-                    final userMap = sitterMap['user'] is Map ? sitterMap['user'] as Map : {};
-                    final sitterName = (userMap['name'] ?? sitterMap['name'] ?? 'Babysitter').toString();
-                    final skills = (sitterMap['skills'] is List) ? (sitterMap['skills'] as List) : [];
+                    final sitterMap = sitter is Map<String, dynamic>
+                        ? sitter
+                        : <String, dynamic>{};
+                    final userMap = sitterMap['user'] is Map
+                        ? sitterMap['user'] as Map
+                        : {};
+                    final sitterName =
+                        (userMap['name'] ?? sitterMap['name'] ?? 'Babysitter')
+                            .toString();
+                    final skills = (sitterMap['skills'] is List)
+                        ? (sitterMap['skills'] as List)
+                        : [];
                     final bio = sitterMap['bio']?.toString() ?? '';
                     final hourlyRate = sitterMap['hourlyRate'];
                     final detail = skills.isNotEmpty
                         ? skills.take(2).join(' • ')
                         : (bio.isNotEmpty
-                            ? bio
-                            : (hourlyRate != null ? 'Rs. $hourlyRate / hour' : 'Verified Caregiver'));
+                              ? bio
+                              : (hourlyRate != null
+                                    ? 'Rs. $hourlyRate / hour'
+                                    : 'Verified Caregiver'));
                     final avgRating = sitterMap['averageRating'];
                     final totalReviews = sitterMap['totalReviews'] ?? 0;
                     final ratingText = (totalReviews is num && totalReviews > 0)
-                        ? (avgRating is num ? avgRating.toStringAsFixed(1) : '5.0')
+                        ? (avgRating is num
+                              ? avgRating.toStringAsFixed(1)
+                              : '5.0')
                         : 'New';
 
                     return Padding(
@@ -271,12 +315,18 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                     ),
                     child: const Row(
                       children: [
-                        Icon(Icons.info_outline_rounded, color: AppColors.muted),
+                        Icon(
+                          Icons.info_outline_rounded,
+                          color: AppColors.muted,
+                        ),
                         SizedBox(width: 12),
                         Expanded(
                           child: Text(
                             'No babysitters found yet. Register a sitter to get started!',
-                            style: TextStyle(color: AppColors.muted, fontSize: 13),
+                            style: TextStyle(
+                              color: AppColors.muted,
+                              fontSize: 13,
+                            ),
                           ),
                         ),
                       ],
@@ -449,7 +499,9 @@ class _SitterCard extends StatelessWidget {
                 Text(detail, style: const TextStyle(color: AppColors.muted)),
                 const SizedBox(height: 5),
                 Text(
-                  rating == 'New' ? '★ New Caregiver' : '★ $rating  ·  Available',
+                  rating == 'New'
+                      ? '★ New Caregiver'
+                      : '★ $rating  ·  Available',
                   style: const TextStyle(
                     color: AppColors.coral,
                     fontSize: 12,

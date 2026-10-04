@@ -240,6 +240,7 @@ async function listBabysitters(filter = {}) {
   const limit = Math.min(50, Math.max(1, Number.parseInt(filter.limit, 10) || 20));
   const skip = (page - 1) * limit;
   const query = {};
+  const search = typeof filter.search === 'string' ? filter.search.trim() : '';
   if (filter.verificationStatus) {
     query.verificationStatus = filter.verificationStatus;
   } else if (filter.status) {
@@ -248,8 +249,22 @@ async function listBabysitters(filter = {}) {
   if (filter.isAvailable !== undefined) query.isAvailable = filter.isAvailable === 'true' || filter.isAvailable === true;
   if (filter.minHourlyRate != null) query.hourlyRate = { $gte: Number(filter.minHourlyRate) };
   if (filter.maxHourlyRate != null) query.hourlyRate = { ...query.hourlyRate, $lte: Number(filter.maxHourlyRate) };
+  if (filter.minExperience != null) query.experienceYears = { $gte: Number(filter.minExperience) };
+  if (filter.minRating != null) query.averageRating = { $gte: Number(filter.minRating) };
+  if (filter.skill) query.skills = { $in: [filter.skill] };
+  if (filter.language) query.languages = { $in: [filter.language] };
 
   if (isDbConnected()) {
+    if (search) {
+      const matchingUsers = await User.find({
+        role: ROLES.BABYSITTER,
+        $or: [
+          { name: { $regex: search, $options: 'i' } },
+          { email: { $regex: search, $options: 'i' } },
+        ],
+      }).select('_id').lean();
+      query.user = { $in: matchingUsers.map((user) => user._id) };
+    }
     return BabysitterProfile.find(query)
       .populate('user', 'name email phone avatar')
       .sort({ averageRating: -1, createdAt: -1 })
@@ -285,9 +300,18 @@ async function listBabysitters(filter = {}) {
   return Array.from(memoryBabysitters.values()).slice(skip, skip + limit);
 }
 
+async function getProfileById(id) {
+  if (isDbConnected() && isValidObjectId(id)) {
+    const profile = await BabysitterProfile.findById(id).populate('user', 'name email phone avatar');
+    if (profile) return profile;
+  }
+  return getProfileByUserId(id);
+}
+
 module.exports = {
   getProfileByUserId,
   updateProfileByUserId,
   registerBabysitter,
   listBabysitters,
+  getProfileById,
 };

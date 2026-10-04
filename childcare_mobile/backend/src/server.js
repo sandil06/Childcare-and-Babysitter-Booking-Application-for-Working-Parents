@@ -13,7 +13,14 @@ async function startServer() {
     console.error('Backend starting without a database connection');
   }
   const server = http.createServer(app);
-  const io = new Server(server, { cors: { origin: env.clientOrigin === '*' ? true : env.clientOrigin } });
+  const io = new Server(server, {
+    cors: {
+      origin: (origin, callback) => {
+        if (env.isAllowedClientOrigin(origin)) return callback(null, true);
+        return callback(null, false);
+      },
+    },
+  });
   configureSocket(io);
   server.listen(env.port);
   return server;

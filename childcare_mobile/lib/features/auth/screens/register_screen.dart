@@ -77,10 +77,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     try {
       final client = ApiClient();
-      final res = await client.post('auth/send-verification', body: {
-        'email': email,
-        'name': name,
-      });
+      final res = await client.post(
+        'auth/send-verification',
+        body: {'email': email, 'name': name},
+      );
 
       if (!mounted) return;
 
@@ -105,19 +105,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
       );
     } catch (e) {
       if (!mounted) return;
-      // In offline / fallback mode: allow proceeding with simulation
-      setState(() {
-        _isVerificationStep = true;
-        _devOtpCode = '123456';
-      });
-      _startCountdown();
-
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            'Verification code: 123456 (demo code sent to $email)',
-          ),
-          backgroundColor: AppColors.teal,
+          content: Text('Could not send the verification code: $e'),
+          backgroundColor: AppColors.coral,
         ),
       );
     } finally {
@@ -135,10 +126,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     try {
       final client = ApiClient();
-      final res = await client.post('auth/send-verification', body: {
-        'email': email,
-        'name': name,
-      });
+      final res = await client.post(
+        'auth/send-verification',
+        body: {'email': email, 'name': name},
+      );
 
       if (!mounted) return;
       if (res is Map<String, dynamic> && res['devCode'] != null) {
@@ -152,14 +143,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
           backgroundColor: AppColors.teal,
         ),
       );
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
-      _devOtpCode = '654321';
-      _startCountdown();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Demo code regenerated: 654321'),
-          backgroundColor: AppColors.teal,
+        SnackBar(
+          content: Text('Could not resend the verification code: $e'),
+          backgroundColor: AppColors.coral,
         ),
       );
     } finally {
@@ -190,14 +179,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     try {
       final client = ApiClient();
-      final res = await client.post('auth/register', body: {
-        'name': name,
-        'email': email,
-        'phone': phone,
-        'password': password,
-        'role': role,
-        'verificationCode': code,
-      });
+      final res = await client.post(
+        'auth/register',
+        body: {
+          'name': name,
+          'email': email,
+          'phone': phone,
+          'password': password,
+          'role': role,
+          'verificationCode': code,
+        },
+      );
 
       if (res is Map<String, dynamic> && res['token'] != null) {
         final token = res['token'].toString();
@@ -210,14 +202,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
         final userObj = res['user'] is Map<String, dynamic>
             ? res['user'] as Map<String, dynamic>
             : null;
-        await LocalStorage.instance.write('user_name', userObj?['name']?.toString() ?? name);
-        await LocalStorage.instance.write('user_email', userObj?['email']?.toString() ?? email);
+        await LocalStorage.instance.write(
+          'user_name',
+          userObj?['name']?.toString() ?? name,
+        );
+        await LocalStorage.instance.write(
+          'user_email',
+          userObj?['email']?.toString() ?? email,
+        );
         final savedPhone = userObj?['phone']?.toString() ?? phone;
         if (savedPhone.isNotEmpty) {
           await LocalStorage.instance.write('user_phone', savedPhone);
         }
         if (userObj?['id'] != null) {
-          await LocalStorage.instance.write('user_id', userObj!['id'].toString());
+          await LocalStorage.instance.write(
+            'user_id',
+            userObj!['id'].toString(),
+          );
         }
         await LocalStorage.instance.write('user_role', role);
 
@@ -247,47 +248,28 @@ class _RegisterScreenState extends State<RegisterScreen> {
           );
         }
       } else {
-        await _registerSuccessFallback();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Invalid registration response received from server.',
+              ),
+              backgroundColor: AppColors.coral,
+            ),
+          );
+        }
       }
     } catch (e) {
-      if (!mounted) return;
-      // Fallback for offline / simulation if backend is not reachable
-      await _registerSuccessFallback();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Registration failed: $e'),
+            backgroundColor: AppColors.coral,
+          ),
+        );
+      }
     } finally {
       if (mounted) setState(() => _isVerifying = false);
-    }
-  }
-
-  Future<void> _registerSuccessFallback() async {
-    BabysitterService.clearCurrentProfile();
-    BabysitterProvider.instance.reset();
-
-    final name = _nameController.text.trim();
-    final email = _emailController.text.trim();
-    await LocalStorage.instance.write('user_name', name.isNotEmpty ? name : 'Caregiver');
-    await LocalStorage.instance.write('user_email', email);
-    await LocalStorage.instance.write('user_role', _selectedRole);
-
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Gmail verified! Welcome to LittleHands, $name.'),
-        backgroundColor: AppColors.teal,
-      ),
-    );
-
-    if (_selectedRole == 'babysitter') {
-      Navigator.pushNamedAndRemoveUntil(
-        context,
-        AppRoutes.sitterDashboard,
-        (_) => false,
-      );
-    } else {
-      Navigator.pushNamedAndRemoveUntil(
-        context,
-        AppRoutes.home,
-        (_) => false,
-      );
     }
   }
 
@@ -337,7 +319,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
             onPressed: () {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
-                  content: Text('LittleHands Support: support@littlehands.lk | +94 11 234 5678'),
+                  content: Text(
+                    'LittleHands Support: support@littlehands.lk | +94 11 234 5678',
+                  ),
                   backgroundColor: AppColors.teal,
                 ),
               );
@@ -365,7 +349,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
               vertical: 16,
             ),
             children: [
-              if (!_isVerificationStep) _buildRegistrationForm() else _buildVerificationView(),
+              if (!_isVerificationStep)
+                _buildRegistrationForm()
+              else
+                _buildVerificationView(),
             ],
           ),
         ),
@@ -604,7 +591,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
               filled: true,
               fillColor: Colors.white,
               hintText: '77 123 4567',
-              hintStyle: const TextStyle(color: Color(0xFF9EABA7), fontSize: 14),
+              hintStyle: const TextStyle(
+                color: Color(0xFF9EABA7),
+                fontSize: 14,
+              ),
               prefixIcon: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 margin: const EdgeInsets.only(right: 8),
@@ -627,7 +617,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ],
                 ),
               ),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 15,
+              ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(16),
                 borderSide: const BorderSide(color: AppColors.sand),
@@ -638,7 +631,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(16),
-                borderSide: const BorderSide(color: Color(0xFF005B60), width: 1.8),
+                borderSide: const BorderSide(
+                  color: Color(0xFF005B60),
+                  width: 1.8,
+                ),
               ),
             ),
             validator: (val) {
@@ -733,15 +729,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
             decoration: BoxDecoration(
               color: const Color(0xFFE6F5F2).withValues(alpha: 0.7),
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: const Color(0xFF005B60).withValues(alpha: 0.15)),
+              border: Border.all(
+                color: const Color(0xFF005B60).withValues(alpha: 0.15),
+              ),
             ),
             child: Row(
               children: const [
-                Icon(
-                  Icons.shield_outlined,
-                  size: 20,
-                  color: Color(0xFF005B60),
-                ),
+                Icon(Icons.shield_outlined, size: 20, color: Color(0xFF005B60)),
                 SizedBox(width: 10),
                 Expanded(
                   child: Text(
@@ -807,7 +801,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 style: TextStyle(color: AppColors.muted, fontSize: 13),
               ),
               GestureDetector(
-                onTap: () => Navigator.pushReplacementNamed(context, AppRoutes.login),
+                onTap: () =>
+                    Navigator.pushReplacementNamed(context, AppRoutes.login),
                 child: const Text(
                   'Log in',
                   style: TextStyle(
@@ -867,10 +862,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
         const Text(
           'We have sent a 6-digit verification code to:',
-          style: TextStyle(
-            fontSize: 13.5,
-            color: AppColors.muted,
-          ),
+          style: TextStyle(fontSize: 13.5, color: AppColors.muted),
         ),
         const SizedBox(height: 8),
 
@@ -924,7 +916,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.bolt_rounded, color: Color(0xFF059669), size: 20),
+                  const Icon(
+                    Icons.bolt_rounded,
+                    color: Color(0xFF059669),
+                    size: 20,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -990,7 +986,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
-                    borderSide: const BorderSide(color: Color(0xFF005B60), width: 2),
+                    borderSide: const BorderSide(
+                      color: Color(0xFF005B60),
+                      width: 2,
+                    ),
                   ),
                 ),
               ),
@@ -1075,7 +1074,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
         // Back to edit details
         TextButton.icon(
           onPressed: () => setState(() => _isVerificationStep = false),
-          icon: const Icon(Icons.arrow_back_rounded, size: 16, color: AppColors.muted),
+          icon: const Icon(
+            Icons.arrow_back_rounded,
+            size: 16,
+            color: AppColors.muted,
+          ),
           label: const Text(
             'Back to account details',
             style: TextStyle(
@@ -1097,7 +1100,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ),
           child: const Row(
             children: [
-              Icon(Icons.lock_clock_rounded, size: 18, color: Color(0xFFB45309)),
+              Icon(
+                Icons.lock_clock_rounded,
+                size: 18,
+                color: Color(0xFFB45309),
+              ),
               SizedBox(width: 8),
               Expanded(
                 child: Text(

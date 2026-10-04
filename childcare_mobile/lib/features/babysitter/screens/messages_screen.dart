@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_sizes.dart';
+import '../../../core/network/api_client.dart';
 import 'chat_screen.dart';
 
 import '../services/babysitter_service.dart';
@@ -33,12 +34,16 @@ class ConversationItem {
       parentId: json['parent'] is Map
           ? (json['parent']['_id']?.toString() ?? '')
           : (json['parentId']?.toString() ?? ''),
-      parentName: json['parentName']?.toString() ??
-          (json['parent'] is Map ? json['parent']['name']?.toString() ?? 'Parent' : 'Parent'),
+      parentName:
+          json['parentName']?.toString() ??
+          (json['parent'] is Map
+              ? json['parent']['name']?.toString() ?? 'Parent'
+              : 'Parent'),
       parentAvatar: json['parentAvatar']?.toString(),
       lastMessage: json['lastMessage']?.toString() ?? '',
       lastMessageTime: json['lastMessageAt'] != null
-          ? DateTime.tryParse(json['lastMessageAt'].toString()) ?? DateTime.now()
+          ? DateTime.tryParse(json['lastMessageAt'].toString()) ??
+                DateTime.now()
           : DateTime.now(),
       unreadCount: (json['unreadCount'] as num?)?.toInt() ?? 0,
       isOnline: json['isOnline'] as bool? ?? true,
@@ -71,6 +76,15 @@ class _MessagesScreenState extends State<MessagesScreen> {
   Future<void> _fetchConversations({bool isRefresh = false}) async {
     if (!isRefresh) {
       setState(() => _isLoading = true);
+    }
+    if (ApiClient.authToken?.isNotEmpty != true) {
+      if (mounted) {
+        setState(() {
+          _conversations = [];
+          _isLoading = false;
+        });
+      }
+      return;
     }
     try {
       final list = await _service.getConversations();
@@ -158,19 +172,29 @@ class _MessagesScreenState extends State<MessagesScreen> {
             // Search Input Bar
             Padding(
               padding: const EdgeInsets.symmetric(
-                  horizontal: AppSizes.pagePadding, vertical: 8),
+                horizontal: AppSizes.pagePadding,
+                vertical: 8,
+              ),
               child: TextField(
                 controller: _searchController,
                 onChanged: (_) => setState(() {}),
                 decoration: InputDecoration(
                   hintText: 'Search parents or messages...',
-                  hintStyle: const TextStyle(color: AppColors.muted, fontSize: 14),
-                  prefixIcon:
-                      const Icon(Icons.search_rounded, color: AppColors.teal),
+                  hintStyle: const TextStyle(
+                    color: AppColors.muted,
+                    fontSize: 14,
+                  ),
+                  prefixIcon: const Icon(
+                    Icons.search_rounded,
+                    color: AppColors.teal,
+                  ),
                   suffixIcon: query.isNotEmpty
                       ? IconButton(
-                          icon: const Icon(Icons.clear_rounded,
-                              size: 18, color: AppColors.muted),
+                          icon: const Icon(
+                            Icons.clear_rounded,
+                            size: 18,
+                            color: AppColors.muted,
+                          ),
                           onPressed: () {
                             _searchController.clear();
                             setState(() {});
@@ -179,8 +203,10 @@ class _MessagesScreenState extends State<MessagesScreen> {
                       : null,
                   filled: true,
                   fillColor: Colors.white,
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
                     borderSide: BorderSide.none,
@@ -193,8 +219,9 @@ class _MessagesScreenState extends State<MessagesScreen> {
             // Conversation List
             Expanded(
               child: ScrollConfiguration(
-                behavior:
-                    ScrollConfiguration.of(context).copyWith(overscroll: false),
+                behavior: ScrollConfiguration.of(
+                  context,
+                ).copyWith(overscroll: false),
                 child: RefreshIndicator(
                   displacement: 20,
                   edgeOffset: 0,
@@ -202,38 +229,40 @@ class _MessagesScreenState extends State<MessagesScreen> {
                   color: AppColors.teal,
                   child: _isLoading
                       ? const Center(
-                          child: CircularProgressIndicator(color: AppColors.teal),
+                          child: CircularProgressIndicator(
+                            color: AppColors.teal,
+                          ),
                         )
                       : filtered.isEmpty
-                          ? _buildEmptyState()
-                          : ListView.builder(
-                              physics: const AlwaysScrollableScrollPhysics(
-                                parent: ClampingScrollPhysics(),
-                              ),
-                              controller: _scrollController,
-                              padding: const EdgeInsets.all(AppSizes.pagePadding),
-                              itemCount: filtered.length + (_isLoadingMore ? 1 : 0),
-                              itemBuilder: (context, index) {
-                                if (index == filtered.length) {
-                                  return const Padding(
-                                    padding: EdgeInsets.symmetric(vertical: 16),
-                                    child: Center(
-                                      child: SizedBox(
-                                        width: 22,
-                                        height: 22,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          color: AppColors.teal,
-                                        ),
-                                      ),
+                      ? _buildEmptyState()
+                      : ListView.builder(
+                          physics: const AlwaysScrollableScrollPhysics(
+                            parent: ClampingScrollPhysics(),
+                          ),
+                          controller: _scrollController,
+                          padding: const EdgeInsets.all(AppSizes.pagePadding),
+                          itemCount: filtered.length + (_isLoadingMore ? 1 : 0),
+                          itemBuilder: (context, index) {
+                            if (index == filtered.length) {
+                              return const Padding(
+                                padding: EdgeInsets.symmetric(vertical: 16),
+                                child: Center(
+                                  child: SizedBox(
+                                    width: 22,
+                                    height: 22,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: AppColors.teal,
                                     ),
-                                  );
-                                }
+                                  ),
+                                ),
+                              );
+                            }
 
-                                final item = filtered[index];
-                                return _buildConversationCard(item);
-                              },
-                            ),
+                            final item = filtered[index];
+                            return _buildConversationCard(item);
+                          },
+                        ),
                 ),
               ),
             ),
@@ -263,9 +292,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
           onTap: () {
             Navigator.push(
               context,
-              MaterialPageRoute(
-                builder: (_) => ChatScreen(conversation: item),
-              ),
+              MaterialPageRoute(builder: (_) => ChatScreen(conversation: item)),
             );
           },
           borderRadius: BorderRadius.circular(18),

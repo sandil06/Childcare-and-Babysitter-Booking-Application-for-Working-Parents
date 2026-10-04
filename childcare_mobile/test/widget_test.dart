@@ -10,9 +10,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:childcare_mobile/app.dart';
 
 void main() {
-  testWidgets('shows the Nurture home screen', (WidgetTester tester) async {
+  testWidgets('shows the LittleHands startup screen', (
+    WidgetTester tester,
+  ) async {
     await tester.pumpWidget(const ChildcareApp());
-    expect(find.text('Find care with confidence'), findsOneWidget);
-    expect(find.text('Popular near you'), findsOneWidget);
+    expect(find.text('LittleHands'), findsOneWidget);
+    expect(find.text('Trusted childcare, booked in minutes'), findsOneWidget);
   });
 }
