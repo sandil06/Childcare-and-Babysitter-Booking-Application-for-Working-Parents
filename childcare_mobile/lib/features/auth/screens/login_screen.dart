@@ -5,6 +5,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/storage/local_storage.dart';
 import '../../babysitter/providers/babysitter_provider.dart';
+import '../../babysitter/services/babysitter_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -206,6 +207,27 @@ class _LoginScreenState extends State<LoginScreen> {
         ApiClient.authToken = token;
         await LocalStorage.instance.write('auth_token', token);
 
+        BabysitterService.clearCurrentProfile();
+        BabysitterProvider.instance.reset();
+
+        final userObj = res['user'] is Map<String, dynamic>
+            ? res['user'] as Map<String, dynamic>
+            : null;
+        if (userObj != null) {
+          if (userObj['name'] != null) {
+            await LocalStorage.instance.write('user_name', userObj['name'].toString());
+          }
+          if (userObj['email'] != null) {
+            await LocalStorage.instance.write('user_email', userObj['email'].toString());
+          }
+          if (userObj['id'] != null) {
+            await LocalStorage.instance.write('user_id', userObj['id'].toString());
+          }
+          if (userObj['role'] != null) {
+            await LocalStorage.instance.write('user_role', userObj['role'].toString());
+          }
+        }
+
         // Fetch fresh profile and dashboard
         await BabysitterProvider.instance.fetchProfile();
         await BabysitterProvider.instance.fetchDashboard();
@@ -227,17 +249,41 @@ class _LoginScreenState extends State<LoginScreen> {
         }
       } else {
         // Fallback for demo / offline exploration
-        _loginSuccessFallback();
+        await _loginSuccessFallback();
       }
     } catch (_) {
       // If backend offline or custom demo credentials, proceed seamlessly for demo
-      _loginSuccessFallback();
+      await _loginSuccessFallback();
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  void _loginSuccessFallback() {
+  Future<void> _loginSuccessFallback() async {
+    if (!mounted) return;
+    BabysitterService.clearCurrentProfile();
+    BabysitterProvider.instance.reset();
+
+    final input = _identifierController.text.trim();
+    String fallbackName = 'Caregiver';
+    if (input.contains('@')) {
+      final prefix = input.split('@').first;
+      fallbackName = prefix.isNotEmpty
+          ? '${prefix[0].toUpperCase()}${prefix.substring(1)}'
+          : 'Caregiver';
+    } else if (input.isNotEmpty) {
+      fallbackName = input;
+    }
+    await LocalStorage.instance.write('user_name', fallbackName);
+    await LocalStorage.instance.write(
+      'user_email',
+      input.contains('@') ? input : '$input@childcare.lk',
+    );
+    await LocalStorage.instance.write(
+      'user_role',
+      _isSitterMode ? 'babysitter' : 'parent',
+    );
+
     if (!mounted) return;
     if (_isSitterMode) {
       Navigator.pushNamedAndRemoveUntil(

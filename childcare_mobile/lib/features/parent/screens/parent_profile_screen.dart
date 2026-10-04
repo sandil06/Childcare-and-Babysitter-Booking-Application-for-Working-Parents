@@ -3,6 +3,10 @@ import 'package:flutter/material.dart';
 import '../../../config/routes.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_sizes.dart';
+import '../../../core/network/api_client.dart';
+import '../../../core/storage/local_storage.dart';
+import '../../babysitter/providers/babysitter_provider.dart';
+import '../../babysitter/services/babysitter_service.dart';
 
 class ParentProfileScreen extends StatefulWidget {
   const ParentProfileScreen({super.key});
@@ -13,9 +17,9 @@ class ParentProfileScreen extends StatefulWidget {
 
 class _ParentProfileScreenState extends State<ParentProfileScreen> {
   // Retain data during refresh - do not clear to null
-  Map<String, dynamic> _parentProfile = {
-    'name': 'Ananya Silva',
-    'email': 'ananya.silva@example.lk',
+  final Map<String, dynamic> _parentProfile = {
+    'name': 'Parent',
+    'email': '',
     'phone': '+94 77 987 6543',
     'address': 'No. 28, Alfred Place, Colombo 03',
     'childrenCount': 2,
@@ -23,15 +27,31 @@ class _ParentProfileScreenState extends State<ParentProfileScreen> {
     'isNicVerified': true,
   };
 
+  @override
+  void initState() {
+    super.initState();
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    final name = await LocalStorage.instance.read('user_name');
+    final email = await LocalStorage.instance.read('user_email');
+    if (mounted && (name != null || email != null)) {
+      setState(() {
+        if (name != null && name.toString().isNotEmpty) {
+          _parentProfile['name'] = name.toString();
+        }
+        if (email != null && email.toString().isNotEmpty) {
+          _parentProfile['email'] = email.toString();
+        }
+      });
+    }
+  }
+
   Future<void> _handleRefresh() async {
     // Keep existing data visible, do not clear to null, do not show full-screen loader
     await Future.delayed(const Duration(milliseconds: 600));
-    if (mounted) {
-      setState(() {
-        // Updated in place without nulling out
-        _parentProfile = Map<String, dynamic>.from(_parentProfile);
-      });
-    }
+    await _loadProfile();
   }
 
   void _handleLogout() {
@@ -51,13 +71,23 @@ class _ParentProfileScreenState extends State<ParentProfileScreen> {
             child: const Text('Cancel', style: TextStyle(color: AppColors.muted)),
           ),
           FilledButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(ctx);
-              Navigator.pushNamedAndRemoveUntil(
-                context,
-                AppRoutes.login,
-                (_) => false,
-              );
+              await LocalStorage.instance.remove('auth_token');
+              await LocalStorage.instance.remove('user_name');
+              await LocalStorage.instance.remove('user_email');
+              await LocalStorage.instance.remove('user_id');
+              await LocalStorage.instance.remove('user_role');
+              ApiClient.authToken = null;
+              BabysitterService.clearCurrentProfile();
+              BabysitterProvider.instance.reset();
+              if (mounted) {
+                Navigator.pushNamedAndRemoveUntil(
+                  context,
+                  AppRoutes.login,
+                  (_) => false,
+                );
+              }
             },
             style: FilledButton.styleFrom(
               backgroundColor: AppColors.coral,

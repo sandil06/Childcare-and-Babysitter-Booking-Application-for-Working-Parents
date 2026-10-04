@@ -3,8 +3,11 @@ import 'package:flutter/material.dart';
 import '../../../config/routes.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_sizes.dart';
+import '../../../core/network/api_client.dart';
+import '../../../core/storage/local_storage.dart';
 import '../models/babysitter_model.dart';
 import '../providers/babysitter_provider.dart';
+import '../services/babysitter_service.dart';
 import '../widgets/verification_badge.dart';
 import 'edit_sitter_profile_screen.dart';
 
@@ -17,14 +20,32 @@ class SitterProfileScreen extends StatefulWidget {
 
 class _SitterProfileScreenState extends State<SitterProfileScreen> {
   final BabysitterProvider _provider = BabysitterProvider.instance;
+  String _userName = '';
+  String _userEmail = '';
 
   @override
   void initState() {
     super.initState();
+    _loadUserData();
     _provider.addListener(_onStateChanged);
     if (_provider.profile == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _provider.fetchProfile();
+      });
+    }
+  }
+
+  Future<void> _loadUserData() async {
+    final name = await LocalStorage.instance.read('user_name');
+    final email = await LocalStorage.instance.read('user_email');
+    if (mounted && (name != null || email != null)) {
+      setState(() {
+        if (name != null && name.toString().isNotEmpty) {
+          _userName = name.toString();
+        }
+        if (email != null && email.toString().isNotEmpty) {
+          _userEmail = email.toString();
+        }
       });
     }
   }
@@ -80,13 +101,23 @@ class _SitterProfileScreenState extends State<SitterProfileScreen> {
             ),
           ),
           FilledButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(ctx);
-              Navigator.pushNamedAndRemoveUntil(
-                context,
-                AppRoutes.login,
-                (_) => false,
-              );
+              await LocalStorage.instance.remove('auth_token');
+              await LocalStorage.instance.remove('user_name');
+              await LocalStorage.instance.remove('user_email');
+              await LocalStorage.instance.remove('user_id');
+              await LocalStorage.instance.remove('user_role');
+              ApiClient.authToken = null;
+              BabysitterService.clearCurrentProfile();
+              BabysitterProvider.instance.reset();
+              if (mounted) {
+                Navigator.pushNamedAndRemoveUntil(
+                  context,
+                  AppRoutes.login,
+                  (_) => false,
+                );
+              }
             },
             style: FilledButton.styleFrom(
               backgroundColor: AppColors.coral,
@@ -105,11 +136,14 @@ class _SitterProfileScreenState extends State<SitterProfileScreen> {
   Widget build(BuildContext context) {
     final profile =
         _provider.profile ??
-        const BabysitterModel(
+        BabysitterModel(
           id: 'temp',
           userId: 'u-temp',
-          name: 'Maya Johnson',
-          email: 'maya.johnson@example.com',
+          name: _userName.isNotEmpty ? _userName : 'Caregiver',
+          email: _userEmail,
+          averageRating: 0.0,
+          totalReviews: 0,
+          totalCompletedBookings: 0,
         );
 
     return Scaffold(
@@ -401,13 +435,15 @@ class _SitterProfileScreenState extends State<SitterProfileScreen> {
                 radius: 36,
                 backgroundColor: AppColors.mint,
                 child: Text(
-                  profile.name.isNotEmpty
+                  profile.name.trim().isNotEmpty
                       ? profile.name
+                            .trim()
                             .split(' ')
-                            .map((e) => e.isNotEmpty ? e[0] : '')
+                            .where((e) => e.isNotEmpty)
+                            .map((e) => e[0].toUpperCase())
                             .take(2)
                             .join()
-                      : 'MJ',
+                      : 'CG',
                   style: const TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.w700,
@@ -513,8 +549,12 @@ class _SitterProfileScreenState extends State<SitterProfileScreen> {
         Expanded(
           child: _buildStatPill(
             label: 'Rating',
-            value: '★ ${profile.averageRating}',
-            sub: '(${profile.totalReviews} reviews)',
+            value: profile.totalReviews > 0
+                ? '★ ${profile.averageRating.toStringAsFixed(1)}'
+                : '★ 0.0',
+            sub: profile.totalReviews > 0
+                ? '(${profile.totalReviews} reviews)'
+                : 'No reviews',
             valueColor: AppColors.coral,
           ),
         ),

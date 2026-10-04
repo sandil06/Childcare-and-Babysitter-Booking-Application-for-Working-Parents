@@ -4,6 +4,7 @@ import '../../../config/routes.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/constants/app_strings.dart';
+import '../../../core/storage/local_storage.dart';
 
 class ParentHomeScreen extends StatelessWidget {
   const ParentHomeScreen({super.key});
@@ -78,9 +79,18 @@ class ParentHomeScreen extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 28),
-            const Text(
-              'Good morning, Maya',
-              style: TextStyle(color: AppColors.muted, fontSize: 15),
+            FutureBuilder<dynamic>(
+              future: LocalStorage.instance.read('user_name'),
+              builder: (context, snapshot) {
+                final name = snapshot.data?.toString();
+                final greetingName = (name != null && name.trim().isNotEmpty)
+                    ? name.trim()
+                    : 'Parent';
+                return Text(
+                  'Good morning, $greetingName',
+                  style: const TextStyle(color: AppColors.muted, fontSize: 15),
+                );
+              },
             ),
             const SizedBox(height: 8),
             const Text(

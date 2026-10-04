@@ -26,7 +26,10 @@ async function getProfileByUserId(userId) {
         profile = await BabysitterProfile.create({
           user: user._id,
           hourlyRate: 1500.0,
-          experienceYears: 2,
+          experienceYears: 0,
+          averageRating: 0.0,
+          totalReviews: 0,
+          totalCompletedBookings: 0,
           verificationStatus: 'verified',
         });
         await profile.populate('user', 'name email phone avatar');
@@ -36,27 +39,43 @@ async function getProfileByUserId(userId) {
   }
 
   // Memory fallback
-  return (
-    memoryBabysitters.get(userId.toString()) || {
+  let mem = memoryBabysitters.get(userId.toString());
+  if (!mem) {
+    let name = 'Caregiver';
+    let email = '';
+    if (isDbConnected()) {
+      try {
+        const u = await User.findById(userId);
+        if (u) {
+          name = u.name || name;
+          email = u.email || email;
+        }
+      } catch (_) {}
+    }
+    mem = {
       id: userId.toString(),
+      _id: userId.toString(),
       user: {
         id: userId.toString(),
-        name: 'Kavindi Perera',
-        email: 'kavindi.perera@example.com',
+        _id: userId.toString(),
+        name,
+        email,
       },
-      bio: 'Professional early childhood educator with 4 years experience across Colombo.',
+      bio: '',
       hourlyRate: 1500.0,
-      experienceYears: 4,
-      skills: ['Infant care', 'First aid & CPR', 'Toddler care'],
-      languages: ['Sinhala', 'English', 'Tamil'],
-      qualifications: ['CPR & First Aid Certified (SL Red Cross)'],
+      experienceYears: 0,
+      skills: [],
+      languages: ['English', 'Sinhala'],
+      qualifications: [],
       verificationStatus: 'verified',
-      averageRating: 4.95,
-      totalReviews: 32,
-      totalCompletedBookings: 48,
+      averageRating: 0.0,
+      totalReviews: 0,
+      totalCompletedBookings: 0,
       isAvailable: true,
-    }
-  );
+    };
+    memoryBabysitters.set(userId.toString(), mem);
+  }
+  return mem;
 }
 
 async function updateProfileByUserId(userId, updateData) {
@@ -168,7 +187,7 @@ async function registerBabysitter(data) {
     qualifications: qualifications || [],
     ageGroups: ageGroups || [],
     verificationStatus: 'pending',
-    averageRating: 5.0,
+    averageRating: 0.0,
     totalReviews: 0,
     totalCompletedBookings: 0,
     isAvailable: true,

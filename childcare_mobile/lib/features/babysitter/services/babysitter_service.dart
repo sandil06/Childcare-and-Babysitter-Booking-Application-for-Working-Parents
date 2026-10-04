@@ -13,6 +13,10 @@ class BabysitterService {
 
   static BabysitterModel? _currentProfile;
 
+  static void clearCurrentProfile() {
+    _currentProfile = null;
+  }
+
   BabysitterModel? get currentProfile => _currentProfile;
 
   Future<BabysitterModel?> getProfile() async {
@@ -24,6 +28,22 @@ class BabysitterService {
       }
     } catch (e) {
       debugPrint('getProfile API error: $e');
+    }
+    if (_currentProfile == null) {
+      final savedName = await LocalStorage.instance.read('user_name');
+      final savedEmail = await LocalStorage.instance.read('user_email');
+      final savedId = await LocalStorage.instance.read('user_id');
+      if (savedName != null && savedName.toString().isNotEmpty) {
+        _currentProfile = BabysitterModel(
+          id: savedId?.toString() ?? 'me',
+          userId: savedId?.toString() ?? 'me',
+          name: savedName.toString(),
+          email: savedEmail?.toString() ?? '',
+          averageRating: 0.0,
+          totalReviews: 0,
+          totalCompletedBookings: 0,
+        );
+      }
     }
     return _currentProfile;
   }
@@ -80,13 +100,31 @@ class BabysitterService {
       debugPrint('getDashboardData API error: $e');
     }
 
+    BabysitterModel? profile = _currentProfile;
+    if (profile == null) {
+      final savedName = await LocalStorage.instance.read('user_name');
+      final savedEmail = await LocalStorage.instance.read('user_email');
+      final savedId = await LocalStorage.instance.read('user_id');
+      if (savedName != null && savedName.toString().isNotEmpty) {
+        profile = BabysitterModel(
+          id: savedId?.toString() ?? 'me',
+          userId: savedId?.toString() ?? 'me',
+          name: savedName.toString(),
+          email: savedEmail?.toString() ?? '',
+          averageRating: 0.0,
+          totalReviews: 0,
+          totalCompletedBookings: 0,
+        );
+      }
+    }
+
     return {
-      'profile': _currentProfile?.toJson(),
-      'isAvailable': _currentProfile?.isAvailable ?? true,
+      'profile': profile?.toJson(),
+      'isAvailable': profile?.isAvailable ?? true,
       'stats': {
         'totalEarnings': 0.0,
-        'rating': _currentProfile?.averageRating ?? 5.0,
-        'completedBookings': _currentProfile?.totalCompletedBookings ?? 0,
+        'rating': profile?.averageRating ?? 0.0,
+        'completedBookings': profile?.totalCompletedBookings ?? 0,
       },
       'upcomingBooking': null,
       'newRequests': [],

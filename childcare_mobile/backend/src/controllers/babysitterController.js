@@ -87,8 +87,8 @@ async function getDashboard(req, res, next) {
 
     const stats = {
       totalEarnings: Number(totalEarnings.toFixed(2)),
-      rating: profile?.averageRating || 5.0,
-      completedBookings: completedBookingsCount,
+      rating: profile?.averageRating != null ? profile.averageRating : 0.0,
+      completedBookings: completedBookingsCount || (profile?.totalCompletedBookings ?? 0),
     };
 
     return ApiResponse.success(

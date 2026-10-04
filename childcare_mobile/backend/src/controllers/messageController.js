@@ -24,7 +24,7 @@ function initMemoryData(userId) {
       participants: [userId, 'parent-1'],
       parentName: 'Sarah Jenkins',
       parentAvatar: null,
-      lastMessage: 'Hi Maya, can you please arrive 10 minutes early today?',
+      lastMessage: 'Hi, can you please arrive 10 minutes early today?',
       lastMessageAt: new Date(Date.now() - 15 * 60 * 1000),
       unreadCount: 1,
     };
@@ -60,7 +60,7 @@ function initMemoryData(userId) {
         conversation: 'conv-1',
         sender: 'parent-1',
         senderName: 'Sarah Jenkins',
-        text: 'Hi Maya, looking forward to your visit today!',
+        text: 'Hi, looking forward to your visit today!',
         createdAt: new Date(Date.now() - 45 * 60 * 1000),
       },
       {
@@ -68,7 +68,7 @@ function initMemoryData(userId) {
         id: 'm-2',
         conversation: 'conv-1',
         sender: userId,
-        senderName: 'Maya Johnson',
+        senderName: 'You',
         text: 'Hello Sarah! Yes, I am preparing now and excited to meet Leo and Mia.',
         createdAt: new Date(Date.now() - 30 * 60 * 1000),
       },
@@ -78,7 +78,7 @@ function initMemoryData(userId) {
         conversation: 'conv-1',
         sender: 'parent-1',
         senderName: 'Sarah Jenkins',
-        text: 'Hi Maya, can you please arrive 10 minutes early today?',
+        text: 'Hi, can you please arrive 10 minutes early today?',
         createdAt: new Date(Date.now() - 15 * 60 * 1000),
       },
     ]);
@@ -189,7 +189,7 @@ async function sendMessage(req, res, next) {
       id: msgId,
       conversation: convId,
       sender: userId,
-      senderName: 'Maya Johnson',
+      senderName: req.user?.name || 'You',
       text: text.trim(),
       createdAt: new Date(),
     };

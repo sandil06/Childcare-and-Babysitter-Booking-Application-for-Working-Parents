@@ -63,15 +63,15 @@ class BabysitterModel {
     this.address = '',
     this.bio = '',
     this.hourlyRate = 25.0,
-    this.experienceYears = 2,
+    this.experienceYears = 0,
     this.skills = const [],
     this.languages = const ['English'],
     this.qualifications = const [],
     this.documents = const [],
     this.verificationStatus = 'verified',
-    this.averageRating = 4.9,
-    this.totalReviews = 18,
-    this.totalCompletedBookings = 24,
+    this.averageRating = 0.0,
+    this.totalReviews = 0,
+    this.totalCompletedBookings = 0,
     this.isAvailable = true,
     this.createdAt,
     this.updatedAt,
@@ -131,7 +131,7 @@ class BabysitterModel {
       address: json['address']?.toString() ?? '',
       bio: json['bio']?.toString() ?? '',
       hourlyRate: (json['hourlyRate'] as num?)?.toDouble() ?? 25.0,
-      experienceYears: (json['experienceYears'] as num?)?.toInt() ?? 1,
+      experienceYears: (json['experienceYears'] as num?)?.toInt() ?? 0,
       skills: (json['skills'] as List?)?.map((e) => e.toString()).toList() ??
           const [],
       languages: (json['languages'] as List?)?.map((e) => e.toString()).toList() ??
@@ -140,10 +140,10 @@ class BabysitterModel {
           const [],
       documents: docsList,
       verificationStatus: json['verificationStatus']?.toString() ?? 'verified',
-      averageRating: (json['averageRating'] as num?)?.toDouble() ?? 4.9,
-      totalReviews: (json['totalReviews'] as num?)?.toInt() ?? 18,
+      averageRating: (json['averageRating'] as num?)?.toDouble() ?? 0.0,
+      totalReviews: (json['totalReviews'] as num?)?.toInt() ?? 0,
       totalCompletedBookings:
-          (json['totalCompletedBookings'] as num?)?.toInt() ?? 24,
+          (json['totalCompletedBookings'] as num?)?.toInt() ?? 0,
       isAvailable: json['isAvailable'] as bool? ?? true,
       createdAt: json['createdAt'] != null
           ? DateTime.tryParse(json['createdAt'].toString())

@@ -185,6 +185,21 @@ class BabysitterProvider extends ChangeNotifier {
       if (_dashboardData != null && _dashboardData!['profile'] != null) {
         _profile = BabysitterModel.fromJson(_dashboardData!['profile']);
         _isAvailable = _profile?.isAvailable ?? true;
+      } else if (_profile == null) {
+        final savedName = await LocalStorage.instance.read('user_name');
+        final savedEmail = await LocalStorage.instance.read('user_email');
+        final savedId = await LocalStorage.instance.read('user_id');
+        if (savedName != null && savedName.toString().isNotEmpty) {
+          _profile = BabysitterModel(
+            id: savedId?.toString() ?? 'me',
+            userId: savedId?.toString() ?? 'me',
+            name: savedName.toString(),
+            email: savedEmail?.toString() ?? '',
+            averageRating: 0.0,
+            totalReviews: 0,
+            totalCompletedBookings: 0,
+          );
+        }
       }
     } catch (e) {
       _errorMessage = e.toString();
@@ -192,6 +207,19 @@ class BabysitterProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  void reset() {
+    _profile = null;
+    _dashboardData = null;
+    _availabilities = [];
+    _bookings = [];
+    _selectedBooking = null;
+    _earnings = null;
+    _notifications = [];
+    _errorMessage = null;
+    _isLoading = false;
+    notifyListeners();
   }
 
   Future<void> fetchAvailabilities({DateTime? month}) async {

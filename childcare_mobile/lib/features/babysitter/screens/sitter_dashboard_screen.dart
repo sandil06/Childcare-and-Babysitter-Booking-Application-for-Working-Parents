@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../config/routes.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_sizes.dart';
+import '../../../core/storage/local_storage.dart';
 import '../models/babysitter_model.dart';
 import '../models/booking_request_model.dart';
 import '../providers/babysitter_provider.dart';
@@ -17,13 +18,24 @@ class SitterDashboardScreen extends StatefulWidget {
 
 class _SitterDashboardScreenState extends State<SitterDashboardScreen> {
   final BabysitterProvider _provider = BabysitterProvider.instance;
+  String _userName = '';
 
   @override
   void initState() {
     super.initState();
+    _loadUserName();
     _provider.addListener(_onStateChanged);
     _provider.fetchDashboard();
     _provider.fetchNotifications();
+  }
+
+  Future<void> _loadUserName() async {
+    final name = await LocalStorage.instance.read('user_name');
+    if (mounted && name != null && name.toString().isNotEmpty) {
+      setState(() {
+        _userName = name.toString();
+      });
+    }
   }
 
   @override
@@ -152,11 +164,14 @@ class _SitterDashboardScreenState extends State<SitterDashboardScreen> {
   Widget build(BuildContext context) {
     final profile =
         _provider.profile ??
-        const BabysitterModel(
+        BabysitterModel(
           id: 'temp',
           userId: 'u-temp',
-          name: 'Maya Johnson',
-          email: 'maya.johnson@example.com',
+          name: _userName.isNotEmpty ? _userName : 'Caregiver',
+          email: '',
+          averageRating: 0.0,
+          totalReviews: 0,
+          totalCompletedBookings: 0,
         );
 
     final upcoming = _provider.upcomingBookings;
@@ -330,13 +345,15 @@ class _SitterDashboardScreenState extends State<SitterDashboardScreen> {
             radius: 24,
             backgroundColor: AppColors.mint,
             child: Text(
-              profile.name.isNotEmpty
+              profile.name.trim().isNotEmpty
                   ? profile.name
+                        .trim()
                         .split(' ')
-                        .map((e) => e.isNotEmpty ? e[0] : '')
+                        .where((e) => e.isNotEmpty)
+                        .map((e) => e[0].toUpperCase())
                         .take(2)
                         .join()
-                  : 'MJ',
+                  : 'CG',
               style: const TextStyle(
                 fontWeight: FontWeight.w700,
                 color: AppColors.teal,
@@ -498,13 +515,13 @@ class _SitterDashboardScreenState extends State<SitterDashboardScreen> {
 
   Widget _buildSummaryStats(BabysitterModel profile) {
     final earnings =
-        _provider.dashboardData?['stats']?['totalEarnings'] ?? 1850.0;
+        _provider.dashboardData?['stats']?['totalEarnings'] ?? 0.0;
     return Row(
       children: [
         Expanded(
           child: DashboardStatCard(
             title: 'Earnings',
-            value: 'Rs. ${earnings.toInt()}',
+            value: 'Rs. ${(earnings as num).toInt()}',
             subtitle: 'Lifetime gross',
             icon: Icons.account_balance_wallet_outlined,
             accentColor: AppColors.teal,
@@ -515,8 +532,12 @@ class _SitterDashboardScreenState extends State<SitterDashboardScreen> {
         Expanded(
           child: DashboardStatCard(
             title: 'Rating',
-            value: '★ ${profile.averageRating}',
-            subtitle: '${profile.totalReviews} reviews',
+            value: profile.totalReviews > 0
+                ? '★ ${profile.averageRating.toStringAsFixed(1)}'
+                : '★ 0.0',
+            subtitle: profile.totalReviews > 0
+                ? '${profile.totalReviews} reviews'
+                : 'No reviews yet',
             icon: Icons.star_rounded,
             accentColor: AppColors.coral,
             onTap: () => Navigator.pushNamed(context, AppRoutes.sitterProfile),

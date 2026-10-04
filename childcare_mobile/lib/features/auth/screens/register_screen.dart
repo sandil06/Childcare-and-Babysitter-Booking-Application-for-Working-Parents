@@ -7,6 +7,7 @@ import '../../../core/constants/app_sizes.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/storage/local_storage.dart';
 import '../../babysitter/providers/babysitter_provider.dart';
+import '../../babysitter/services/babysitter_service.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -200,6 +201,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ApiClient.authToken = token;
         await LocalStorage.instance.write('auth_token', token);
 
+        BabysitterService.clearCurrentProfile();
+        BabysitterProvider.instance.reset();
+
+        final userObj = res['user'] is Map<String, dynamic>
+            ? res['user'] as Map<String, dynamic>
+            : null;
+        await LocalStorage.instance.write('user_name', userObj?['name']?.toString() ?? name);
+        await LocalStorage.instance.write('user_email', userObj?['email']?.toString() ?? email);
+        if (userObj?['id'] != null) {
+          await LocalStorage.instance.write('user_id', userObj!['id'].toString());
+        }
+        await LocalStorage.instance.write('user_role', role);
+
         if (!mounted) return;
 
         ScaffoldMessenger.of(context).showSnackBar(
@@ -226,21 +240,31 @@ class _RegisterScreenState extends State<RegisterScreen> {
           );
         }
       } else {
-        _registerSuccessFallback();
+        await _registerSuccessFallback();
       }
     } catch (e) {
       if (!mounted) return;
       // Fallback for offline / simulation if backend is not reachable
-      _registerSuccessFallback();
+      await _registerSuccessFallback();
     } finally {
       if (mounted) setState(() => _isVerifying = false);
     }
   }
 
-  void _registerSuccessFallback() {
+  Future<void> _registerSuccessFallback() async {
+    BabysitterService.clearCurrentProfile();
+    BabysitterProvider.instance.reset();
+
+    final name = _nameController.text.trim();
+    final email = _emailController.text.trim();
+    await LocalStorage.instance.write('user_name', name.isNotEmpty ? name : 'Caregiver');
+    await LocalStorage.instance.write('user_email', email);
+    await LocalStorage.instance.write('user_role', _selectedRole);
+
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Gmail verified! Welcome to LittleHands, ${_nameController.text.trim()}.'),
+        content: Text('Gmail verified! Welcome to LittleHands, $name.'),
         backgroundColor: AppColors.teal,
       ),
     );
