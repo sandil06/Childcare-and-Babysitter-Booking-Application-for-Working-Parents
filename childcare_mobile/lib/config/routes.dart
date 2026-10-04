@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../features/auth/screens/login_screen.dart';
 import '../features/auth/screens/onboarding_screen.dart';
 import '../features/babysitter/screens/availability_screen.dart';
+import '../features/babysitter/screens/booking_history_screen.dart';
 import '../features/babysitter/screens/booking_request_details_screen.dart';
 import '../features/babysitter/screens/booking_requests_screen.dart';
 import '../features/babysitter/screens/earnings_screen.dart';
@@ -11,6 +12,7 @@ import '../features/babysitter/screens/sitter_dashboard_screen.dart';
 import '../features/babysitter/screens/sitter_details_screen.dart';
 import '../features/babysitter/screens/sitter_profile_screen.dart';
 import '../features/babysitter/screens/sitter_registration_screen.dart';
+import '../features/babysitter/screens/upcoming_bookings_screen.dart';
 import '../features/babysitter/providers/babysitter_provider.dart';
 import '../features/parent/screens/parent_home_screen.dart';
 
@@ -61,6 +63,10 @@ class AppRoutes {
             return const BookingRequestsScreen();
           case sitterBookingRequestDetails:
             return const BookingRequestDetailsScreen();
+          case sitterUpcomingBookings:
+            return const UpcomingBookingsScreen();
+          case sitterBookingHistory:
+            return const BookingHistoryScreen();
           case sitterEarnings:
             return const EarningsScreen();
           case home:
