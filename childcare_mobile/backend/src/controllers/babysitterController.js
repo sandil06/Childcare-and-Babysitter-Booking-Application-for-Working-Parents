@@ -61,7 +61,10 @@ async function getDashboard(req, res, next) {
     let unreadCount = 0;
 
     if (isDbConnected()) {
-      const completed = await Booking.find({ babysitter: userId, status: 'completed' });
+      const sitterIds = [userId];
+      if (profile?._id) sitterIds.push(profile._id);
+
+      const completed = await Booking.find({ babysitter: { $in: sitterIds }, status: 'completed' });
       totalEarnings = completed.reduce(
         (sum, b) => sum + (b.total || (b.hourlyRate * b.durationHours)),
         0
@@ -69,14 +72,14 @@ async function getDashboard(req, res, next) {
       completedBookingsCount = completed.length;
 
       upcomingBooking = await Booking.findOne({
-        babysitter: userId,
+        babysitter: { $in: sitterIds },
         status: { $in: ['accepted', 'confirmed', 'travelling', 'arrived', 'in_progress'] },
       })
         .populate('parent', 'name email phone avatar')
         .sort({ date: 1, startTime: 1 });
 
       newRequests = await Booking.find({
-        babysitter: userId,
+        babysitter: { $in: sitterIds },
         status: 'pending',
       })
         .populate('parent', 'name email phone avatar')

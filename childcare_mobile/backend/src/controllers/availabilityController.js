@@ -127,7 +127,7 @@ async function update(req, res, next) {
     const userId = getUserId(req);
     const slotId = req.params.id;
 
-    if (isDbConnected()) {
+    if (isDbConnected() && mongoose.Types.ObjectId.isValid(slotId)) {
       const slot = await Availability.findById(slotId);
       if (!slot) return next(new ApiError(404, 'Availability slot not found'));
 
@@ -195,7 +195,7 @@ async function remove(req, res, next) {
     const userId = getUserId(req);
     const slotId = req.params.id;
 
-    if (isDbConnected()) {
+    if (isDbConnected() && mongoose.Types.ObjectId.isValid(slotId)) {
       const slot = await Availability.findById(slotId);
       if (!slot) return next(new ApiError(404, 'Availability slot not found'));
       if (slot.babysitter.toString() !== userId.toString()) {

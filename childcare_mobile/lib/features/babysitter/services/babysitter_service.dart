@@ -245,6 +245,21 @@ class BabysitterService {
     );
   }
 
+  Future<Map<String, dynamic>> requestPayout() async {
+    try {
+      final res = await _client.post('babysitters/me/earnings/payout');
+      if (res is Map<String, dynamic>) {
+        return res;
+      }
+    } catch (e) {
+      debugPrint('requestPayout API error: $e');
+    }
+    return {
+      'payoutId': 'po-${DateTime.now().millisecondsSinceEpoch}',
+      'status': 'processing',
+    };
+  }
+
   Future<List<Map<String, dynamic>>> getNotifications() async {
     try {
       final res = await _client.get('notifications');

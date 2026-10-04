@@ -22,6 +22,7 @@ function initMemoryData(userId) {
       _id: 'conv-1',
       id: 'conv-1',
       participants: [userId, 'parent-1'],
+      parentId: 'parent-1',
       parentName: 'Sarah Jenkins',
       parentAvatar: null,
       lastMessage: 'Hi, can you please arrive 10 minutes early today?',
@@ -32,6 +33,7 @@ function initMemoryData(userId) {
       _id: 'conv-2',
       id: 'conv-2',
       participants: [userId, 'parent-2'],
+      parentId: 'parent-2',
       parentName: 'Michael Chang',
       parentAvatar: null,
       lastMessage: 'Thank you! Lucas had a wonderful time building blocks.',
@@ -42,6 +44,7 @@ function initMemoryData(userId) {
       _id: 'conv-3',
       id: 'conv-3',
       participants: [userId, 'parent-3'],
+      parentId: 'parent-3',
       parentName: 'Emily Watson',
       parentAvatar: null,
       lastMessage: 'Payment sent! Thanks so much for caring for Chloe.',
@@ -100,15 +103,34 @@ async function getConversations(req, res, next) {
         .skip(skip)
         .limit(limit);
 
-      return ApiResponse.success(res, conversations, 'Conversations retrieved');
+      const formatted = conversations.map((c) => {
+        const doc = c.toObject ? c.toObject() : { ...c };
+        const other = (doc.participants || []).find((p) => {
+          const pId = p._id ? p._id.toString() : p.toString();
+          return pId !== userId.toString();
+        });
+        return {
+          ...doc,
+          parent: other || null,
+          parentId: other ? (other._id || other.id || other).toString() : '',
+          parentName: other ? (other.name || 'Parent') : (doc.parentName || 'Parent'),
+          parentAvatar: other ? (other.avatar || null) : (doc.parentAvatar || null),
+        };
+      });
+
+      return ApiResponse.success(res, formatted, 'Conversations retrieved');
     }
 
     initMemoryData(userId);
-    return ApiResponse.success(
-      res,
-      Array.from(memoryConversations.values()),
-      'Conversations retrieved'
-    );
+    const list = Array.from(memoryConversations.values()).map((c) => {
+      const other = (c.participants || []).find((p) => p.toString() !== userId.toString());
+      return {
+        ...c,
+        parentId: c.parentId || (other ? other.toString() : ''),
+        parentName: c.parentName || 'Parent',
+      };
+    });
+    return ApiResponse.success(res, list, 'Conversations retrieved');
   } catch (err) {
     next(err);
   }
@@ -119,7 +141,7 @@ async function getMessages(req, res, next) {
     const userId = getUserId(req);
     const { conversationId } = req.params;
 
-    if (isDbConnected()) {
+    if (isDbConnected() && mongoose.Types.ObjectId.isValid(conversationId)) {
       const page = parseInt(req.query.page) || 1;
       const limit = parseInt(req.query.limit) || 30;
       const skip = (page - 1) * limit;
@@ -182,7 +204,30 @@ async function sendMessage(req, res, next) {
 
     // Memory fallback
     initMemoryData(userId);
-    const convId = conversationId || 'conv-1';
+    let convId = conversationId;
+    if (!convId && recipientId) {
+      let found = Array.from(memoryConversations.values()).find(
+        (c) => c.participants.includes(userId) && c.participants.includes(recipientId)
+      );
+      if (!found) {
+        convId = `conv-${Date.now()}`;
+        found = {
+          _id: convId,
+          id: convId,
+          participants: [userId, recipientId],
+          parentId: recipientId,
+          parentName: 'Parent',
+          parentAvatar: null,
+          lastMessage: text.trim(),
+          lastMessageAt: new Date(),
+          unreadCount: 0,
+        };
+        memoryConversations.set(convId, found);
+      } else {
+        convId = found.id;
+      }
+    }
+    convId = convId || 'conv-1';
     const msgId = `m-${Date.now()}`;
     const newMsg = {
       _id: msgId,

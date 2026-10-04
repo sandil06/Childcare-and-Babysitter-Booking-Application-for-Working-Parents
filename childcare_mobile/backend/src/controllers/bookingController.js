@@ -41,7 +41,11 @@ async function getMeBookings(req, res, next) {
     const { page, limit, skip } = getPageParams(req.query);
 
     if (isDbConnected()) {
-      const filter = { babysitter: userId };
+      const sitterProfile = await BabysitterProfile.findOne({ user: userId });
+      const sitterIds = [userId];
+      if (sitterProfile) sitterIds.push(sitterProfile._id);
+
+      const filter = { babysitter: { $in: sitterIds } };
       if (status && status !== 'all') {
         filter.status = status;
       }
@@ -86,14 +90,21 @@ async function getById(req, res, next) {
   try {
     const bookingId = req.params.id;
 
-    if (isDbConnected()) {
+    if (isDbConnected() && mongoose.Types.ObjectId.isValid(bookingId)) {
       const booking = await Booking.findById(bookingId).populate(
         'parent babysitter',
         'name email phone avatar'
       );
       if (!booking) return next(new ApiError(404, 'Booking not found'));
       const userId = getUserId(req).toString();
-      if (booking.parent._id.toString() !== userId && booking.babysitter._id.toString() !== userId) {
+      const sitterProfile = await BabysitterProfile.findOne({ user: userId });
+      const allowedSitterIds = [userId];
+      if (sitterProfile) allowedSitterIds.push(sitterProfile._id.toString());
+
+      const parentId = booking.parent?._id ? booking.parent._id.toString() : booking.parent?.toString();
+      const sitterId = booking.babysitter?._id ? booking.babysitter._id.toString() : booking.babysitter?.toString();
+
+      if (parentId !== userId && !allowedSitterIds.includes(sitterId)) {
         return next(new ApiError(403, 'You are not authorized to view this booking'));
       }
       return ApiResponse.success(res, booking, 'Booking details retrieved');
@@ -102,7 +113,9 @@ async function getById(req, res, next) {
     const booking = memoryBookings.get(bookingId);
     if (!booking) return next(new ApiError(404, 'Booking not found'));
     const userId = getUserId(req).toString();
-    if (booking.parent.toString() !== userId && booking.babysitter.toString() !== userId) {
+    const parentId = booking.parent?._id ? booking.parent._id.toString() : booking.parent?.toString();
+    const sitterId = booking.babysitter?._id ? booking.babysitter._id.toString() : booking.babysitter?.toString();
+    if (parentId !== userId && sitterId !== userId) {
       return next(new ApiError(403, 'You are not authorized to view this booking'));
     }
     return ApiResponse.success(res, booking, 'Booking details retrieved');
@@ -116,14 +129,19 @@ async function accept(req, res, next) {
     const userId = getUserId(req);
     const bookingId = req.params.id;
 
-    if (isDbConnected()) {
+    if (isDbConnected() && mongoose.Types.ObjectId.isValid(bookingId)) {
       const booking = await Booking.findById(bookingId).populate(
         'parent',
         'name email phone avatar'
       );
       if (!booking) return next(new ApiError(404, 'Booking not found'));
 
-      if (booking.babysitter.toString() !== userId.toString()) {
+      const sitterProfile = await BabysitterProfile.findOne({ user: userId });
+      const allowedSitterIds = [userId.toString()];
+      if (sitterProfile) allowedSitterIds.push(sitterProfile._id.toString());
+
+      const sitterId = booking.babysitter?._id ? booking.babysitter._id.toString() : booking.babysitter?.toString();
+      if (!allowedSitterIds.includes(sitterId)) {
         return next(new ApiError(403, 'You are not authorized to accept this booking'));
       }
 
@@ -165,14 +183,19 @@ async function reject(req, res, next) {
     const bookingId = req.params.id;
     const { reason } = req.body;
 
-    if (isDbConnected()) {
+    if (isDbConnected() && mongoose.Types.ObjectId.isValid(bookingId)) {
       const booking = await Booking.findById(bookingId).populate(
         'parent',
         'name email phone avatar'
       );
       if (!booking) return next(new ApiError(404, 'Booking not found'));
 
-      if (booking.babysitter.toString() !== userId.toString()) {
+      const sitterProfile = await BabysitterProfile.findOne({ user: userId });
+      const allowedSitterIds = [userId.toString()];
+      if (sitterProfile) allowedSitterIds.push(sitterProfile._id.toString());
+
+      const sitterId = booking.babysitter?._id ? booking.babysitter._id.toString() : booking.babysitter?.toString();
+      if (!allowedSitterIds.includes(sitterId)) {
         return next(new ApiError(403, 'You are not authorized to decline this booking'));
       }
 
@@ -218,14 +241,19 @@ async function updateStatus(req, res, next) {
 
     if (!newStatus) return next(new ApiError(400, 'New status is required'));
 
-    if (isDbConnected()) {
+    if (isDbConnected() && mongoose.Types.ObjectId.isValid(bookingId)) {
       const booking = await Booking.findById(bookingId).populate(
         'parent',
         'name email phone avatar'
       );
       if (!booking) return next(new ApiError(404, 'Booking not found'));
 
-      if (booking.babysitter.toString() !== userId.toString()) {
+      const sitterProfile = await BabysitterProfile.findOne({ user: userId });
+      const allowedSitterIds = [userId.toString()];
+      if (sitterProfile) allowedSitterIds.push(sitterProfile._id.toString());
+
+      const sitterId = booking.babysitter?._id ? booking.babysitter._id.toString() : booking.babysitter?.toString();
+      if (!allowedSitterIds.includes(sitterId)) {
         return next(new ApiError(403, 'You are not authorized to update this booking'));
       }
 
@@ -281,12 +309,52 @@ async function updateStatus(req, res, next) {
 
 async function create(req, res, next) {
   try {
+    const parentId = getUserId(req) || req.body.parent || req.body.parentId;
+    let babysitterId = req.body.babysitter || req.body.babysitterId;
+
+    let date = req.body.date ? new Date(req.body.date) : (req.body.startAt ? new Date(req.body.startAt) : new Date());
+    let startTime = req.body.startTime;
+    let endTime = req.body.endTime;
+    if (!startTime && req.body.startAt) {
+      const s = new Date(req.body.startAt);
+      startTime = `${String(s.getHours()).padStart(2, '0')}:${String(s.getMinutes()).padStart(2, '0')}`;
+    }
+    if (!endTime && req.body.endAt) {
+      const e = new Date(req.body.endAt);
+      endTime = `${String(e.getHours()).padStart(2, '0')}:${String(e.getMinutes()).padStart(2, '0')}`;
+    }
+
     if (isDbConnected()) {
-      const booking = await Booking.create(req.body);
+      if (babysitterId && mongoose.Types.ObjectId.isValid(babysitterId)) {
+        const profile = await BabysitterProfile.findById(babysitterId);
+        if (profile && profile.user) {
+          babysitterId = profile.user;
+        }
+      }
+
+      const booking = await Booking.create({
+        ...req.body,
+        parent: parentId,
+        babysitter: babysitterId,
+        date,
+        startTime: startTime || '09:00',
+        endTime: endTime || '13:00',
+      });
       return ApiResponse.success(res, booking, 'Booking created', 201);
     }
     const id = `bk-${Date.now()}`;
-    const newBooking = { _id: id, id, ...req.body, status: 'pending', createdAt: new Date() };
+    const newBooking = {
+      _id: id,
+      id,
+      ...req.body,
+      parent: parentId,
+      babysitter: babysitterId,
+      date,
+      startTime: startTime || '09:00',
+      endTime: endTime || '13:00',
+      status: 'pending',
+      createdAt: new Date(),
+    };
     memoryBookings.set(id, newBooking);
     return ApiResponse.success(res, newBooking, 'Booking created', 201);
   } catch (err) {
@@ -325,4 +393,5 @@ module.exports = {
   updateStatus,
   create,
   list,
+  memoryBookings,
 };

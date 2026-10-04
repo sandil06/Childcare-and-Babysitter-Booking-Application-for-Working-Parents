@@ -124,7 +124,11 @@ class BabysitterModel {
       email: json['user'] is Map && json['user']['email'] != null
           ? json['user']['email'].toString()
           : (json['email']?.toString() ?? ''),
-      phone: json['phone']?.toString() ?? '',
+      phone: (json['phone'] != null && json['phone'].toString().isNotEmpty)
+          ? json['phone'].toString()
+          : (json['user'] is Map && json['user']['phone'] != null
+              ? json['user']['phone'].toString()
+              : ''),
       profileImage: json['profileImage']?.toString(),
       dateOfBirth: json['dateOfBirth']?.toString(),
       gender: json['gender']?.toString(),

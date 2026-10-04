@@ -39,7 +39,7 @@ class _SitterEarningsScreenState extends State<SitterEarningsScreen> {
     _provider.fetchEarnings(range: newRange);
   }
 
-  void _showWithdrawModal(BuildContext context, double availableBalance) {
+  void _showWithdrawModal(double availableBalance) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -118,14 +118,21 @@ class _SitterEarningsScreenState extends State<SitterEarningsScreen> {
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton(
-                  onPressed: () {
+                  onPressed: () async {
                     Navigator.pop(ctx);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Payout request of funds submitted successfully.'),
-                        backgroundColor: AppColors.teal,
-                      ),
-                    );
+                    final success = await _provider.requestPayout();
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            success
+                                ? 'Payout request submitted successfully.'
+                                : (_provider.errorMessage ?? 'Payout request failed'),
+                          ),
+                          backgroundColor: success ? AppColors.teal : AppColors.coral,
+                        ),
+                      );
+                    }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.teal,
@@ -380,7 +387,7 @@ class _SitterEarningsScreenState extends State<SitterEarningsScreen> {
                 ],
               ),
               ElevatedButton.icon(
-                onPressed: () => _showWithdrawModal(context, earnings.pendingPayout > 0 ? earnings.pendingPayout : displayAmount),
+                onPressed: () => _showWithdrawModal(earnings.pendingPayout > 0 ? earnings.pendingPayout : displayAmount),
                 icon: const Icon(Icons.arrow_outward_rounded, size: 16),
                 label: const Text('Withdraw', style: TextStyle(fontWeight: FontWeight.w600)),
                 style: ElevatedButton.styleFrom(

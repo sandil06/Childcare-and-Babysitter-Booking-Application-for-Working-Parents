@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const Booking = require('../models/Booking');
 const BabysitterProfile = require('../models/BabysitterProfile');
 const ApiResponse = require('../utils/ApiResponse');
+const { memoryBookings } = require('./bookingController');
 
 function isDbConnected() {
   return mongoose.connection.readyState === 1;
@@ -23,12 +24,19 @@ async function getMeEarnings(req, res, next) {
         defaultHourlyRate = profile.hourlyRate;
       }
 
+      const sitterIds = [userId];
+      if (profile?._id) sitterIds.push(profile._id);
+
       completedBookings = await Booking.find({
-        babysitter: userId,
+        babysitter: { $in: sitterIds },
         status: 'completed',
       })
         .populate('parent', 'name email phone')
         .sort({ date: -1 });
+    } else {
+      completedBookings = Array.from(memoryBookings.values()).filter(
+        (b) => b.babysitter.toString() === userId.toString() && b.status === 'completed'
+      );
     }
 
     const earningsItems = completedBookings.map((b) => {
@@ -121,7 +129,11 @@ async function getMeEarningsHistory(req, res, next) {
 
     if (isDbConnected()) {
       const skip = (parseInt(page, 10) - 1) * parseInt(limit, 10);
-      const bookings = await Booking.find({ babysitter: userId, status: 'completed' })
+      const profile = await BabysitterProfile.findOne({ user: userId });
+      const sitterIds = [userId];
+      if (profile?._id) sitterIds.push(profile._id);
+
+      const bookings = await Booking.find({ babysitter: { $in: sitterIds }, status: 'completed' })
         .populate('parent', 'name email phone')
         .sort({ date: -1 })
         .skip(skip)
@@ -150,7 +162,29 @@ async function getMeEarningsHistory(req, res, next) {
       return ApiResponse.success(res, items, 'Earnings history retrieved');
     }
 
-    return ApiResponse.success(res, [], 'Earnings history retrieved');
+    const list = Array.from(memoryBookings.values()).filter(
+      (b) => b.babysitter.toString() === userId.toString() && b.status === 'completed'
+    );
+    const items = list.map((b) => {
+      const duration = Number(b.durationHours) || 4.0;
+      const rate = Number(b.hourlyRate) || 1500.0;
+      const gross = duration * rate;
+      const serviceFee = Number((gross * 0.05).toFixed(2));
+      const netAmount = Number((gross - serviceFee).toFixed(2));
+
+      return {
+        id: (b._id || b.id || '').toString(),
+        bookingId: b.bookingId || `#BK-${(b.id || '0000').slice(-4)}`,
+        parentName: (b.parent && b.parent.name) || 'Parent',
+        date: b.date || new Date(),
+        durationHours: duration,
+        hourlyRate: rate,
+        serviceFee,
+        netAmount,
+        status: b.paymentStatus || 'paid',
+      };
+    });
+    return ApiResponse.success(res, items, 'Earnings history retrieved');
   } catch (err) {
     next(err);
   }

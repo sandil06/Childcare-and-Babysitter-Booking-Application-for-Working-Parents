@@ -20,18 +20,22 @@ async function getProfileByUserId(userId) {
       'name email phone avatar'
     );
     if (!profile) {
-      // Auto-create a profile if user is a babysitter
+      // Auto-create a profile if user exists in database
       const user = await User.findById(userId);
-      if (user && user.role === ROLES.BABYSITTER) {
+      if (user) {
         profile = await BabysitterProfile.create({
           user: user._id,
           phone: user.phone || '',
           hourlyRate: 1500.0,
-          experienceYears: 0,
+          experienceYears: 1,
+          skills: ['Child Care', 'First Aid & CPR'],
+          languages: ['English', 'Sinhala'],
+          qualifications: [],
           averageRating: 0.0,
           totalReviews: 0,
           totalCompletedBookings: 0,
           verificationStatus: 'verified',
+          isAvailable: true,
         });
         await profile.populate('user', 'name email phone avatar');
       }
@@ -72,8 +76,8 @@ async function getProfileByUserId(userId) {
       },
       bio: '',
       hourlyRate: 1500.0,
-      experienceYears: 0,
-      skills: [],
+      experienceYears: 1,
+      skills: ['Child Care', 'First Aid & CPR'],
       languages: ['English', 'Sinhala'],
       qualifications: [],
       verificationStatus: 'verified',
@@ -101,7 +105,14 @@ async function updateProfileByUserId(userId, updateData) {
     if (safeUpdate.phone !== undefined) {
       await User.findByIdAndUpdate(userId, { phone: safeUpdate.phone });
     }
-    const profile = await BabysitterProfile.findOneAndUpdate(
+    if (safeUpdate.name !== undefined) {
+      await User.findByIdAndUpdate(userId, { name: safeUpdate.name });
+    }
+    let profile = await BabysitterProfile.findOne({ user: userId });
+    if (!profile) {
+      await getProfileByUserId(userId);
+    }
+    profile = await BabysitterProfile.findOneAndUpdate(
       { user: userId },
       { $set: safeUpdate },
       { new: true, runValidators: true }

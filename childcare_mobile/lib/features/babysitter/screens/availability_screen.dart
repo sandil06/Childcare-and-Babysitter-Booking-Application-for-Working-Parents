@@ -107,7 +107,7 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
       ),
       builder: (ctx) {
         return StatefulBuilder(
-          builder: (context, setModalState) {
+          builder: (modalCtx, setModalState) {
             final startMinutes = startTime.hour * 60 + startTime.minute;
             final endMinutes = endTime.hour * 60 + endTime.minute;
             final isInvalidInterval = endMinutes <= startMinutes;
@@ -117,7 +117,7 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
                 left: AppSizes.pagePadding,
                 right: AppSizes.pagePadding,
                 top: 24,
-                bottom: MediaQuery.of(context).viewInsets.bottom + 28,
+                bottom: MediaQuery.of(modalCtx).viewInsets.bottom + 28,
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -267,13 +267,14 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
                               final endStr =
                                   '${endTime.hour.toString().padLeft(2, '0')}:${endTime.minute.toString().padLeft(2, '0')}';
 
+                              bool ok = false;
                               if (existing != null) {
                                 final updated = existing.copyWith(
                                   startTime: startStr,
                                   endTime: endStr,
                                   isRecurring: isRecurring,
                                 );
-                                await _provider.updateAvailabilitySlot(updated);
+                                ok = await _provider.updateAvailabilitySlot(updated);
                               } else {
                                 final newSlot = AvailabilityModel(
                                   id: 'av-${DateTime.now().millisecondsSinceEpoch}',
@@ -285,9 +286,17 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
                                   available: true,
                                   isRecurring: isRecurring,
                                 );
-                                await _provider.addAvailabilitySlot(newSlot);
+                                ok = await _provider.addAvailabilitySlot(newSlot);
                               }
                               if (ctx.mounted) Navigator.pop(ctx);
+                              if (mounted && !ok && _provider.errorMessage != null) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(_provider.errorMessage!),
+                                    backgroundColor: AppColors.coral,
+                                  ),
+                                );
+                              }
                             },
                       style: FilledButton.styleFrom(
                         backgroundColor: AppColors.ink,

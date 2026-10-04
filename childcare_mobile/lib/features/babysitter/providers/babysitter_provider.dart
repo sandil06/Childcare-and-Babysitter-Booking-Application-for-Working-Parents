@@ -436,6 +436,22 @@ class BabysitterProvider extends ChangeNotifier {
     }
   }
 
+  Future<bool> requestPayout() async {
+    _isLoading = true;
+    notifyListeners();
+    try {
+      await _service.requestPayout();
+      await fetchEarnings(showLoading: false);
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString();
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   Future<void> fetchNotifications() {
     if (!isAuthenticated) return Future.value();
     final inFlight = _notificationsRequest;

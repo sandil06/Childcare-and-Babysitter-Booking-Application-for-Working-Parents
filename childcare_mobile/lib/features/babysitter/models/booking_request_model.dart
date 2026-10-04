@@ -164,9 +164,11 @@ class BookingRequestModel {
           : (json['parent']?.toString() ?? json['parentId']?.toString() ?? ''),
       parentName: json['parent'] is Map && json['parent']['name'] != null
           ? json['parent']['name'].toString()
-          : (json['parentName']?.toString() ?? 'Anusha Jayasinghe'),
+          : (json['parentName']?.toString() ?? 'Parent'),
       parentImage: json['parent'] is Map ? json['parent']['avatar']?.toString() : json['parentImage']?.toString(),
-      parentPhone: json['parentPhone']?.toString() ?? '+94 77 234 5678',
+      parentPhone: json['parent'] is Map && json['parent']['phone'] != null && json['parent']['phone'].toString().isNotEmpty
+          ? json['parent']['phone'].toString()
+          : (json['parentPhone']?.toString() ?? ''),
       date: DateTime(parsedDate.year, parsedDate.month, parsedDate.day),
       startTime: start,
       endTime: end,

@@ -92,7 +92,7 @@ async function markRead(req, res, next) {
     const userId = getUserId(req);
     const notifId = req.params.id;
 
-    if (isDbConnected()) {
+    if (isDbConnected() && mongoose.Types.ObjectId.isValid(notifId)) {
       const notif = await Notification.findOne({ _id: notifId, user: userId });
       if (!notif) return next(new ApiError(404, 'Notification not found'));
 
