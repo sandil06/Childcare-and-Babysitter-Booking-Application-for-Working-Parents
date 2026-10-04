@@ -38,7 +38,7 @@ class _SitterProfileScreenState extends State<SitterProfileScreen> {
   }
 
   Future<void> _handleRefresh() async {
-    await _provider.fetchProfile();
+    await _provider.fetchProfile(showLoading: false);
   }
 
   void _navigateToEdit(BabysitterModel profile) async {
@@ -61,16 +61,18 @@ class _SitterProfileScreenState extends State<SitterProfileScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text(
           'Log Out',
-          style: TextStyle(
-            color: AppColors.ink,
-            fontWeight: FontWeight.w700,
-          ),
+          style: TextStyle(color: AppColors.ink, fontWeight: FontWeight.w700),
         ),
-        content: const Text('Are you sure you want to log out of your sitter account?'),
+        content: const Text(
+          'Are you sure you want to log out of your sitter account?',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel', style: TextStyle(color: AppColors.muted)),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: AppColors.muted),
+            ),
           ),
           FilledButton(
             onPressed: () {
@@ -83,7 +85,9 @@ class _SitterProfileScreenState extends State<SitterProfileScreen> {
             },
             style: FilledButton.styleFrom(
               backgroundColor: AppColors.coral,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
             child: const Text('Log Out'),
           ),
@@ -94,7 +98,8 @@ class _SitterProfileScreenState extends State<SitterProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final profile = _provider.profile ??
+    final profile =
+        _provider.profile ??
         const BabysitterModel(
           id: 'temp',
           userId: 'u-temp',
@@ -109,7 +114,10 @@ class _SitterProfileScreenState extends State<SitterProfileScreen> {
         elevation: 0,
         leading: Navigator.canPop(context)
             ? IconButton(
-                icon: const Icon(Icons.arrow_back_rounded, color: AppColors.ink),
+                icon: const Icon(
+                  Icons.arrow_back_rounded,
+                  color: AppColors.ink,
+                ),
                 onPressed: () => Navigator.pop(context),
               )
             : null,
@@ -189,7 +197,9 @@ class _SitterProfileScreenState extends State<SitterProfileScreen> {
                           decoration: BoxDecoration(
                             color: AppColors.mint,
                             borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: AppColors.teal.withValues(alpha: 0.3)),
+                            border: Border.all(
+                              color: AppColors.teal.withValues(alpha: 0.3),
+                            ),
                           ),
                           child: Text(
                             skill,
@@ -202,7 +212,10 @@ class _SitterProfileScreenState extends State<SitterProfileScreen> {
                         );
                       }).toList(),
                     )
-                  : const Text('No skills listed', style: TextStyle(color: AppColors.muted)),
+                  : const Text(
+                      'No skills listed',
+                      style: TextStyle(color: AppColors.muted),
+                    ),
             ),
             const SizedBox(height: 16),
 
@@ -235,7 +248,10 @@ class _SitterProfileScreenState extends State<SitterProfileScreen> {
                         );
                       }).toList(),
                     )
-                  : const Text('No languages listed', style: TextStyle(color: AppColors.muted)),
+                  : const Text(
+                      'No languages listed',
+                      style: TextStyle(color: AppColors.muted),
+                    ),
             ),
             const SizedBox(height: 16),
 
@@ -251,8 +267,11 @@ class _SitterProfileScreenState extends State<SitterProfileScreen> {
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Icon(Icons.check_circle_rounded,
-                                  color: AppColors.teal, size: 18),
+                              const Icon(
+                                Icons.check_circle_rounded,
+                                color: AppColors.teal,
+                                size: 18,
+                              ),
                               const SizedBox(width: 10),
                               Expanded(
                                 child: Text(
@@ -269,7 +288,10 @@ class _SitterProfileScreenState extends State<SitterProfileScreen> {
                         );
                       }).toList(),
                     )
-                  : const Text('No qualifications listed', style: TextStyle(color: AppColors.muted)),
+                  : const Text(
+                      'No qualifications listed',
+                      style: TextStyle(color: AppColors.muted),
+                    ),
             ),
             const SizedBox(height: 16),
 
@@ -281,7 +303,10 @@ class _SitterProfileScreenState extends State<SitterProfileScreen> {
                 children: [
                   _buildDocStatusRow('Government Photo ID', 'verified'),
                   _buildDocStatusRow('Criminal Record Clearance', 'verified'),
-                  _buildDocStatusRow('Pediatric First Aid Certificate', 'verified'),
+                  _buildDocStatusRow(
+                    'Pediatric First Aid Certificate',
+                    'verified',
+                  ),
                   _buildDocStatusRow('Profile Headshot Photograph', 'verified'),
                 ],
               ),
@@ -294,13 +319,27 @@ class _SitterProfileScreenState extends State<SitterProfileScreen> {
               icon: Icons.location_on_outlined,
               child: Column(
                 children: [
-                  _buildContactItem(Icons.email_outlined, 'Email', profile.email),
+                  _buildContactItem(
+                    Icons.email_outlined,
+                    'Email',
+                    profile.email,
+                  ),
                   const Divider(height: 16, color: AppColors.sand),
-                  _buildContactItem(Icons.phone_outlined, 'Phone',
-                      profile.phone.isNotEmpty ? profile.phone : '+1 (555) 019-2834'),
+                  _buildContactItem(
+                    Icons.phone_outlined,
+                    'Phone',
+                    profile.phone.isNotEmpty
+                        ? profile.phone
+                        : '+1 (555) 019-2834',
+                  ),
                   const Divider(height: 16, color: AppColors.sand),
-                  _buildContactItem(Icons.home_outlined, 'Address',
-                      profile.address.isNotEmpty ? profile.address : '24 Elm Street, Brooklyn, NY'),
+                  _buildContactItem(
+                    Icons.home_outlined,
+                    'Address',
+                    profile.address.isNotEmpty
+                        ? profile.address
+                        : '24 Elm Street, Brooklyn, NY',
+                  ),
                 ],
               ),
             ),
@@ -350,7 +389,11 @@ class _SitterProfileScreenState extends State<SitterProfileScreen> {
                 backgroundColor: AppColors.mint,
                 child: Text(
                   profile.name.isNotEmpty
-                      ? profile.name.split(' ').map((e) => e.isNotEmpty ? e[0] : '').take(2).join()
+                      ? profile.name
+                            .split(' ')
+                            .map((e) => e.isNotEmpty ? e[0] : '')
+                            .take(2)
+                            .join()
                       : 'MJ',
                   style: const TextStyle(
                     fontSize: 22,
@@ -402,7 +445,9 @@ class _SitterProfileScreenState extends State<SitterProfileScreen> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: profile.isAvailable ? AppColors.teal.withValues(alpha: 0.3) : AppColors.sand,
+          color: profile.isAvailable
+              ? AppColors.teal.withValues(alpha: 0.3)
+              : AppColors.sand,
         ),
       ),
       child: Row(
@@ -434,10 +479,7 @@ class _SitterProfileScreenState extends State<SitterProfileScreen> {
                   profile.isAvailable
                       ? 'Parents can discover you and send booking requests.'
                       : 'You are hidden from new parent requests.',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AppColors.muted,
-                  ),
+                  style: const TextStyle(fontSize: 12, color: AppColors.muted),
                 ),
               ],
             ),
@@ -499,7 +541,10 @@ class _SitterProfileScreenState extends State<SitterProfileScreen> {
       ),
       child: Column(
         children: [
-          Text(label, style: const TextStyle(fontSize: 11, color: AppColors.muted)),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 11, color: AppColors.muted),
+          ),
           const SizedBox(height: 4),
           Text(
             value,
@@ -510,7 +555,10 @@ class _SitterProfileScreenState extends State<SitterProfileScreen> {
             ),
           ),
           const SizedBox(height: 2),
-          Text(sub, style: const TextStyle(fontSize: 10, color: AppColors.muted)),
+          Text(
+            sub,
+            style: const TextStyle(fontSize: 10, color: AppColors.muted),
+          ),
         ],
       ),
     );
@@ -556,7 +604,11 @@ class _SitterProfileScreenState extends State<SitterProfileScreen> {
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         children: [
-          const Icon(Icons.file_present_rounded, color: AppColors.teal, size: 18),
+          const Icon(
+            Icons.file_present_rounded,
+            color: AppColors.teal,
+            size: 18,
+          ),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
@@ -592,7 +644,10 @@ class _SitterProfileScreenState extends State<SitterProfileScreen> {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label, style: const TextStyle(fontSize: 11, color: AppColors.muted)),
+            Text(
+              label,
+              style: const TextStyle(fontSize: 11, color: AppColors.muted),
+            ),
             Text(
               value,
               style: const TextStyle(

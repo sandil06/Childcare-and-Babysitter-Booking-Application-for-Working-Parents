@@ -34,6 +34,7 @@ class BabysitterProvider extends ChangeNotifier {
   final Map<String, Future<void>> _bookingRequests = {};
   Future<void>? _notificationsRequest;
   Future<void>? _refreshRequest;
+  Future<void>? _profileRequest;
 
   // Getters
   BabysitterModel? get profile => _profile;
@@ -65,10 +66,25 @@ class BabysitterProvider extends ChangeNotifier {
     await fetchProfile();
   }
 
-  Future<void> fetchProfile() async {
-    _isLoading = true;
-    _errorMessage = null;
-    notifyListeners();
+  Future<void> fetchProfile({bool showLoading = true}) {
+    final inFlight = _profileRequest;
+    if (inFlight != null) return inFlight;
+
+    final request = _fetchProfile(showLoading: showLoading);
+    _profileRequest = request;
+    return request.whenComplete(() {
+      if (identical(_profileRequest, request)) {
+        _profileRequest = null;
+      }
+    });
+  }
+
+  Future<void> _fetchProfile({required bool showLoading}) async {
+    if (showLoading) {
+      _isLoading = true;
+      _errorMessage = null;
+      notifyListeners();
+    }
 
     try {
       _profile = await _service.getProfile();
@@ -76,7 +92,9 @@ class BabysitterProvider extends ChangeNotifier {
     } catch (e) {
       _errorMessage = e.toString();
     } finally {
-      _isLoading = false;
+      if (showLoading) {
+        _isLoading = false;
+      }
       notifyListeners();
     }
   }
