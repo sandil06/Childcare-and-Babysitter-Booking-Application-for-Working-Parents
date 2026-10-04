@@ -33,6 +33,7 @@ class BabysitterProvider extends ChangeNotifier {
   Future<void>? _dashboardRequest;
   final Map<String, Future<void>> _bookingRequests = {};
   Future<void>? _notificationsRequest;
+  Future<void>? _refreshRequest;
 
   // Getters
   BabysitterModel? get profile => _profile;
@@ -322,8 +323,35 @@ class BabysitterProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> refreshDashboard() async {
-    await Future.wait([fetchDashboard(), fetchNotifications()]);
+  Future<void> refreshDashboard() {
+    final inFlight = _refreshRequest;
+    if (inFlight != null) return inFlight;
+
+    final request = _refreshDashboard();
+    _refreshRequest = request;
+    return request.whenComplete(() {
+      if (identical(_refreshRequest, request)) {
+        _refreshRequest = null;
+      }
+    });
+  }
+
+  Future<void> _refreshDashboard() async {
+    final results = await Future.wait<dynamic>([
+      _service.getDashboardData(),
+      _service.getBookings(),
+      _service.getNotifications(),
+    ]);
+
+    _dashboardData = results[0] as Map<String, dynamic>;
+    _bookings = results[1] as List<BookingRequestModel>;
+    _notifications = results[2] as List<Map<String, dynamic>>;
+
+    if (_dashboardData?['profile'] is Map<String, dynamic>) {
+      _profile = BabysitterModel.fromJson(_dashboardData!['profile']);
+      _isAvailable = _profile?.isAvailable ?? true;
+    }
+    notifyListeners();
   }
 
   Future<void> refreshDashboardSilently() async {
