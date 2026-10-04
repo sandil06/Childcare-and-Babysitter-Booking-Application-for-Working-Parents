@@ -147,15 +147,22 @@ class _SitterProfileScreenState extends State<SitterProfileScreen> {
           ),
         ],
       ),
-      body: RefreshIndicator(
-        onRefresh: _handleRefresh,
-        color: AppColors.teal,
-        child: ListView(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSizes.pagePadding,
-            vertical: 16,
-          ),
-          children: [
+      body: ScrollConfiguration(
+        behavior: ScrollConfiguration.of(context).copyWith(overscroll: false),
+        child: RefreshIndicator(
+          displacement: 20,
+          edgeOffset: 0,
+          onRefresh: _handleRefresh,
+          color: AppColors.teal,
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(
+              parent: ClampingScrollPhysics(),
+            ),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSizes.pagePadding,
+              vertical: 16,
+            ),
+            children: [
             // Profile Card Header
             _buildProfileHeaderCard(profile),
             const SizedBox(height: 16),
@@ -368,8 +375,9 @@ class _SitterProfileScreenState extends State<SitterProfileScreen> {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildProfileHeaderCard(BabysitterModel profile) {
     return Container(

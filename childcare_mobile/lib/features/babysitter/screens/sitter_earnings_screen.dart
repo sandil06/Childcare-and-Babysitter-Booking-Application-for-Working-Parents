@@ -188,11 +188,18 @@ class _SitterEarningsScreenState extends State<SitterEarningsScreen> {
           ),
           body: isLoading
               ? const Center(child: CircularProgressIndicator(color: AppColors.teal))
-              : RefreshIndicator(
-                  color: AppColors.teal,
-                  onRefresh: _loadEarnings,
-                  child: SingleChildScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(),
+              : ScrollConfiguration(
+                  behavior: ScrollConfiguration.of(context)
+                      .copyWith(overscroll: false),
+                  child: RefreshIndicator(
+                    displacement: 20,
+                    edgeOffset: 0,
+                    color: AppColors.teal,
+                    onRefresh: _loadEarnings,
+                    child: SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(
+                        parent: ClampingScrollPhysics(),
+                      ),
                     padding: const EdgeInsets.all(20),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -261,6 +268,7 @@ class _SitterEarningsScreenState extends State<SitterEarningsScreen> {
                     ),
                   ),
                 ),
+              ),
         );
       },
     );
