@@ -8,6 +8,7 @@ import '../features/babysitter/screens/booking_request_details_screen.dart';
 import '../features/babysitter/screens/booking_requests_screen.dart';
 import '../features/babysitter/screens/earnings_screen.dart';
 import '../features/babysitter/screens/edit_sitter_profile_screen.dart';
+import '../features/babysitter/screens/notifications_screen.dart';
 import '../features/babysitter/screens/sitter_dashboard_screen.dart';
 import '../features/babysitter/screens/sitter_details_screen.dart';
 import '../features/babysitter/screens/sitter_profile_screen.dart';
@@ -67,6 +68,8 @@ class AppRoutes {
             return const UpcomingBookingsScreen();
           case sitterBookingHistory:
             return const BookingHistoryScreen();
+          case sitterNotifications:
+            return const NotificationsScreen();
           case sitterEarnings:
             return const EarningsScreen();
           case home:
