@@ -227,6 +227,7 @@ class _ChatScreenState extends State<ChatScreen> {
             // Messages List
             Expanded(
               child: ListView.builder(
+                physics: const ClampingScrollPhysics(),
                 controller: _scrollController,
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 itemCount: _messages.length,

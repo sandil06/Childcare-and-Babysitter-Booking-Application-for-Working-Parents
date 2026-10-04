@@ -387,16 +387,23 @@ class BabysitterProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> fetchEarnings({String range = 'weekly'}) async {
+  Future<void> fetchEarnings({
+    String range = 'weekly',
+    bool showLoading = true,
+  }) async {
     if (!isAuthenticated) return;
-    _isLoading = true;
-    notifyListeners();
+    if (showLoading) {
+      _isLoading = true;
+      notifyListeners();
+    }
     try {
       _earnings = await _service.getEarnings(range: range);
     } catch (e) {
       _errorMessage = e.toString();
     } finally {
-      _isLoading = false;
+      if (showLoading) {
+        _isLoading = false;
+      }
       notifyListeners();
     }
   }

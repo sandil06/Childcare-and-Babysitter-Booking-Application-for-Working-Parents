@@ -189,6 +189,7 @@ class _BookingRequestDetailsScreenState
       ),
       body: SafeArea(
         child: ListView(
+          physics: const ClampingScrollPhysics(),
           padding: const EdgeInsets.all(AppSizes.pagePadding),
           children: [
             // Status and ID Banner

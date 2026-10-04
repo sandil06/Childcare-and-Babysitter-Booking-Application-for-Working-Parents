@@ -19,12 +19,15 @@ import '../features/babysitter/screens/sitter_registration_screen.dart';
 import '../features/babysitter/screens/upcoming_bookings_screen.dart';
 import '../features/babysitter/providers/babysitter_provider.dart';
 import '../features/parent/screens/parent_home_screen.dart';
+import '../features/parent/screens/parent_profile_screen.dart';
 
 class AppRoutes {
   static const splash = '/splash';
   static const home = '/';
   static const onboarding = '/onboarding';
   static const login = '/login';
+  static const parentProfile = '/parent/profile';
+  static const customerProfile = '/customer/profile';
 
   // Babysitter module routes
   static const sitterDashboard = '/babysitter/dashboard';
@@ -53,6 +56,9 @@ class AppRoutes {
             return const OnboardingScreen();
           case login:
             return const LoginScreen();
+          case parentProfile:
+          case customerProfile:
+            return const ParentProfileScreen();
           case sitterDashboard:
             return const SitterDashboardScreen();
           case sitterRegistration:

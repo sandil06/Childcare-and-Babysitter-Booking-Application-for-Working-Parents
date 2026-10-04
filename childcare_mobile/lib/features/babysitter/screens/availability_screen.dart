@@ -430,6 +430,7 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
               height: 94,
               padding: const EdgeInsets.symmetric(vertical: 8),
               child: ListView.builder(
+                physics: const ClampingScrollPhysics(),
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 itemCount: _dates.length,
@@ -506,10 +507,22 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
             ),
             const Divider(height: 1, color: AppColors.sand),
 
-            // Content Area
             Expanded(
-              child: ListView(
-                padding: const EdgeInsets.all(AppSizes.pagePadding),
+              child: ScrollConfiguration(
+                behavior:
+                    ScrollConfiguration.of(context).copyWith(overscroll: false),
+                child: RefreshIndicator(
+                  displacement: 20,
+                  edgeOffset: 0,
+                  color: AppColors.teal,
+                  onRefresh: () async {
+                    await _provider.fetchAvailabilities();
+                  },
+                  child: ListView(
+                    physics: const AlwaysScrollableScrollPhysics(
+                      parent: ClampingScrollPhysics(),
+                    ),
+                    padding: const EdgeInsets.all(AppSizes.pagePadding),
                 children: [
                   // Selected Date Header and Add button
                   Row(
@@ -653,6 +666,8 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
                 ],
               ),
             ),
+          ),
+        ),
           ],
         ),
       ),

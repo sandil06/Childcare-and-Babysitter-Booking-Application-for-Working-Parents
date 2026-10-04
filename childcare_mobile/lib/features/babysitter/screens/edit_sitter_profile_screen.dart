@@ -181,6 +181,7 @@ class _EditSitterProfileScreenState extends State<EditSitterProfileScreen> {
         child: Form(
           key: _formKey,
           child: ListView(
+            physics: const ClampingScrollPhysics(),
             padding: const EdgeInsets.all(AppSizes.pagePadding),
             children: [
               // System managed info note

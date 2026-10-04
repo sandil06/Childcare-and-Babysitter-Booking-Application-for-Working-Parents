@@ -377,6 +377,7 @@ class _SitterRegistrationScreenState extends State<SitterRegistrationScreen> {
             // Step Content
             Expanded(
               child: ListView(
+                physics: const ClampingScrollPhysics(),
                 padding: const EdgeInsets.all(AppSizes.pagePadding),
                 children: [
                   if (_currentStep == 0) _buildPersonalDetailsStep(),

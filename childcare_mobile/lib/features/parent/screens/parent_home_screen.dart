@@ -12,18 +12,30 @@ class ParentHomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(
-            AppSizes.pagePadding,
-            18,
-            AppSizes.pagePadding,
-            32,
-          ),
+        child: ScrollConfiguration(
+          behavior: ScrollConfiguration.of(context).copyWith(overscroll: false),
+          child: RefreshIndicator(
+            displacement: 20,
+            edgeOffset: 0,
+            color: AppColors.teal,
+            onRefresh: () async {
+              await Future.delayed(const Duration(milliseconds: 400));
+            },
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(
+                parent: ClampingScrollPhysics(),
+              ),
+              padding: const EdgeInsets.fromLTRB(
+                AppSizes.pagePadding,
+                18,
+                AppSizes.pagePadding,
+                32,
+              ),
           children: [
             Row(
               children: [
                 GestureDetector(
-                  onTap: () => Navigator.pushNamed(context, AppRoutes.sitterDashboard),
+                  onTap: () => Navigator.pushNamed(context, AppRoutes.parentProfile),
                   child: const CircleAvatar(
                     radius: 23,
                     backgroundColor: AppColors.sand,
@@ -180,6 +192,8 @@ class ParentHomeScreen extends StatelessWidget {
           ],
         ),
       ),
+    ),
+  ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: 0,
         onDestinationSelected: (idx) {
@@ -193,7 +207,7 @@ class ParentHomeScreen extends StatelessWidget {
               Navigator.pushNamed(context, AppRoutes.sitterMessages);
               break;
             case 3:
-              Navigator.pushNamed(context, AppRoutes.sitterProfile);
+              Navigator.pushNamed(context, AppRoutes.parentProfile);
               break;
           }
         },

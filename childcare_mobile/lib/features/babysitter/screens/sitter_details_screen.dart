@@ -63,6 +63,7 @@ class SitterDetailsScreen extends StatelessWidget {
         centerTitle: true,
       ),
       body: ListView(
+        physics: const ClampingScrollPhysics(),
         padding: const EdgeInsets.all(AppSizes.pagePadding),
         children: [
           Center(

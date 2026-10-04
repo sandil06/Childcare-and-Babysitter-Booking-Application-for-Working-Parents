@@ -12,8 +12,27 @@ class ChildcareApp extends StatelessWidget {
       title: 'LittleHands',
       debugShowCheckedModeBanner: false,
       theme: buildAppTheme(),
+      scrollBehavior: const AppScrollBehavior(),
       initialRoute: AppRoutes.splash,
       onGenerateRoute: AppRoutes.onGenerateRoute,
     );
+  }
+}
+
+class AppScrollBehavior extends MaterialScrollBehavior {
+  const AppScrollBehavior();
+
+  @override
+  Widget buildOverscrollIndicator(
+    BuildContext context,
+    Widget child,
+    ScrollableDetails details,
+  ) {
+    return child;
+  }
+
+  @override
+  ScrollPhysics getScrollPhysics(BuildContext context) {
+    return const ClampingScrollPhysics();
   }
 }

@@ -23,8 +23,11 @@ class _SitterEarningsScreenState extends State<SitterEarningsScreen> {
     _loadEarnings();
   }
 
-  Future<void> _loadEarnings() async {
-    await _provider.fetchEarnings(range: _selectedRange);
+  Future<void> _loadEarnings({bool isRefresh = false}) async {
+    await _provider.fetchEarnings(
+      range: _selectedRange,
+      showLoading: !isRefresh,
+    );
   }
 
   void _onRangeChanged(String newRange) {
@@ -186,7 +189,7 @@ class _SitterEarningsScreenState extends State<SitterEarningsScreen> {
               ),
             ],
           ),
-          body: isLoading
+          body: (isLoading && earnings.totalEarnings == 0 && earnings.recentEarnings.isEmpty)
               ? const Center(child: CircularProgressIndicator(color: AppColors.teal))
               : ScrollConfiguration(
                   behavior: ScrollConfiguration.of(context)
@@ -195,7 +198,7 @@ class _SitterEarningsScreenState extends State<SitterEarningsScreen> {
                     displacement: 20,
                     edgeOffset: 0,
                     color: AppColors.teal,
-                    onRefresh: _loadEarnings,
+                    onRefresh: () => _loadEarnings(isRefresh: true),
                     child: SingleChildScrollView(
                       physics: const AlwaysScrollableScrollPhysics(
                         parent: ClampingScrollPhysics(),
