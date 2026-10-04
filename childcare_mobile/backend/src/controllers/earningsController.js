@@ -15,7 +15,7 @@ async function getMeEarnings(req, res, next) {
   try {
     const userId = getUserId(req);
     let completedBookings = [];
-    let defaultHourlyRate = 25.0;
+    let defaultHourlyRate = 1500.0;
 
     if (isDbConnected()) {
       const profile = await BabysitterProfile.findOne({ user: userId });
@@ -129,7 +129,7 @@ async function getMeEarningsHistory(req, res, next) {
 
       const items = bookings.map((b) => {
         const duration = Number(b.durationHours) || 4.0;
-        const rate = Number(b.hourlyRate) || 25.0;
+        const rate = Number(b.hourlyRate) || 1500.0;
         const gross = duration * rate;
         const serviceFee = Number((gross * 0.05).toFixed(2));
         const netAmount = Number((gross - serviceFee).toFixed(2));

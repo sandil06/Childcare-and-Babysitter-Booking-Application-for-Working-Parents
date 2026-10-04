@@ -147,22 +147,15 @@ class _SitterProfileScreenState extends State<SitterProfileScreen> {
           ),
         ],
       ),
-      body: ScrollConfiguration(
-        behavior: ScrollConfiguration.of(context).copyWith(overscroll: false),
-        child: RefreshIndicator(
-          displacement: 20,
-          edgeOffset: 0,
-          onRefresh: _handleRefresh,
-          color: AppColors.teal,
-          child: ListView(
-            physics: const AlwaysScrollableScrollPhysics(
-              parent: ClampingScrollPhysics(),
-            ),
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSizes.pagePadding,
-              vertical: 16,
-            ),
-            children: [
+      body: RefreshIndicator(
+        onRefresh: _handleRefresh,
+        color: AppColors.teal,
+        child: ListView(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSizes.pagePadding,
+            vertical: 16,
+          ),
+          children: [
             // Profile Card Header
             _buildProfileHeaderCard(profile),
             const SizedBox(height: 16),
@@ -313,13 +306,13 @@ class _SitterProfileScreenState extends State<SitterProfileScreen> {
               icon: Icons.security_rounded,
               child: Column(
                 children: [
-                  _buildDocStatusRow('Government Photo ID', 'verified'),
-                  _buildDocStatusRow('Criminal Record Clearance', 'verified'),
+                  _buildDocStatusRow('National Identity Card (NIC)', 'verified'),
+                  _buildDocStatusRow('Police Clearance Certificate', 'verified'),
                   _buildDocStatusRow(
-                    'Pediatric First Aid Certificate',
+                    'Pediatric First Aid Certificate (SL Red Cross)',
                     'verified',
                   ),
-                  _buildDocStatusRow('Profile Headshot Photograph', 'verified'),
+                  _buildDocStatusRow('Grama Niladhari Certificate', 'verified'),
                 ],
               ),
             ),
@@ -342,7 +335,7 @@ class _SitterProfileScreenState extends State<SitterProfileScreen> {
                     'Phone',
                     profile.phone.isNotEmpty
                         ? profile.phone
-                        : '+1 (555) 019-2834',
+                        : '+94 77 123 4567',
                   ),
                   const Divider(height: 16, color: AppColors.sand),
                   _buildContactItem(
@@ -350,7 +343,7 @@ class _SitterProfileScreenState extends State<SitterProfileScreen> {
                     'Address',
                     profile.address.isNotEmpty
                         ? profile.address
-                        : '24 Elm Street, Brooklyn, NY',
+                        : 'No. 45, Galle Road, Colombo 03',
                   ),
                 ],
               ),
@@ -375,9 +368,8 @@ class _SitterProfileScreenState extends State<SitterProfileScreen> {
           ],
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   Widget _buildProfileHeaderCard(BabysitterModel profile) {
     return Container(
@@ -522,7 +514,7 @@ class _SitterProfileScreenState extends State<SitterProfileScreen> {
         Expanded(
           child: _buildStatPill(
             label: 'Hourly Rate',
-            value: '\$${profile.hourlyRate.toInt()}',
+            value: 'Rs. ${profile.hourlyRate.toInt()}',
             sub: 'per hour',
             valueColor: AppColors.teal,
           ),

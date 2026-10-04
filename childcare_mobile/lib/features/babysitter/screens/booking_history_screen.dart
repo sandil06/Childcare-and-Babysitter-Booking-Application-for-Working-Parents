@@ -146,45 +146,36 @@ class _BookingHistoryScreenState extends State<BookingHistoryScreen> {
 
             // Content List with Pagination
             Expanded(
-              child: ScrollConfiguration(
-                behavior:
-                    ScrollConfiguration.of(context).copyWith(overscroll: false),
-                child: RefreshIndicator(
-                  displacement: 20,
-                  edgeOffset: 0,
-                  onRefresh: _handleRefresh,
-                  color: AppColors.teal,
-                  child: history.isEmpty
-                      ? _buildEmptyState()
-                      : ListView.builder(
-                          physics: const AlwaysScrollableScrollPhysics(
-                            parent: ClampingScrollPhysics(),
-                          ),
-                          controller: _scrollController,
-                          padding: const EdgeInsets.all(AppSizes.pagePadding),
-                          itemCount: history.length + (_isLoadingMore ? 1 : 0),
-                          itemBuilder: (context, index) {
-                            if (index == history.length) {
-                              return const Padding(
-                                padding: EdgeInsets.symmetric(vertical: 16),
-                                child: Center(
-                                  child: SizedBox(
-                                    width: 24,
-                                    height: 24,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: AppColors.teal,
-                                    ),
+              child: RefreshIndicator(
+                onRefresh: _handleRefresh,
+                color: AppColors.teal,
+                child: history.isEmpty
+                    ? _buildEmptyState()
+                    : ListView.builder(
+                        controller: _scrollController,
+                        padding: const EdgeInsets.all(AppSizes.pagePadding),
+                        itemCount: history.length + (_isLoadingMore ? 1 : 0),
+                        itemBuilder: (context, index) {
+                          if (index == history.length) {
+                            return const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 16),
+                              child: Center(
+                                child: SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: AppColors.teal,
                                   ),
                                 ),
-                              );
-                            }
+                              ),
+                            );
+                          }
 
-                            final item = history[index];
-                            return _buildHistoryCard(item);
-                          },
-                        ),
-                ),
+                          final item = history[index];
+                          return _buildHistoryCard(item);
+                        },
+                      ),
               ),
             ),
           ],
@@ -301,7 +292,7 @@ class _BookingHistoryScreenState extends State<BookingHistoryScreen> {
                       ],
                     ),
                     Text(
-                      '\$${item.totalAmount.toInt()}.00',
+                      'Rs. ${item.totalAmount.toInt()}.00',
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
@@ -338,9 +329,7 @@ class _BookingHistoryScreenState extends State<BookingHistoryScreen> {
   Widget _buildEmptyState() {
     return Center(
       child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(
-          parent: ClampingScrollPhysics(),
-        ),
+        physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisSize: MainAxisSize.min,

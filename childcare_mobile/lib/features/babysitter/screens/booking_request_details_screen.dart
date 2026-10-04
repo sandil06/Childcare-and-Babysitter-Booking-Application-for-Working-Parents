@@ -459,11 +459,11 @@ class _BookingRequestDetailsScreenState
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        '\$${booking.hourlyRate.toInt()} / hr × ${booking.durationHours.toInt()} hours',
+                        'Rs. ${booking.hourlyRate.toInt()} / hr × ${booking.durationHours.toInt()} hours',
                         style: const TextStyle(color: AppColors.muted, fontSize: 13),
                       ),
                       Text(
-                        '\$${booking.totalAmount.toInt()}.00',
+                        'Rs. ${booking.totalAmount.toInt()}.00',
                         style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
@@ -485,7 +485,7 @@ class _BookingRequestDetailsScreenState
                         ),
                       ),
                       Text(
-                        '\$${booking.totalAmount.toInt()}.00',
+                        'Rs. ${booking.totalAmount.toInt()}.00',
                         style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w700,

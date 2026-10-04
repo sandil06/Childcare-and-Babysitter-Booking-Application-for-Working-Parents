@@ -167,23 +167,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         ],
       ),
       body: SafeArea(
-        child: ScrollConfiguration(
-          behavior:
-              ScrollConfiguration.of(context).copyWith(overscroll: false),
-          child: RefreshIndicator(
-            displacement: 20,
-            edgeOffset: 0,
-            onRefresh: _handleRefresh,
-            color: AppColors.teal,
-            child: notifications.isEmpty
-                ? _buildEmptyState()
-                : ListView.builder(
-                    physics: const AlwaysScrollableScrollPhysics(
-                      parent: ClampingScrollPhysics(),
-                    ),
-                    padding: const EdgeInsets.all(AppSizes.pagePadding),
-                    itemCount: notifications.length,
-                    itemBuilder: (context, index) {
+        child: RefreshIndicator(
+          onRefresh: _handleRefresh,
+          color: AppColors.teal,
+          child: notifications.isEmpty
+              ? _buildEmptyState()
+              : ListView.builder(
+                  padding: const EdgeInsets.all(AppSizes.pagePadding),
+                  itemCount: notifications.length,
+                  itemBuilder: (context, index) {
                     final notif = notifications[index];
                     final isRead = notif['isRead'] == true;
                     final type = notif['type']?.toString() ?? 'system';
@@ -294,7 +286,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     );
                   },
                 ),
-          ),
         ),
       ),
     );
@@ -303,9 +294,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   Widget _buildEmptyState() {
     return Center(
       child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(
-          parent: ClampingScrollPhysics(),
-        ),
+        physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisSize: MainAxisSize.min,

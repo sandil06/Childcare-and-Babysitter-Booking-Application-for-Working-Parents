@@ -167,24 +167,17 @@ class _SitterDashboardScreenState extends State<SitterDashboardScreen> {
     return Scaffold(
       backgroundColor: AppColors.cream,
       body: SafeArea(
-        child: ScrollConfiguration(
-          behavior: ScrollConfiguration.of(context).copyWith(overscroll: false),
-          child: RefreshIndicator(
-            displacement: 20,
-            edgeOffset: 0,
-            onRefresh: _handleRefresh,
-            color: AppColors.teal,
-            child: ListView(
-              physics: const AlwaysScrollableScrollPhysics(
-                parent: ClampingScrollPhysics(),
-              ),
-              key: const PageStorageKey<String>('sitter_dashboard_scroll'),
-              padding: const EdgeInsets.fromLTRB(
-                AppSizes.pagePadding,
-                16,
-                AppSizes.pagePadding,
-                32,
-              ),
+        child: RefreshIndicator(
+          onRefresh: _handleRefresh,
+          color: AppColors.teal,
+          child: ListView(
+            key: const PageStorageKey<String>('sitter_dashboard_scroll'),
+            padding: const EdgeInsets.fromLTRB(
+              AppSizes.pagePadding,
+              16,
+              AppSizes.pagePadding,
+              32,
+            ),
             children: [
               if (_provider.errorMessage != null) ...[
                 Container(
@@ -257,7 +250,6 @@ class _SitterDashboardScreenState extends State<SitterDashboardScreen> {
           ),
         ),
       ),
-    ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: 0,
         backgroundColor: Colors.white,
@@ -504,7 +496,7 @@ class _SitterDashboardScreenState extends State<SitterDashboardScreen> {
         Expanded(
           child: DashboardStatCard(
             title: 'Earnings',
-            value: '\$${earnings.toInt()}',
+            value: 'Rs. ${earnings.toInt()}',
             subtitle: 'Lifetime gross',
             icon: Icons.account_balance_wallet_outlined,
             accentColor: AppColors.teal,
@@ -776,7 +768,7 @@ class _SitterDashboardScreenState extends State<SitterDashboardScreen> {
                     ),
                     const Spacer(),
                     Text(
-                      '\$${booking.totalAmount.toInt()}.00',
+                      'Rs. ${booking.totalAmount.toInt()}.00',
                       style: const TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
@@ -941,7 +933,7 @@ class _SitterDashboardScreenState extends State<SitterDashboardScreen> {
                         ),
                       ),
                       Text(
-                        '\$${req.totalAmount.toInt()}.00',
+                        'Rs. ${req.totalAmount.toInt()}.00',
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,

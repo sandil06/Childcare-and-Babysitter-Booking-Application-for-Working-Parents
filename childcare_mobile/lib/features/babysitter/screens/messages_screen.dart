@@ -68,10 +68,8 @@ class _MessagesScreenState extends State<MessagesScreen> {
     _fetchConversations();
   }
 
-  Future<void> _fetchConversations({bool isRefresh = false}) async {
-    if (!isRefresh) {
-      setState(() => _isLoading = true);
-    }
+  Future<void> _fetchConversations() async {
+    setState(() => _isLoading = true);
     try {
       final list = await _service.getConversations();
       if (mounted) {
@@ -109,7 +107,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
   }
 
   Future<void> _handleRefresh() async {
-    await _fetchConversations(isRefresh: true);
+    await _fetchConversations();
   }
 
   String _formatTime(DateTime time) {
@@ -192,49 +190,40 @@ class _MessagesScreenState extends State<MessagesScreen> {
 
             // Conversation List
             Expanded(
-              child: ScrollConfiguration(
-                behavior:
-                    ScrollConfiguration.of(context).copyWith(overscroll: false),
-                child: RefreshIndicator(
-                  displacement: 20,
-                  edgeOffset: 0,
-                  onRefresh: _handleRefresh,
-                  color: AppColors.teal,
-                  child: _isLoading
-                      ? const Center(
-                          child: CircularProgressIndicator(color: AppColors.teal),
-                        )
-                      : filtered.isEmpty
-                          ? _buildEmptyState()
-                          : ListView.builder(
-                              physics: const AlwaysScrollableScrollPhysics(
-                                parent: ClampingScrollPhysics(),
+              child: RefreshIndicator(
+                onRefresh: _handleRefresh,
+                color: AppColors.teal,
+                child: _isLoading
+                    ? const Center(
+                        child: CircularProgressIndicator(color: AppColors.teal),
+                      )
+                    : filtered.isEmpty
+                        ? _buildEmptyState()
+                        : ListView.builder(
+                        controller: _scrollController,
+                        padding: const EdgeInsets.all(AppSizes.pagePadding),
+                        itemCount: filtered.length + (_isLoadingMore ? 1 : 0),
+                        itemBuilder: (context, index) {
+                          if (index == filtered.length) {
+                            return const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 16),
+                              child: Center(
+                                child: SizedBox(
+                                  width: 22,
+                                  height: 22,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: AppColors.teal,
+                                  ),
+                                ),
                               ),
-                              controller: _scrollController,
-                              padding: const EdgeInsets.all(AppSizes.pagePadding),
-                              itemCount: filtered.length + (_isLoadingMore ? 1 : 0),
-                              itemBuilder: (context, index) {
-                                if (index == filtered.length) {
-                                  return const Padding(
-                                    padding: EdgeInsets.symmetric(vertical: 16),
-                                    child: Center(
-                                      child: SizedBox(
-                                        width: 22,
-                                        height: 22,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          color: AppColors.teal,
-                                        ),
-                                      ),
-                                    ),
-                                  );
-                                }
+                            );
+                          }
 
-                                final item = filtered[index];
-                                return _buildConversationCard(item);
-                              },
-                            ),
-                ),
+                          final item = filtered[index];
+                          return _buildConversationCard(item);
+                        },
+                      ),
               ),
             ),
           ],
@@ -375,9 +364,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
   Widget _buildEmptyState() {
     return Center(
       child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(
-          parent: ClampingScrollPhysics(),
-        ),
+        physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisSize: MainAxisSize.min,

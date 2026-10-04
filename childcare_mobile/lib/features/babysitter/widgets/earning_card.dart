@@ -110,7 +110,7 @@ class EarningCard extends StatelessWidget {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          '${earning.durationHours.toStringAsFixed(1)} hrs • \$${earning.hourlyRate.toStringAsFixed(0)}/hr',
+                          '${earning.durationHours.toStringAsFixed(1)} hrs • Rs. ${earning.hourlyRate.toStringAsFixed(0)}/hr',
                           style: TextStyle(
                             fontSize: 12,
                             color: AppColors.muted.withValues(alpha: 0.9),
@@ -123,7 +123,7 @@ class EarningCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text(
-                        '+\$${earning.netAmount.toStringAsFixed(2)}',
+                        '+Rs. ${earning.netAmount.toStringAsFixed(2)}',
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,

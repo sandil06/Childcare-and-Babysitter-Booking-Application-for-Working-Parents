@@ -49,17 +49,18 @@ const bookingSchema = new mongoose.Schema(
     hourlyRate: {
       type: Number,
       required: true,
-      default: 25.0,
+      default: 1500.0,
     },
     total: {
       type: Number,
       min: 0,
-      default: 100.0,
+      default: 6000.0,
     },
     location: {
       type: String,
       required: true,
       trim: true,
+      default: 'Colombo, Sri Lanka',
     },
     children: {
       type: [childSchema],

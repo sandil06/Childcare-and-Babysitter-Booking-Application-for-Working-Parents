@@ -73,7 +73,7 @@ class _SitterEarningsScreenState extends State<SitterEarningsScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Your earnings are automatically transferred every Monday to your linked bank account. You can also request an instant payout.',
+                'Your earnings are automatically transferred every Monday to your linked Sri Lankan bank account (CEFT / SLIPS). You can also request an instant payout.',
                 style: TextStyle(
                   fontSize: 13,
                   color: AppColors.muted.withValues(alpha: 0.9),
@@ -100,7 +100,7 @@ class _SitterEarningsScreenState extends State<SitterEarningsScreen> {
                       ),
                     ),
                     Text(
-                      '\$${availableBalance.toStringAsFixed(2)}',
+                      'Rs. ${availableBalance.toStringAsFixed(2)}',
                       style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.w700,
@@ -188,18 +188,11 @@ class _SitterEarningsScreenState extends State<SitterEarningsScreen> {
           ),
           body: isLoading
               ? const Center(child: CircularProgressIndicator(color: AppColors.teal))
-              : ScrollConfiguration(
-                  behavior: ScrollConfiguration.of(context)
-                      .copyWith(overscroll: false),
-                  child: RefreshIndicator(
-                    displacement: 20,
-                    edgeOffset: 0,
-                    color: AppColors.teal,
-                    onRefresh: _loadEarnings,
-                    child: SingleChildScrollView(
-                      physics: const AlwaysScrollableScrollPhysics(
-                        parent: ClampingScrollPhysics(),
-                      ),
+              : RefreshIndicator(
+                  color: AppColors.teal,
+                  onRefresh: _loadEarnings,
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
                     padding: const EdgeInsets.all(20),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -268,7 +261,6 @@ class _SitterEarningsScreenState extends State<SitterEarningsScreen> {
                     ),
                   ),
                 ),
-              ),
         );
       },
     );
@@ -341,7 +333,7 @@ class _SitterEarningsScreenState extends State<SitterEarningsScreen> {
           ),
           const SizedBox(height: 10),
           Text(
-            '\$${displayAmount.toStringAsFixed(2)}',
+            'Rs. ${displayAmount.toStringAsFixed(2)}',
             style: const TextStyle(
               fontSize: 34,
               fontWeight: FontWeight.w800,
@@ -351,7 +343,7 @@ class _SitterEarningsScreenState extends State<SitterEarningsScreen> {
           ),
           const SizedBox(height: 16),
           const Divider(height: 1, color: Colors.white12),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -367,7 +359,7 @@ class _SitterEarningsScreenState extends State<SitterEarningsScreen> {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    '\$${earnings.totalEarnings.toStringAsFixed(2)}',
+                    'Rs. ${earnings.totalEarnings.toStringAsFixed(2)}',
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
@@ -516,7 +508,7 @@ class _SitterEarningsScreenState extends State<SitterEarningsScreen> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    '${points[_selectedBarIndex].day}: \$${points[_selectedBarIndex].amount.toStringAsFixed(0)}',
+                    '${points[_selectedBarIndex].day}: Rs. ${points[_selectedBarIndex].amount.toStringAsFixed(0)}',
                     style: const TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
@@ -554,7 +546,7 @@ class _SitterEarningsScreenState extends State<SitterEarningsScreen> {
                         Padding(
                           padding: const EdgeInsets.only(bottom: 6),
                           child: Text(
-                            '\$${point.amount.toInt()}',
+                            'Rs. ${point.amount.toInt()}',
                             style: TextStyle(
                               fontSize: 10,
                               fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
@@ -624,7 +616,7 @@ class _SitterEarningsScreenState extends State<SitterEarningsScreen> {
         Expanded(
           child: _buildMetricTile(
             label: 'Avg Rate',
-            value: '\$${earnings.hourlyRateAverage.toStringAsFixed(0)}',
+            value: 'Rs. ${earnings.hourlyRateAverage.toStringAsFixed(0)}',
             unit: '/ hour',
             icon: Icons.timer_outlined,
             accentColor: const Color(0xFF6366F1),
@@ -634,7 +626,7 @@ class _SitterEarningsScreenState extends State<SitterEarningsScreen> {
         Expanded(
           child: _buildMetricTile(
             label: 'Pending',
-            value: '\$${earnings.pendingPayout.toStringAsFixed(0)}',
+            value: 'Rs. ${earnings.pendingPayout.toStringAsFixed(0)}',
             unit: 'payout',
             icon: Icons.pending_actions,
             accentColor: AppColors.coral,
@@ -775,11 +767,11 @@ class _SitterEarningsScreenState extends State<SitterEarningsScreen> {
               _buildReceiptRow('Parent', item.parentName),
               _buildReceiptRow('Booking Reference', item.bookingId.isNotEmpty ? item.bookingId : item.id),
               _buildReceiptRow('Duration', '${item.durationHours.toStringAsFixed(1)} hours'),
-              _buildReceiptRow('Rate', '\$${item.hourlyRate.toStringAsFixed(0)} / hour'),
+              _buildReceiptRow('Rate', 'Rs. ${item.hourlyRate.toStringAsFixed(0)} / hour'),
               if (item.serviceFee > 0)
-                _buildReceiptRow('Platform Fee', '-\$${item.serviceFee.toStringAsFixed(2)}'),
+                _buildReceiptRow('Platform Fee', '-Rs. ${item.serviceFee.toStringAsFixed(2)}'),
               const Divider(height: 24),
-              _buildReceiptRow('Net Earnings', '\$${item.netAmount.toStringAsFixed(2)}', isBold: true),
+              _buildReceiptRow('Net Earnings', 'Rs. ${item.netAmount.toStringAsFixed(2)}', isBold: true),
               const SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,

@@ -16,13 +16,13 @@ class SitterDetailsScreen extends StatelessWidget {
         const BabysitterModel(
           id: 'sitter-1',
           userId: 'u-1',
-          name: 'Maya Johnson',
-          email: 'maya.johnson@example.com',
-          phone: '+1 (555) 019-2834',
-          address: 'Brooklyn, NY',
+          name: 'Kavindi Perera',
+          email: 'kavindi.perera@example.com',
+          phone: '+94 77 019 2834',
+          address: 'Colombo, Sri Lanka',
           bio:
-              'Certified early childhood educator with over 4 years of experience specializing in infant care and toddler development. Passionate about fun, creative learning and child safety.',
-          hourlyRate: 28.0,
+              'Certified early childhood educator with over 4 years of experience specializing in infant care and toddler development across Colombo. Passionate about fun, creative learning and child safety.',
+          hourlyRate: 1500.0,
           experienceYears: 4,
           skills: [
             'Infant Care',
@@ -31,10 +31,10 @@ class SitterDetailsScreen extends StatelessWidget {
             'Meal Preparation',
             'Bedtime Routines',
           ],
-          languages: ['English', 'Spanish'],
+          languages: ['Sinhala', 'English', 'Tamil'],
           qualifications: [
-            'CPR & Pediatric First Aid Certified (Red Cross)',
-            'Early Childhood Education Associate Degree',
+            'CPR & Pediatric First Aid Certified (SL Red Cross)',
+            'Early Childhood Education Diploma',
           ],
           verificationStatus: 'verified',
           averageRating: 4.95,
@@ -117,7 +117,7 @@ class SitterDetailsScreen extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _buildMetric('Rate', '\$${sitter.hourlyRate.toInt()}/hr', AppColors.teal),
+                _buildMetric('Rate', 'Rs. ${sitter.hourlyRate.toInt()}/hr', AppColors.teal),
                 Container(height: 32, width: 1, color: AppColors.sand),
                 _buildMetric('Rating', '★ ${sitter.averageRating}', AppColors.coral),
                 Container(height: 32, width: 1, color: AppColors.sand),

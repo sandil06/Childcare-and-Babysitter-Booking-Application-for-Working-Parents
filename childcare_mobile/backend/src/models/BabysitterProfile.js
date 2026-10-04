@@ -42,7 +42,7 @@ const babysitterProfileSchema = new mongoose.Schema(
       type: Number,
       required: true,
       min: 0,
-      default: 25.0,
+      default: 1500.0,
     },
     experienceYears: {
       type: Number,
@@ -57,7 +57,7 @@ const babysitterProfileSchema = new mongoose.Schema(
     },
     languages: {
       type: [String],
-      default: ['English'],
+      default: ['Sinhala', 'English'],
     },
     qualifications: {
       type: [String],

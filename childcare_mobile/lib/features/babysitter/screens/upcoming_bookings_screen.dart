@@ -112,28 +112,19 @@ class _UpcomingBookingsScreenState extends State<UpcomingBookingsScreen> {
         centerTitle: true,
       ),
       body: SafeArea(
-        child: ScrollConfiguration(
-          behavior:
-              ScrollConfiguration.of(context).copyWith(overscroll: false),
-          child: RefreshIndicator(
-            displacement: 20,
-            edgeOffset: 0,
-            onRefresh: _handleRefresh,
-            color: AppColors.teal,
-            child: upcoming.isEmpty
-                ? _buildEmptyState()
-                : ListView.builder(
-                    physics: const AlwaysScrollableScrollPhysics(
-                      parent: ClampingScrollPhysics(),
-                    ),
-                    padding: const EdgeInsets.all(AppSizes.pagePadding),
-                    itemCount: upcoming.length,
-                    itemBuilder: (context, index) {
-                      final booking = upcoming[index];
-                      return _buildBookingCard(booking);
-                    },
-                  ),
-          ),
+        child: RefreshIndicator(
+          onRefresh: _handleRefresh,
+          color: AppColors.teal,
+          child: upcoming.isEmpty
+              ? _buildEmptyState()
+              : ListView.builder(
+                  padding: const EdgeInsets.all(AppSizes.pagePadding),
+                  itemCount: upcoming.length,
+                  itemBuilder: (context, index) {
+                    final booking = upcoming[index];
+                    return _buildBookingCard(booking);
+                  },
+                ),
         ),
       ),
     );
@@ -297,7 +288,7 @@ class _UpcomingBookingsScreenState extends State<UpcomingBookingsScreen> {
                         const Text('Total Payout',
                             style: TextStyle(fontSize: 11, color: AppColors.muted)),
                         Text(
-                          '\$${booking.totalAmount.toInt()}.00',
+                          'Rs. ${booking.totalAmount.toInt()}.00',
                           style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w700,
@@ -339,9 +330,7 @@ class _UpcomingBookingsScreenState extends State<UpcomingBookingsScreen> {
   Widget _buildEmptyState() {
     return Center(
       child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(
-          parent: ClampingScrollPhysics(),
-        ),
+        physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisSize: MainAxisSize.min,

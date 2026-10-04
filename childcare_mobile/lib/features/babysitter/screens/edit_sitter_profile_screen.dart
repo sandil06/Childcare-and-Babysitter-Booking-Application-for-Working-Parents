@@ -43,8 +43,9 @@ class _EditSitterProfileScreenState extends State<EditSitterProfileScreen> {
   ];
 
   final List<String> _allLanguages = [
+    'Sinhala',
     'English',
-    'Spanish',
+    'Tamil',
     'French',
     'German',
     'Mandarin',
@@ -216,10 +217,10 @@ class _EditSitterProfileScreenState extends State<EditSitterProfileScreen> {
                   Expanded(
                     child: _buildInput(
                       controller: _hourlyRateController,
-                      label: 'Hourly Rate (\$/hr)',
-                      hint: '28',
+                      label: 'Hourly Rate (Rs./hr)',
+                      hint: '1500',
                       keyboardType: TextInputType.number,
-                      prefixIcon: const Icon(Icons.attach_money_rounded,
+                      prefixIcon: const Icon(Icons.currency_rupee_rounded,
                           color: AppColors.teal, size: 20),
                       validator: (v) {
                         final n = double.tryParse(v ?? '');
@@ -267,7 +268,7 @@ class _EditSitterProfileScreenState extends State<EditSitterProfileScreen> {
               _buildInput(
                 controller: _phoneController,
                 label: 'Phone Number',
-                hint: '+1 (555) 019-2834',
+                hint: '+94 77 123 4567',
                 keyboardType: TextInputType.phone,
                 prefixIcon: const Icon(Icons.phone_outlined,
                     color: AppColors.teal, size: 20),
@@ -276,7 +277,7 @@ class _EditSitterProfileScreenState extends State<EditSitterProfileScreen> {
               _buildInput(
                 controller: _addressController,
                 label: 'Street Address & City',
-                hint: '24 Elm Street, Brooklyn, NY',
+                hint: 'No. 45, Galle Road, Colombo 03',
                 prefixIcon: const Icon(Icons.location_on_outlined,
                     color: AppColors.teal, size: 20),
               ),

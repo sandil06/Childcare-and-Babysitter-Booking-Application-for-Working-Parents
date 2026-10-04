@@ -55,19 +55,20 @@ class _SitterRegistrationScreenState extends State<SitterRegistrationScreen> {
   // Professional Info Controllers
   final _bioController = TextEditingController();
   final _experienceController = TextEditingController(text: '3');
-  final _hourlyRateController = TextEditingController(text: '25');
+  final _hourlyRateController = TextEditingController(text: '1500');
 
   // Languages & Skills
   final List<String> _availableLanguages = [
+    'Sinhala',
     'English',
-    'Spanish',
+    'Tamil',
     'French',
     'German',
     'Mandarin',
     'Arabic',
     'Sign Language'
   ];
-  final Set<String> _selectedLanguages = {'English'};
+  final Set<String> _selectedLanguages = {'Sinhala', 'English'};
 
   final List<String> _availableSkills = [
     'Infant care',
@@ -93,8 +94,8 @@ class _SitterRegistrationScreenState extends State<SitterRegistrationScreen> {
 
   // Qualifications
   final List<String> _qualifications = [
-    'CPR & Pediatric First Aid (Red Cross)',
-    'Early Childhood Education Associate',
+    'CPR & Pediatric First Aid (Sri Lanka Red Cross)',
+    'Diploma in Early Childhood Education (ECCD)',
   ];
   final _qualificationInputController = TextEditingController();
   bool _isSubmitting = false;
@@ -108,19 +109,19 @@ class _SitterRegistrationScreenState extends State<SitterRegistrationScreen> {
   void _fillSampleData() {
     final timestamp = DateTime.now().millisecondsSinceEpoch % 10000;
     setState(() {
-      _firstNameController.text = 'Maya';
-      _lastNameController.text = 'Johnson';
-      _emailController.text = 'maya.johnson$timestamp@example.com';
-      _phoneController.text = '+1 (555) 234-8901';
+      _firstNameController.text = 'Kavindi';
+      _lastNameController.text = 'Perera';
+      _emailController.text = 'kavindi.perera$timestamp@example.com';
+      _phoneController.text = '+94 77 234 8901';
       _passwordController.text = 'Password123!';
       _confirmPasswordController.text = 'Password123!';
-      _addressController.text = '142 Park Avenue, Brooklyn, NY';
+      _addressController.text = 'No. 142, Galle Road, Colombo 03';
       _selectedDob = DateTime(1996, 5, 14);
       _selectedGender = 'Female';
       _bioController.text =
-          'Certified early childhood educator with 4 years of babysitting experience.';
+          'Certified early childhood educator with 4 years of caring babysitting experience across Colombo.';
       _experienceController.text = '4';
-      _hourlyRateController.text = '28';
+      _hourlyRateController.text = '1500';
     });
   }
 
@@ -522,26 +523,26 @@ class _SitterRegistrationScreenState extends State<SitterRegistrationScreen> {
         ),
         const SizedBox(height: 20),
         DocumentUploadCard(
-          title: 'National ID / Passport',
-          description: 'Official government-issued photo ID (front and back).',
+          title: 'National ID (NIC) / Driving License',
+          description: 'Official Sri Lankan NIC (front & back) or Driving License.',
           icon: Icons.badge_outlined,
           status: _docStatuses['id']!,
           fileName: _docFiles['id'],
-          onUpload: () => _simulateUpload('id', 'national_id_card.pdf'),
+          onUpload: () => _simulateUpload('id', 'national_identity_card_nic.pdf'),
           onRemove: () => setState(() {
             _docStatuses['id'] = DocumentUploadStatus.notUploaded;
             _docFiles['id'] = null;
           }),
         ),
         DocumentUploadCard(
-          title: 'Police Clearance / Background Check',
+          title: 'Police Clearance Certificate',
           description:
-              'Official criminal record check issued within the last 12 months.',
+              'Official clearance issued by Sri Lanka Police within the last 12 months.',
           icon: Icons.security_rounded,
           status: _docStatuses['police']!,
           fileName: _docFiles['police'],
           onUpload: () =>
-              _simulateUpload('police', 'police_clearance_certificate.pdf'),
+              _simulateUpload('police', 'sri_lanka_police_clearance.pdf'),
           onRemove: () => setState(() {
             _docStatuses['police'] = DocumentUploadStatus.notUploaded;
             _docFiles['police'] = null;
@@ -550,11 +551,11 @@ class _SitterRegistrationScreenState extends State<SitterRegistrationScreen> {
         DocumentUploadCard(
           title: 'CPR & First Aid Certificate',
           description:
-              'Valid pediatric CPR & First Aid certificate from an accredited provider.',
+              'Valid pediatric CPR & First Aid (Sri Lanka Red Cross / St. John).',
           icon: Icons.medical_services_outlined,
           status: _docStatuses['cpr']!,
           fileName: _docFiles['cpr'],
-          onUpload: () => _simulateUpload('cpr', 'cpr_redcross_cert.pdf'),
+          onUpload: () => _simulateUpload('cpr', 'sl_redcross_cpr_cert.pdf'),
           onRemove: () => setState(() {
             _docStatuses['cpr'] = DocumentUploadStatus.notUploaded;
             _docFiles['cpr'] = null;
@@ -664,7 +665,7 @@ class _SitterRegistrationScreenState extends State<SitterRegistrationScreen> {
           _buildTextField(
             controller: _phoneController,
             label: 'Phone Number',
-            hint: '+1 (555) 019-2834',
+            hint: '+94 77 123 4567',
             keyboardType: TextInputType.phone,
             validator: (v) =>
                 v == null || v.trim().isEmpty ? 'Phone number is required' : null,
@@ -793,7 +794,7 @@ class _SitterRegistrationScreenState extends State<SitterRegistrationScreen> {
           _buildTextField(
             controller: _addressController,
             label: 'Street Address',
-            hint: '24 Elm Street, Brooklyn, NY',
+            hint: 'No. 45, Galle Road, Colombo 03',
             validator: (v) =>
                 v == null || v.trim().isEmpty ? 'Address is required' : null,
           ),
@@ -862,10 +863,10 @@ class _SitterRegistrationScreenState extends State<SitterRegistrationScreen> {
               Expanded(
                 child: _buildTextField(
                   controller: _hourlyRateController,
-                  label: 'Hourly Rate (\$ / hr)',
-                  hint: '25',
+                  label: 'Hourly Rate (Rs. / hr)',
+                  hint: '1500',
                   keyboardType: TextInputType.number,
-                  prefixIcon: const Icon(Icons.attach_money_rounded,
+                  prefixIcon: const Icon(Icons.currency_rupee_rounded,
                       size: 20, color: AppColors.teal),
                   validator: (v) {
                     final n = double.tryParse(v ?? '');
