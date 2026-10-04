@@ -4,6 +4,8 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_sizes.dart';
 import 'chat_screen.dart';
 
+import '../services/babysitter_service.dart';
+
 class ConversationItem {
   const ConversationItem({
     required this.id,
@@ -54,51 +56,31 @@ class MessagesScreen extends StatefulWidget {
 class _MessagesScreenState extends State<MessagesScreen> {
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final BabysitterService _service = BabysitterService();
+  bool _isLoading = true;
   bool _isLoadingMore = false;
-
-  final List<ConversationItem> _conversations = [
-    ConversationItem(
-      id: 'conv-1',
-      parentId: 'p-1',
-      parentName: 'Sarah Jenkins',
-      lastMessage: 'Hi Maya, can you please arrive 10 minutes early today?',
-      lastMessageTime: DateTime.now().subtract(const Duration(minutes: 15)),
-      unreadCount: 1,
-      isOnline: true,
-    ),
-    ConversationItem(
-      id: 'conv-2',
-      parentId: 'p-2',
-      parentName: 'Michael Chang',
-      lastMessage: 'Thank you! Lucas had a wonderful time building blocks.',
-      lastMessageTime: DateTime.now().subtract(const Duration(hours: 2)),
-      unreadCount: 0,
-      isOnline: false,
-    ),
-    ConversationItem(
-      id: 'conv-3',
-      parentId: 'p-3',
-      parentName: 'Emily Watson',
-      lastMessage: 'Payment sent! Thanks so much for caring for Chloe.',
-      lastMessageTime: DateTime.now().subtract(const Duration(days: 1)),
-      unreadCount: 0,
-      isOnline: true,
-    ),
-    ConversationItem(
-      id: 'conv-4',
-      parentId: 'p-4',
-      parentName: 'David Miller',
-      lastMessage: 'Let us know if you have availability for next Saturday evening.',
-      lastMessageTime: DateTime.now().subtract(const Duration(days: 3)),
-      unreadCount: 0,
-      isOnline: false,
-    ),
-  ];
+  List<ConversationItem> _conversations = [];
 
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+    _fetchConversations();
+  }
+
+  Future<void> _fetchConversations() async {
+    setState(() => _isLoading = true);
+    try {
+      final list = await _service.getConversations();
+      if (mounted) {
+        setState(() {
+          _conversations = list.map(ConversationItem.fromJson).toList();
+          _isLoading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   @override
@@ -125,8 +107,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
   }
 
   Future<void> _handleRefresh() async {
-    await Future.delayed(const Duration(milliseconds: 400));
-    if (mounted) setState(() {});
+    await _fetchConversations();
   }
 
   String _formatTime(DateTime time) {
@@ -212,9 +193,13 @@ class _MessagesScreenState extends State<MessagesScreen> {
               child: RefreshIndicator(
                 onRefresh: _handleRefresh,
                 color: AppColors.teal,
-                child: filtered.isEmpty
-                    ? _buildEmptyState()
-                    : ListView.builder(
+                child: _isLoading
+                    ? const Center(
+                        child: CircularProgressIndicator(color: AppColors.teal),
+                      )
+                    : filtered.isEmpty
+                        ? _buildEmptyState()
+                        : ListView.builder(
                         controller: _scrollController,
                         padding: const EdgeInsets.all(AppSizes.pagePadding),
                         itemCount: filtered.length + (_isLoadingMore ? 1 : 0),

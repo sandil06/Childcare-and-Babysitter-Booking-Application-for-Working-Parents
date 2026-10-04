@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 const BabysitterProfile = require('../models/BabysitterProfile');
+const Notification = require('../models/Notification');
 const ROLES = require('../constants/roles');
 const ApiError = require('../utils/ApiError');
 
@@ -134,6 +135,15 @@ async function registerBabysitter(data) {
     });
 
     await profile.populate('user', 'name email phone avatar');
+
+    await Notification.create({
+      user: user._id,
+      title: 'Registration Received',
+      message: 'Your babysitter application has been submitted and is currently pending review.',
+      type: 'system',
+      isRead: false,
+    });
+
     return { user, profile };
   }
 

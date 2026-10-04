@@ -2,7 +2,6 @@ const mongoose = require('mongoose');
 const Booking = require('../models/Booking');
 const BabysitterProfile = require('../models/BabysitterProfile');
 const ApiResponse = require('../utils/ApiResponse');
-const ApiError = require('../utils/ApiError');
 
 function isDbConnected() {
   return mongoose.connection.readyState === 1;
@@ -12,48 +11,9 @@ function getUserId(req) {
   return req.user?.sub || req.user?.id;
 }
 
-// Default seed items if no completed bookings exist in store yet
-const SEED_EARNINGS = [
-  {
-    id: 'earn-1',
-    bookingId: '#BK-8841',
-    parentName: 'Sarah Jenkins',
-    date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
-    durationHours: 4.0,
-    hourlyRate: 28.0,
-    serviceFee: 5.60,
-    netAmount: 106.40,
-    status: 'paid',
-  },
-  {
-    id: 'earn-2',
-    bookingId: '#BK-8835',
-    parentName: 'David Miller',
-    date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
-    durationHours: 3.5,
-    hourlyRate: 25.0,
-    serviceFee: 4.38,
-    netAmount: 83.12,
-    status: 'paid',
-  },
-  {
-    id: 'earn-3',
-    bookingId: '#BK-8820',
-    parentName: 'Emily Watson',
-    date: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000),
-    durationHours: 5.0,
-    hourlyRate: 25.0,
-    serviceFee: 6.25,
-    netAmount: 118.75,
-    status: 'paid',
-  },
-];
-
 async function getMeEarnings(req, res, next) {
   try {
     const userId = getUserId(req);
-    const range = req.query.range || 'weekly';
-
     let completedBookings = [];
     let defaultHourlyRate = 25.0;
 
@@ -71,33 +31,27 @@ async function getMeEarnings(req, res, next) {
         .sort({ date: -1 });
     }
 
-    let earningsItems = [];
+    const earningsItems = completedBookings.map((b) => {
+      const duration = Number(b.durationHours) || 4.0;
+      const rate = Number(b.hourlyRate) || defaultHourlyRate;
+      const gross = duration * rate;
+      const serviceFee = Number((gross * 0.05).toFixed(2));
+      const netAmount = Number((gross - serviceFee).toFixed(2));
 
-    if (completedBookings.length > 0) {
-      earningsItems = completedBookings.map((b) => {
-        const duration = Number(b.durationHours) || 4.0;
-        const rate = Number(b.hourlyRate) || defaultHourlyRate;
-        const gross = duration * rate;
-        const serviceFee = Number((gross * 0.05).toFixed(2));
-        const netAmount = Number((gross - serviceFee).toFixed(2));
+      return {
+        id: b._id ? b._id.toString() : b.id,
+        bookingId: b.bookingId || `#BK-${b._id ? b._id.toString().slice(-4) : '0000'}`,
+        parentName: b.parent?.name || 'Parent',
+        date: b.date || new Date(),
+        durationHours: duration,
+        hourlyRate: rate,
+        serviceFee,
+        netAmount,
+        status: b.paymentStatus || 'paid',
+      };
+    });
 
-        return {
-          id: b._id ? b._id.toString() : b.id,
-          bookingId: b.bookingId || `#BK-${b._id ? b._id.toString().slice(-4) : '0000'}`,
-          parentName: b.parent?.name || 'Parent',
-          date: b.date || new Date(),
-          durationHours: duration,
-          hourlyRate: rate,
-          serviceFee,
-          netAmount,
-          status: b.paymentStatus || 'paid',
-        };
-      });
-    } else {
-      earningsItems = [...SEED_EARNINGS];
-    }
-
-    // Dynamic calculations based strictly on completed bookings
+    // Dynamic calculations based strictly on completed bookings in database
     const totalEarnings = earningsItems.reduce((acc, cur) => acc + cur.netAmount, 0);
 
     const now = new Date();
@@ -138,24 +92,10 @@ async function getMeEarnings(req, res, next) {
       }
     }
 
-    // If recent items exist in the map, use them, otherwise provide healthy distribution
-    let weeklyData = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => ({
+    const weeklyData = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => ({
       day,
       amount: Number(weeklyDataMap[day].toFixed(2)),
     }));
-
-    const hasAnyWeeklyAmount = weeklyData.some((p) => p.amount > 0);
-    if (!hasAnyWeeklyAmount) {
-      weeklyData = [
-        { day: 'Mon', amount: 50.0 },
-        { day: 'Tue', amount: 75.0 },
-        { day: 'Wed', amount: 0.0 },
-        { day: 'Thu', amount: 60.0 },
-        { day: 'Fri', amount: 90.0 },
-        { day: 'Sat', amount: 0.0 },
-        { day: 'Sun', amount: 0.0 },
-      ];
-    }
 
     const responseData = {
       totalEarnings: Number(totalEarnings.toFixed(2)),
@@ -210,7 +150,7 @@ async function getMeEarningsHistory(req, res, next) {
       return ApiResponse.success(res, items, 'Earnings history retrieved');
     }
 
-    return ApiResponse.success(res, SEED_EARNINGS, 'Earnings history retrieved');
+    return ApiResponse.success(res, [], 'Earnings history retrieved');
   } catch (err) {
     next(err);
   }
@@ -218,7 +158,6 @@ async function getMeEarningsHistory(req, res, next) {
 
 async function requestPayout(req, res, next) {
   try {
-    const userId = getUserId(req);
     return ApiResponse.success(
       res,
       {

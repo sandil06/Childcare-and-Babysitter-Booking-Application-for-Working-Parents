@@ -37,8 +37,7 @@ class _SitterDashboardScreenState extends State<SitterDashboardScreen> {
   }
 
   Future<void> _handleRefresh() async {
-    await _provider.fetchDashboard();
-    await _provider.fetchNotifications();
+    await _provider.refreshDashboard();
   }
 
   String _getGreeting() {
@@ -65,7 +64,10 @@ class _SitterDashboardScreenState extends State<SitterDashboardScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel', style: TextStyle(color: AppColors.muted)),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: AppColors.muted),
+            ),
           ),
           FilledButton(
             onPressed: () async {
@@ -74,7 +76,9 @@ class _SitterDashboardScreenState extends State<SitterDashboardScreen> {
               if (mounted && ok) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                    content: Text('Booking accepted! Moved to Upcoming Bookings.'),
+                    content: Text(
+                      'Booking accepted! Moved to Upcoming Bookings.',
+                    ),
                     backgroundColor: AppColors.teal,
                   ),
                 );
@@ -82,7 +86,9 @@ class _SitterDashboardScreenState extends State<SitterDashboardScreen> {
             },
             style: FilledButton.styleFrom(
               backgroundColor: AppColors.teal,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
             child: const Text('Accept Booking'),
           ),
@@ -108,7 +114,10 @@ class _SitterDashboardScreenState extends State<SitterDashboardScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel', style: TextStyle(color: AppColors.muted)),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: AppColors.muted),
+            ),
           ),
           FilledButton(
             onPressed: () async {
@@ -125,7 +134,9 @@ class _SitterDashboardScreenState extends State<SitterDashboardScreen> {
             },
             style: FilledButton.styleFrom(
               backgroundColor: AppColors.coral,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
             child: const Text('Decline'),
           ),
@@ -136,7 +147,8 @@ class _SitterDashboardScreenState extends State<SitterDashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final profile = _provider.profile ??
+    final profile =
+        _provider.profile ??
         const BabysitterModel(
           id: 'temp',
           userId: 'u-temp',
@@ -167,7 +179,9 @@ class _SitterDashboardScreenState extends State<SitterDashboardScreen> {
               if (_provider.errorMessage != null) ...[
                 Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 10),
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
                   margin: const EdgeInsets.only(bottom: 16),
                   decoration: BoxDecoration(
                     color: const Color(0xFFFDE8E8),
@@ -178,8 +192,11 @@ class _SitterDashboardScreenState extends State<SitterDashboardScreen> {
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.error_outline_rounded,
-                          color: AppColors.coral, size: 18),
+                      const Icon(
+                        Icons.error_outline_rounded,
+                        color: AppColors.coral,
+                        size: 18,
+                      ),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
@@ -192,8 +209,11 @@ class _SitterDashboardScreenState extends State<SitterDashboardScreen> {
                         ),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.refresh_rounded,
-                            size: 18, color: AppColors.coral),
+                        icon: const Icon(
+                          Icons.refresh_rounded,
+                          size: 18,
+                          color: AppColors.coral,
+                        ),
                         onPressed: _handleRefresh,
                         tooltip: 'Retry',
                       ),
@@ -258,17 +278,26 @@ class _SitterDashboardScreenState extends State<SitterDashboardScreen> {
           ),
           NavigationDestination(
             icon: Icon(Icons.calendar_today_outlined),
-            selectedIcon: Icon(Icons.calendar_today_rounded, color: AppColors.teal),
+            selectedIcon: Icon(
+              Icons.calendar_today_rounded,
+              color: AppColors.teal,
+            ),
             label: 'Bookings',
           ),
           NavigationDestination(
             icon: Icon(Icons.access_time_rounded),
-            selectedIcon: Icon(Icons.access_time_filled_rounded, color: AppColors.teal),
+            selectedIcon: Icon(
+              Icons.access_time_filled_rounded,
+              color: AppColors.teal,
+            ),
             label: 'Availability',
           ),
           NavigationDestination(
             icon: Icon(Icons.account_balance_wallet_outlined),
-            selectedIcon: Icon(Icons.account_balance_wallet_rounded, color: AppColors.teal),
+            selectedIcon: Icon(
+              Icons.account_balance_wallet_rounded,
+              color: AppColors.teal,
+            ),
             label: 'Earnings',
           ),
           NavigationDestination(
@@ -292,10 +321,10 @@ class _SitterDashboardScreenState extends State<SitterDashboardScreen> {
             child: Text(
               profile.name.isNotEmpty
                   ? profile.name
-                      .split(' ')
-                      .map((e) => e.isNotEmpty ? e[0] : '')
-                      .take(2)
-                      .join()
+                        .split(' ')
+                        .map((e) => e.isNotEmpty ? e[0] : '')
+                        .take(2)
+                        .join()
                   : 'MJ',
               style: const TextStyle(
                 fontWeight: FontWeight.w700,
@@ -329,15 +358,22 @@ class _SitterDashboardScreenState extends State<SitterDashboardScreen> {
                     ),
                   ),
                   const SizedBox(width: 6),
-                  const Icon(Icons.verified_rounded,
-                      size: 16, color: AppColors.teal),
+                  const Icon(
+                    Icons.verified_rounded,
+                    size: 16,
+                    color: AppColors.teal,
+                  ),
                 ],
               ),
             ],
           ),
         ),
         IconButton(
-          icon: const Icon(Icons.swap_horiz_rounded, color: AppColors.ink, size: 24),
+          icon: const Icon(
+            Icons.swap_horiz_rounded,
+            color: AppColors.ink,
+            size: 24,
+          ),
           tooltip: 'Switch to Parent Mode',
           onPressed: () => Navigator.pushNamed(context, AppRoutes.home),
         ),
@@ -345,8 +381,11 @@ class _SitterDashboardScreenState extends State<SitterDashboardScreen> {
         Stack(
           children: [
             IconButton(
-              icon: const Icon(Icons.notifications_none_rounded,
-                  color: AppColors.ink, size: 26),
+              icon: const Icon(
+                Icons.notifications_none_rounded,
+                color: AppColors.ink,
+                size: 26,
+              ),
               onPressed: () =>
                   Navigator.pushNamed(context, AppRoutes.sitterNotifications),
             ),
@@ -360,8 +399,10 @@ class _SitterDashboardScreenState extends State<SitterDashboardScreen> {
                     color: AppColors.coral,
                     shape: BoxShape.circle,
                   ),
-                  constraints:
-                      const BoxConstraints(minWidth: 16, minHeight: 16),
+                  constraints: const BoxConstraints(
+                    minWidth: 16,
+                    minHeight: 16,
+                  ),
                   child: Text(
                     unreadCount.toString(),
                     style: const TextStyle(
@@ -429,10 +470,7 @@ class _SitterDashboardScreenState extends State<SitterDashboardScreen> {
                   profile.isAvailable
                       ? 'You are active and visible to local families.'
                       : 'Toggle on when you are ready to accept jobs.',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AppColors.muted,
-                  ),
+                  style: const TextStyle(fontSize: 12, color: AppColors.muted),
                 ),
               ],
             ),
@@ -448,7 +486,10 @@ class _SitterDashboardScreenState extends State<SitterDashboardScreen> {
   }
 
   Widget _buildSummaryStats(BabysitterModel profile) {
-    final earnings = _provider.dashboardData?['stats']?['totalEarnings'] ?? 1850.0;
+    final earnings =
+        (_provider.dashboardData?['stats']?['totalEarnings'] as num?)
+            ?.toDouble() ??
+        0.0;
     return Row(
       children: [
         Expanded(
@@ -480,7 +521,8 @@ class _SitterDashboardScreenState extends State<SitterDashboardScreen> {
             subtitle: 'Completed',
             icon: Icons.task_alt_rounded,
             accentColor: AppColors.ink,
-            onTap: () => Navigator.pushNamed(context, AppRoutes.sitterBookingHistory),
+            onTap: () =>
+                Navigator.pushNamed(context, AppRoutes.sitterBookingHistory),
           ),
         ),
       ],
@@ -591,9 +633,14 @@ class _SitterDashboardScreenState extends State<SitterDashboardScreen> {
               ),
             ),
             TextButton(
-              onPressed: () =>
-                  Navigator.pushNamed(context, AppRoutes.sitterUpcomingBookings),
-              child: const Text('View all', style: TextStyle(color: AppColors.teal)),
+              onPressed: () => Navigator.pushNamed(
+                context,
+                AppRoutes.sitterUpcomingBookings,
+              ),
+              child: const Text(
+                'View all',
+                style: TextStyle(color: AppColors.teal),
+              ),
             ),
           ],
         ),
@@ -607,8 +654,11 @@ class _SitterDashboardScreenState extends State<SitterDashboardScreen> {
             ),
             child: const Row(
               children: [
-                Icon(Icons.check_circle_outline_rounded,
-                    color: AppColors.teal, size: 28),
+                Icon(
+                  Icons.check_circle_outline_rounded,
+                  color: AppColors.teal,
+                  size: 28,
+                ),
                 SizedBox(width: 14),
                 Expanded(
                   child: Text(
@@ -670,7 +720,9 @@ class _SitterDashboardScreenState extends State<SitterDashboardScreen> {
                             Text(
                               '${booking.childCount} Child (${booking.childrenDetails.isNotEmpty ? booking.childrenDetails.first.name : 'Toddler'})',
                               style: const TextStyle(
-                                  fontSize: 12, color: AppColors.muted),
+                                fontSize: 12,
+                                color: AppColors.muted,
+                              ),
                             ),
                           ],
                         ),
@@ -678,7 +730,9 @@ class _SitterDashboardScreenState extends State<SitterDashboardScreen> {
                     ),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4),
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.mint,
                         borderRadius: BorderRadius.circular(12),
@@ -697,8 +751,11 @@ class _SitterDashboardScreenState extends State<SitterDashboardScreen> {
                 const Divider(height: 22, color: AppColors.sand),
                 Row(
                   children: [
-                    const Icon(Icons.access_time_rounded,
-                        size: 16, color: AppColors.teal),
+                    const Icon(
+                      Icons.access_time_rounded,
+                      size: 16,
+                      color: AppColors.teal,
+                    ),
                     const SizedBox(width: 6),
                     Text(
                       booking.timeFormatted,
@@ -722,8 +779,11 @@ class _SitterDashboardScreenState extends State<SitterDashboardScreen> {
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    const Icon(Icons.location_on_outlined,
-                        size: 16, color: AppColors.muted),
+                    const Icon(
+                      Icons.location_on_outlined,
+                      size: 16,
+                      color: AppColors.muted,
+                    ),
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
@@ -746,7 +806,9 @@ class _SitterDashboardScreenState extends State<SitterDashboardScreen> {
                         onPressed: () {
                           _provider.selectBooking(booking);
                           Navigator.pushNamed(
-                              context, AppRoutes.sitterBookingRequestDetails);
+                            context,
+                            AppRoutes.sitterBookingRequestDetails,
+                          );
                         },
                         style: FilledButton.styleFrom(
                           backgroundColor: AppColors.ink,
@@ -789,7 +851,9 @@ class _SitterDashboardScreenState extends State<SitterDashboardScreen> {
                   const SizedBox(width: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 2),
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
                     decoration: const BoxDecoration(
                       color: AppColors.coral,
                       shape: BoxShape.circle,
@@ -809,7 +873,10 @@ class _SitterDashboardScreenState extends State<SitterDashboardScreen> {
             TextButton(
               onPressed: () =>
                   Navigator.pushNamed(context, AppRoutes.sitterBookingRequests),
-              child: const Text('View all', style: TextStyle(color: AppColors.teal)),
+              child: const Text(
+                'View all',
+                style: TextStyle(color: AppColors.teal),
+              ),
             ),
           ],
         ),
@@ -877,11 +944,15 @@ class _SitterDashboardScreenState extends State<SitterDashboardScreen> {
                   const SizedBox(height: 4),
                   Text(
                     '${req.timeFormatted} (${req.durationHours.toInt()} hrs) · ${req.location}',
-                    style: const TextStyle(fontSize: 12, color: AppColors.muted),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.muted,
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  if (req.specialNotes != null && req.specialNotes!.isNotEmpty) ...[
+                  if (req.specialNotes != null &&
+                      req.specialNotes!.isNotEmpty) ...[
                     const SizedBox(height: 6),
                     Text(
                       '"${req.specialNotes}"',

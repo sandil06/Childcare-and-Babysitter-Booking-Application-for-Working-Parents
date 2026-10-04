@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import '../../../core/network/api_client.dart';
+import '../../../core/storage/local_storage.dart';
 import '../models/availability_model.dart';
 import '../models/babysitter_model.dart';
 import '../models/booking_request_model.dart';
@@ -8,13 +10,12 @@ import '../services/babysitter_service.dart';
 
 class BabysitterProvider extends ChangeNotifier {
   BabysitterProvider({BabysitterService? service})
-      : _service = service ?? BabysitterService() {
+    : _service = service ?? BabysitterService() {
     _init();
   }
 
   static BabysitterProvider? _instance;
-  static BabysitterProvider get instance =>
-      _instance ??= BabysitterProvider();
+  static BabysitterProvider get instance => _instance ??= BabysitterProvider();
 
   final BabysitterService _service;
 
@@ -29,6 +30,9 @@ class BabysitterProvider extends ChangeNotifier {
   BookingRequestModel? _selectedBooking;
   EarningSummaryModel? _earnings;
   List<Map<String, dynamic>> _notifications = [];
+  Future<void>? _dashboardRequest;
+  final Map<String, Future<void>> _bookingRequests = {};
+  Future<void>? _notificationsRequest;
 
   // Getters
   BabysitterModel? get profile => _profile;
@@ -53,6 +57,10 @@ class BabysitterProvider extends ChangeNotifier {
       _bookings.where((b) => b.isCompleted || b.isCancelled).toList();
 
   Future<void> _init() async {
+    final token = await LocalStorage.instance.read('auth_token');
+    if (token != null && token.toString().isNotEmpty) {
+      ApiClient.authToken = token.toString();
+    }
     await fetchProfile();
   }
 
@@ -126,18 +134,34 @@ class BabysitterProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> fetchDashboard() async {
+  Future<void> fetchDashboard() {
+    final inFlight = _dashboardRequest;
+    if (inFlight != null) return inFlight;
+
+    final request = _fetchDashboard();
+    _dashboardRequest = request;
+    return request.whenComplete(() {
+      if (identical(_dashboardRequest, request)) {
+        _dashboardRequest = null;
+      }
+    });
+  }
+
+  Future<void> _fetchDashboard() async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
-      _dashboardData = await _service.getDashboardData();
+      final results = await Future.wait<dynamic>([
+        _service.getDashboardData(),
+        fetchBookings(),
+      ]);
+      _dashboardData = results[0] as Map<String, dynamic>;
       if (_dashboardData != null && _dashboardData!['profile'] != null) {
         _profile = BabysitterModel.fromJson(_dashboardData!['profile']);
         _isAvailable = _profile?.isAvailable ?? true;
       }
-      await fetchBookings();
     } catch (e) {
       _errorMessage = e.toString();
     } finally {
@@ -198,7 +222,21 @@ class BabysitterProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> fetchBookings({String? status}) async {
+  Future<void> fetchBookings({String? status}) {
+    final key = status ?? 'all';
+    final inFlight = _bookingRequests[key];
+    if (inFlight != null) return inFlight;
+
+    final request = _fetchBookings(status: status);
+    _bookingRequests[key] = request;
+    return request.whenComplete(() {
+      if (identical(_bookingRequests[key], request)) {
+        _bookingRequests.remove(key);
+      }
+    });
+  }
+
+  Future<void> _fetchBookings({String? status}) async {
     try {
       _bookings = await _service.getBookings(status: status);
     } catch (e) {
@@ -284,12 +322,16 @@ class BabysitterProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> refreshDashboard() async {
+    await Future.wait([fetchDashboard(), fetchNotifications()]);
+  }
+
   Future<void> refreshDashboardSilently() async {
     try {
-      _dashboardData = await _service.getDashboardData();
-      await fetchBookings();
-    } catch (_) {}
-    notifyListeners();
+      await refreshDashboard();
+    } catch (_) {
+      // Individual service methods preserve cached values on failure.
+    }
   }
 
   Future<void> fetchEarnings({String range = 'weekly'}) async {
@@ -305,7 +347,20 @@ class BabysitterProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> fetchNotifications() async {
+  Future<void> fetchNotifications() {
+    final inFlight = _notificationsRequest;
+    if (inFlight != null) return inFlight;
+
+    final request = _fetchNotifications();
+    _notificationsRequest = request;
+    return request.whenComplete(() {
+      if (identical(_notificationsRequest, request)) {
+        _notificationsRequest = null;
+      }
+    });
+  }
+
+  Future<void> _fetchNotifications() async {
     try {
       _notifications = await _service.getNotifications();
     } catch (e) {

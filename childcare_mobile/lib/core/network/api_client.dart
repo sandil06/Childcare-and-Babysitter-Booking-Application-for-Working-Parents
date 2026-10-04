@@ -6,7 +6,12 @@ import 'api_exception.dart';
 class ApiClient {
   ApiClient({String? baseUrl}) : baseUrl = baseUrl ?? defaultBaseUrl;
 
-  static const String defaultBaseUrl = 'http://localhost:4000/api/v1';
+  static String get defaultBaseUrl {
+    if (Platform.isAndroid) {
+      return 'http://10.0.2.2:4000/api/v1';
+    }
+    return 'http://localhost:4000/api/v1';
+  }
   final String baseUrl;
   static String? authToken;
 

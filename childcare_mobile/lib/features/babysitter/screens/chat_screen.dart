@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import 'messages_screen.dart';
 
+import '../providers/babysitter_provider.dart';
+import '../services/babysitter_service.dart';
+
 class ChatMessage {
   ChatMessage({
     required this.id,
@@ -29,39 +32,58 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _textController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final BabysitterService _service = BabysitterService();
   bool _isLoadingOlder = false;
 
   late String _parentName;
-  late List<ChatMessage> _messages;
+  List<ChatMessage> _messages = [];
 
   @override
   void initState() {
     super.initState();
-    _parentName = widget.conversation?.parentName ?? 'Sarah Jenkins';
-
-    _messages = [
-      ChatMessage(
-        id: '1',
-        text: 'Hi Maya, looking forward to your visit today!',
-        isMe: false,
-        timestamp: DateTime.now().subtract(const Duration(minutes: 45)),
-      ),
-      ChatMessage(
-        id: '2',
-        text:
-            'Hello Sarah! Yes, I am preparing now and excited to meet Leo and Mia.',
-        isMe: true,
-        timestamp: DateTime.now().subtract(const Duration(minutes: 30)),
-      ),
-      ChatMessage(
-        id: '3',
-        text: 'Hi Maya, can you please arrive 10 minutes early today?',
-        isMe: false,
-        timestamp: DateTime.now().subtract(const Duration(minutes: 15)),
-      ),
-    ];
-
+    _parentName = widget.conversation?.parentName ?? 'Parent';
     _scrollController.addListener(_onScroll);
+    _loadMessages();
+  }
+
+  Future<void> _loadMessages() async {
+    final convId = widget.conversation?.id;
+    if (convId != null && convId.isNotEmpty) {
+      try {
+        final list = await _service.getMessages(convId);
+        final currentUserId = BabysitterProvider.instance.profile?.userId;
+        if (mounted && list.isNotEmpty) {
+          setState(() {
+            _messages = list.map((m) {
+              final sender = m['sender'] is Map ? m['sender']['_id'] : m['sender'];
+              final isMe = sender?.toString() == currentUserId;
+              return ChatMessage(
+                id: m['_id']?.toString() ?? '',
+                text: m['text']?.toString() ?? '',
+                isMe: isMe,
+                timestamp: m['createdAt'] != null
+                    ? DateTime.tryParse(m['createdAt'].toString()) ?? DateTime.now()
+                    : DateTime.now(),
+              );
+            }).toList();
+          });
+          _scrollToBottom();
+          return;
+        }
+      } catch (_) {}
+    }
+  }
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeOut,
+        );
+      }
+    });
   }
 
   @override
@@ -83,18 +105,7 @@ class _ChatScreenState extends State<ChatScreen> {
     setState(() => _isLoadingOlder = true);
     await Future.delayed(const Duration(milliseconds: 600));
     if (mounted) {
-      setState(() {
-        _isLoadingOlder = false;
-        _messages.insert(
-          0,
-          ChatMessage(
-            id: '0',
-            text: 'Good morning! Confirming the childcare schedule.',
-            isMe: false,
-            timestamp: DateTime.now().subtract(const Duration(hours: 2)),
-          ),
-        );
-      });
+      setState(() => _isLoadingOlder = false);
     }
   }
 
@@ -114,16 +125,13 @@ class _ChatScreenState extends State<ChatScreen> {
       _textController.clear();
     });
 
-    // Auto-scroll to bottom
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollController.hasClients) {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 250),
-          curve: Curves.easeOut,
-        );
-      }
-    });
+    _service.sendMessage(
+      text: text,
+      conversationId: widget.conversation?.id,
+      recipientId: widget.conversation?.parentId,
+    );
+
+    _scrollToBottom();
   }
 
   String _formatMessageTime(DateTime dt) {

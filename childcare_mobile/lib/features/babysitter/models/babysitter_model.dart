@@ -120,7 +120,7 @@ class BabysitterModel {
           : (json['user']?.toString() ?? json['userId']?.toString() ?? ''),
       name: json['user'] is Map && json['user']['name'] != null
           ? json['user']['name'].toString()
-          : (json['name']?.toString() ?? 'Maya Johnson'),
+          : (json['name']?.toString() ?? ''),
       email: json['user'] is Map && json['user']['email'] != null
           ? json['user']['email'].toString()
           : (json['email']?.toString() ?? ''),
@@ -129,16 +129,15 @@ class BabysitterModel {
       dateOfBirth: json['dateOfBirth']?.toString(),
       gender: json['gender']?.toString(),
       address: json['address']?.toString() ?? '',
-      bio: json['bio']?.toString() ??
-          'Passionate and caring babysitter with a decade of experience providing safe, nurturing, and engaging childcare.',
+      bio: json['bio']?.toString() ?? '',
       hourlyRate: (json['hourlyRate'] as num?)?.toDouble() ?? 25.0,
-      experienceYears: (json['experienceYears'] as num?)?.toInt() ?? 3,
+      experienceYears: (json['experienceYears'] as num?)?.toInt() ?? 1,
       skills: (json['skills'] as List?)?.map((e) => e.toString()).toList() ??
-          const ['Infant Care', 'First Aid Certified', 'Toddler Care', 'Bedtime Routines'],
+          const [],
       languages: (json['languages'] as List?)?.map((e) => e.toString()).toList() ??
-          const ['English', 'Spanish'],
+          const ['English'],
       qualifications: (json['qualifications'] as List?)?.map((e) => e.toString()).toList() ??
-          const ['CPR & First Aid Certified', 'Early Childhood Education Diploma'],
+          const [],
       documents: docsList,
       verificationStatus: json['verificationStatus']?.toString() ?? 'verified',
       averageRating: (json['averageRating'] as num?)?.toDouble() ?? 4.9,
