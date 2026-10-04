@@ -22,14 +22,45 @@ class ParentHomeScreen extends StatelessWidget {
           children: [
             Row(
               children: [
-                const CircleAvatar(
-                  radius: 23,
-                  backgroundColor: AppColors.sand,
-                  child: Icon(Icons.person_outline, color: AppColors.ink),
+                GestureDetector(
+                  onTap: () => Navigator.pushNamed(context, AppRoutes.sitterDashboard),
+                  child: const CircleAvatar(
+                    radius: 23,
+                    backgroundColor: AppColors.sand,
+                    child: Icon(Icons.person_outline, color: AppColors.ink),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                InkWell(
+                  onTap: () => Navigator.pushNamed(context, AppRoutes.sitterDashboard),
+                  borderRadius: BorderRadius.circular(20),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: AppColors.mint,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: AppColors.teal.withValues(alpha: 0.3)),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.swap_horiz_rounded, size: 16, color: AppColors.teal),
+                        SizedBox(width: 4),
+                        Text(
+                          'Sitter Mode',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.teal,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
                 const Spacer(),
                 IconButton(
-                  onPressed: () {},
+                  onPressed: () => Navigator.pushNamed(context, AppRoutes.sitterNotifications),
                   icon: const Icon(Icons.notifications_none_rounded),
                 ),
               ],
@@ -62,7 +93,60 @@ class ParentHomeScreen extends StatelessWidget {
             _SearchCard(
               onTap: () => Navigator.pushNamed(context, AppRoutes.onboarding),
             ),
-            const SizedBox(height: 30),
+            const SizedBox(height: 16),
+
+            // Sitter Portal Quick Access Banner
+            InkWell(
+              onTap: () => Navigator.pushNamed(context, AppRoutes.sitterDashboard),
+              borderRadius: BorderRadius.circular(AppSizes.radius),
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.mint.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(AppSizes.radius),
+                  border: Border.all(color: AppColors.teal.withValues(alpha: 0.25)),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(Icons.child_care_rounded, color: AppColors.teal),
+                    ),
+                    const SizedBox(width: 14),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Babysitter Portal',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.ink,
+                              fontSize: 15,
+                            ),
+                          ),
+                          SizedBox(height: 2),
+                          Text(
+                            'Manage bookings, requests, & earnings',
+                            style: TextStyle(
+                              color: AppColors.muted,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: AppColors.teal),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 26),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -98,7 +182,21 @@ class ParentHomeScreen extends StatelessWidget {
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: 0,
-        onDestinationSelected: (_) {},
+        onDestinationSelected: (idx) {
+          switch (idx) {
+            case 0:
+              break;
+            case 1:
+              Navigator.pushNamed(context, AppRoutes.sitterUpcomingBookings);
+              break;
+            case 2:
+              Navigator.pushNamed(context, AppRoutes.sitterMessages);
+              break;
+            case 3:
+              Navigator.pushNamed(context, AppRoutes.sitterProfile);
+              break;
+          }
+        },
         destinations: const [
           NavigationDestination(
             icon: Icon(Icons.home_outlined),

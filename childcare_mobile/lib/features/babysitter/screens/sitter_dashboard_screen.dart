@@ -336,6 +336,11 @@ class _SitterDashboardScreenState extends State<SitterDashboardScreen> {
             ],
           ),
         ),
+        IconButton(
+          icon: const Icon(Icons.swap_horiz_rounded, color: AppColors.ink, size: 24),
+          tooltip: 'Switch to Parent Mode',
+          onPressed: () => Navigator.pushNamed(context, AppRoutes.home),
+        ),
         // Notifications Icon
         Stack(
           children: [

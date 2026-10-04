@@ -15,7 +15,7 @@ class LoginScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(24),
         children: [
-          const SizedBox(height: 30),
+          const SizedBox(height: 20),
           const Text(
             'Welcome back',
             style: TextStyle(
@@ -26,28 +26,63 @@ class LoginScreen extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           const Text(
-            'Sign in to keep your care plans close.',
+            'Sign in to manage your care and booking services.',
             style: TextStyle(color: AppColors.muted, fontSize: 16),
           ),
-          const SizedBox(height: 36),
+          const SizedBox(height: 32),
           const AppTextField(label: 'Email address', hint: 'you@example.com'),
           const SizedBox(height: 16),
           const AppTextField(label: 'Password'),
           const SizedBox(height: 24),
           AppButton(
-            label: 'Sign in',
+            label: 'Sign in as Babysitter',
+            onPressed: () => Navigator.pushNamedAndRemoveUntil(
+              context,
+              AppRoutes.sitterDashboard,
+              (_) => false,
+            ),
+          ),
+          const SizedBox(height: 12),
+          OutlinedButton(
             onPressed: () => Navigator.pushNamedAndRemoveUntil(
               context,
               AppRoutes.home,
               (_) => false,
             ),
-          ),
-          const SizedBox(height: 18),
-          Center(
-            child: TextButton(
-              onPressed: () {},
-              child: const Text('Forgot password?'),
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size.fromHeight(52),
+              side: const BorderSide(color: AppColors.teal),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             ),
+            child: const Text(
+              'Sign in as Parent',
+              style: TextStyle(
+                color: AppColors.teal,
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text(
+                'Are you a new babysitter? ',
+                style: TextStyle(color: AppColors.muted, fontSize: 13),
+              ),
+              GestureDetector(
+                onTap: () => Navigator.pushNamed(context, AppRoutes.sitterRegistration),
+                child: const Text(
+                  'Register Here',
+                  style: TextStyle(
+                    color: AppColors.teal,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
