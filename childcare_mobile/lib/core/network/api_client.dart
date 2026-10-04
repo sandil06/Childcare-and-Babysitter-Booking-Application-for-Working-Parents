@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'api_exception.dart';
+import '../storage/local_storage.dart';
 
 class ApiClient {
   ApiClient({String? baseUrl}) : baseUrl = baseUrl ?? defaultBaseUrl;
@@ -116,10 +117,22 @@ class ApiClient {
       return decoded;
     }
 
-    final message =
+    final message = switch (response.statusCode) {
+      401 => 'Session expired. Please log in again.',
+      403 => 'You do not have permission to perform this action.',
+      404 => 'The requested resource was not found.',
+      409 => 'This request conflicts with existing data.',
+      422 => 'Please check the entered information.',
+      500 => 'Something went wrong on the server.',
+      _ =>
         (decoded is Map<String, dynamic> && decoded['message'] != null)
-        ? decoded['message'].toString()
-        : 'Request failed with status: ${response.statusCode}';
-    throw ApiException(message);
+            ? decoded['message'].toString()
+            : 'Request failed with status: ${response.statusCode}',
+    };
+    if (response.statusCode == 401) {
+      authToken = null;
+      await LocalStorage.instance.remove('auth_token');
+    }
+    throw ApiException(message, statusCode: response.statusCode);
   }
 }

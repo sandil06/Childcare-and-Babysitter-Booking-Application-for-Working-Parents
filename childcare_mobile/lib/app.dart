@@ -12,7 +12,7 @@ class ChildcareApp extends StatelessWidget {
       title: 'Nurture',
       debugShowCheckedModeBanner: false,
       theme: buildAppTheme(),
-      initialRoute: AppRoutes.sitterDashboard,
+      initialRoute: AppRoutes.home,
       onGenerateRoute: AppRoutes.onGenerateRoute,
     );
   }
