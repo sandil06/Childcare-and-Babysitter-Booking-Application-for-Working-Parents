@@ -167,17 +167,24 @@ class _SitterDashboardScreenState extends State<SitterDashboardScreen> {
     return Scaffold(
       backgroundColor: AppColors.cream,
       body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: _handleRefresh,
-          color: AppColors.teal,
-          child: ListView(
-            key: const PageStorageKey<String>('sitter_dashboard_scroll'),
-            padding: const EdgeInsets.fromLTRB(
-              AppSizes.pagePadding,
-              16,
-              AppSizes.pagePadding,
-              32,
-            ),
+        child: ScrollConfiguration(
+          behavior: ScrollConfiguration.of(context).copyWith(overscroll: false),
+          child: RefreshIndicator(
+            displacement: 20,
+            edgeOffset: 0,
+            onRefresh: _handleRefresh,
+            color: AppColors.teal,
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(
+                parent: ClampingScrollPhysics(),
+              ),
+              key: const PageStorageKey<String>('sitter_dashboard_scroll'),
+              padding: const EdgeInsets.fromLTRB(
+                AppSizes.pagePadding,
+                16,
+                AppSizes.pagePadding,
+                32,
+              ),
             children: [
               if (_provider.errorMessage != null) ...[
                 Container(
@@ -250,6 +257,7 @@ class _SitterDashboardScreenState extends State<SitterDashboardScreen> {
           ),
         ),
       ),
+    ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: 0,
         backgroundColor: Colors.white,

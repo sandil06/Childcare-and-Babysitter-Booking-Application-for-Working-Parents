@@ -150,24 +150,33 @@ class _BookingRequestsScreenState extends State<BookingRequestsScreen>
           children: List.generate(_tabs.length, (tabIndex) {
             final filtered = _filterBookings(tabIndex);
 
-            return RefreshIndicator(
-              onRefresh: _handleRefresh,
-              color: AppColors.teal,
-              child: filtered.isEmpty
-                  ? _buildEmptyState(_tabs[tabIndex])
-                  : ListView.builder(
-                      padding: const EdgeInsets.all(AppSizes.pagePadding),
-                      itemCount: filtered.length,
-                      itemBuilder: (context, index) {
-                        final booking = filtered[index];
-                        return BookingRequestCard(
-                          booking: booking,
-                          onTap: () => _openDetails(booking),
-                          onAccept: () => _quickAccept(booking),
-                          onReject: () => _quickReject(booking),
-                        );
-                      },
-                    ),
+            return ScrollConfiguration(
+              behavior:
+                  ScrollConfiguration.of(context).copyWith(overscroll: false),
+              child: RefreshIndicator(
+                displacement: 20,
+                edgeOffset: 0,
+                onRefresh: _handleRefresh,
+                color: AppColors.teal,
+                child: filtered.isEmpty
+                    ? _buildEmptyState(_tabs[tabIndex])
+                    : ListView.builder(
+                        physics: const AlwaysScrollableScrollPhysics(
+                          parent: ClampingScrollPhysics(),
+                        ),
+                        padding: const EdgeInsets.all(AppSizes.pagePadding),
+                        itemCount: filtered.length,
+                        itemBuilder: (context, index) {
+                          final booking = filtered[index];
+                          return BookingRequestCard(
+                            booking: booking,
+                            onTap: () => _openDetails(booking),
+                            onAccept: () => _quickAccept(booking),
+                            onReject: () => _quickReject(booking),
+                          );
+                        },
+                      ),
+              ),
             );
           }),
         ),
@@ -178,7 +187,9 @@ class _BookingRequestsScreenState extends State<BookingRequestsScreen>
   Widget _buildEmptyState(String tabName) {
     return Center(
       child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
+        physics: const AlwaysScrollableScrollPhysics(
+          parent: ClampingScrollPhysics(),
+        ),
         padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
