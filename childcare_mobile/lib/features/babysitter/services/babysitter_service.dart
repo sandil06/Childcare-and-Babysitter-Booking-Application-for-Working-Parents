@@ -73,6 +73,15 @@ class BabysitterService {
           ? res['profile'] as Map<String, dynamic>
           : res;
       _currentProfile = BabysitterModel.fromJson(profileData);
+      if (_currentProfile != null) {
+        await LocalStorage.instance.write('user_name', _currentProfile!.name);
+        await LocalStorage.instance.write('user_email', _currentProfile!.email);
+        if (_currentProfile!.phone.isNotEmpty) {
+          await LocalStorage.instance.write('user_phone', _currentProfile!.phone);
+        }
+        await LocalStorage.instance.write('user_id', _currentProfile!.userId);
+        await LocalStorage.instance.write('user_role', 'babysitter');
+      }
       return _currentProfile!;
     }
     throw Exception('Registration response invalid');

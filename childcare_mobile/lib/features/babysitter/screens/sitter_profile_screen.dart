@@ -345,17 +345,16 @@ class _SitterProfileScreenState extends State<SitterProfileScreen> {
             _buildSectionCard(
               title: 'Verification Documents',
               icon: Icons.security_rounded,
-              child: Column(
-                children: [
-                  _buildDocStatusRow('National Identity Card (NIC)', 'verified'),
-                  _buildDocStatusRow('Police Clearance Certificate', 'verified'),
-                  _buildDocStatusRow(
-                    'Pediatric First Aid Certificate (SL Red Cross)',
-                    'verified',
-                  ),
-                  _buildDocStatusRow('Grama Niladhari Certificate', 'verified'),
-                ],
-              ),
+              child: profile.documents.isNotEmpty
+                  ? Column(
+                      children: profile.documents
+                          .map((doc) => _buildDocStatusRow(doc.name, doc.status))
+                          .toList(),
+                    )
+                  : const Text(
+                      'No verification documents uploaded yet',
+                      style: TextStyle(color: AppColors.muted, fontSize: 13),
+                    ),
             ),
             const SizedBox(height: 16),
 
@@ -368,7 +367,7 @@ class _SitterProfileScreenState extends State<SitterProfileScreen> {
                   _buildContactItem(
                     Icons.email_outlined,
                     'Email',
-                    profile.email,
+                    profile.email.isNotEmpty ? profile.email : 'Not provided',
                   ),
                   const Divider(height: 16, color: AppColors.sand),
                   _buildContactItem(
@@ -376,7 +375,7 @@ class _SitterProfileScreenState extends State<SitterProfileScreen> {
                     'Phone',
                     profile.phone.isNotEmpty
                         ? profile.phone
-                        : '+94 77 123 4567',
+                        : 'Not provided',
                   ),
                   const Divider(height: 16, color: AppColors.sand),
                   _buildContactItem(
@@ -384,7 +383,7 @@ class _SitterProfileScreenState extends State<SitterProfileScreen> {
                     'Address',
                     profile.address.isNotEmpty
                         ? profile.address
-                        : 'No. 45, Galle Road, Colombo 03',
+                        : 'Not provided',
                   ),
                 ],
               ),

@@ -4,10 +4,57 @@ import '../../../config/routes.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/constants/app_strings.dart';
+import '../../../core/network/api_client.dart';
 import '../../../core/storage/local_storage.dart';
 
-class ParentHomeScreen extends StatelessWidget {
+class ParentHomeScreen extends StatefulWidget {
   const ParentHomeScreen({super.key});
+
+  @override
+  State<ParentHomeScreen> createState() => _ParentHomeScreenState();
+}
+
+class _ParentHomeScreenState extends State<ParentHomeScreen> {
+  String _userName = 'Parent';
+  List<dynamic> _sitters = [];
+  bool _isLoadingSitters = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    final name = await LocalStorage.instance.read('user_name');
+    if (mounted && name != null && name.toString().trim().isNotEmpty) {
+      setState(() => _userName = name.toString().trim());
+    }
+
+    try {
+      final res = await ApiClient().get('babysitters');
+      final list = (res is List)
+          ? res
+          : (res is Map<String, dynamic> && res['data'] is List ? res['data'] as List : null);
+      if (list != null && mounted) {
+        setState(() {
+          _sitters = list;
+          _isLoadingSitters = false;
+        });
+      } else if (mounted) {
+        setState(() => _isLoadingSitters = false);
+      }
+    } catch (_) {
+      if (mounted) setState(() => _isLoadingSitters = false);
+    }
+  }
+
+  String _getInitials(String name) {
+    final parts = name.trim().split(' ').where((e) => e.isNotEmpty).toList();
+    if (parts.isEmpty) return 'S';
+    if (parts.length == 1) return parts[0][0].toUpperCase();
+    return '${parts[0][0]}${parts[parts.length - 1][0]}'.toUpperCase();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -20,7 +67,7 @@ class ParentHomeScreen extends StatelessWidget {
             edgeOffset: 0,
             color: AppColors.teal,
             onRefresh: () async {
-              await Future.delayed(const Duration(milliseconds: 400));
+              await _loadData();
             },
             child: ListView(
               physics: const AlwaysScrollableScrollPhysics(
@@ -32,178 +79,228 @@ class ParentHomeScreen extends StatelessWidget {
                 AppSizes.pagePadding,
                 32,
               ),
-          children: [
-            Row(
               children: [
-                GestureDetector(
-                  onTap: () => Navigator.pushNamed(context, AppRoutes.parentProfile),
-                  child: const CircleAvatar(
-                    radius: 23,
-                    backgroundColor: AppColors.sand,
-                    child: Icon(Icons.person_outline, color: AppColors.ink),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                InkWell(
-                  onTap: () => Navigator.pushNamed(context, AppRoutes.sitterDashboard),
-                  borderRadius: BorderRadius.circular(20),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: AppColors.mint,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: AppColors.teal.withValues(alpha: 0.3)),
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.swap_horiz_rounded, size: 16, color: AppColors.teal),
-                        SizedBox(width: 4),
-                        Text(
-                          'Sitter Mode',
-                          style: TextStyle(
-                            fontSize: 12,
+                Row(
+                  children: [
+                    GestureDetector(
+                      onTap: () => Navigator.pushNamed(context, AppRoutes.parentProfile),
+                      child: CircleAvatar(
+                        radius: 23,
+                        backgroundColor: AppColors.sand,
+                        child: Text(
+                          _getInitials(_userName),
+                          style: const TextStyle(
+                            color: AppColors.ink,
                             fontWeight: FontWeight.w700,
-                            color: AppColors.teal,
+                            fontSize: 14,
                           ),
                         ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    InkWell(
+                      onTap: () => Navigator.pushNamed(context, AppRoutes.sitterDashboard),
+                      borderRadius: BorderRadius.circular(20),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: AppColors.mint,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: AppColors.teal.withValues(alpha: 0.3)),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.swap_horiz_rounded, size: 16, color: AppColors.teal),
+                            SizedBox(width: 4),
+                            Text(
+                              'Sitter Mode',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.teal,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      onPressed: () => Navigator.pushNamed(context, AppRoutes.sitterNotifications),
+                      icon: const Icon(Icons.notifications_none_rounded),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 28),
+                Text(
+                  'Good day, $_userName',
+                  style: const TextStyle(color: AppColors.muted, fontSize: 15),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  AppStrings.welcome,
+                  style: TextStyle(
+                    color: AppColors.ink,
+                    fontSize: 34,
+                    fontWeight: FontWeight.w700,
+                    height: 1.05,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  AppStrings.welcomeBody,
+                  style: TextStyle(
+                    color: AppColors.muted,
+                    fontSize: 16,
+                    height: 1.45,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                _SearchCard(
+                  onTap: () => Navigator.pushNamed(context, AppRoutes.onboarding),
+                ),
+                const SizedBox(height: 16),
+
+                // Sitter Portal Quick Access Banner
+                InkWell(
+                  onTap: () => Navigator.pushNamed(context, AppRoutes.sitterDashboard),
+                  borderRadius: BorderRadius.circular(AppSizes.radius),
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppColors.mint.withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(AppSizes.radius),
+                      border: Border.all(color: AppColors.teal.withValues(alpha: 0.25)),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(Icons.child_care_rounded, color: AppColors.teal),
+                        ),
+                        const SizedBox(width: 14),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Babysitter Portal',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.ink,
+                                  fontSize: 15,
+                                ),
+                              ),
+                              SizedBox(height: 2),
+                              Text(
+                                'Manage bookings, requests, & earnings',
+                                style: TextStyle(
+                                  color: AppColors.muted,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: AppColors.teal),
                       ],
                     ),
                   ),
                 ),
-                const Spacer(),
-                IconButton(
-                  onPressed: () => Navigator.pushNamed(context, AppRoutes.sitterNotifications),
-                  icon: const Icon(Icons.notifications_none_rounded),
-                ),
-              ],
-            ),
-            const SizedBox(height: 28),
-            FutureBuilder<dynamic>(
-              future: LocalStorage.instance.read('user_name'),
-              builder: (context, snapshot) {
-                final name = snapshot.data?.toString();
-                final greetingName = (name != null && name.trim().isNotEmpty)
-                    ? name.trim()
-                    : 'Parent';
-                return Text(
-                  'Good morning, $greetingName',
-                  style: const TextStyle(color: AppColors.muted, fontSize: 15),
-                );
-              },
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              AppStrings.welcome,
-              style: TextStyle(
-                color: AppColors.ink,
-                fontSize: 34,
-                fontWeight: FontWeight.w700,
-                height: 1.05,
-              ),
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              AppStrings.welcomeBody,
-              style: TextStyle(
-                color: AppColors.muted,
-                fontSize: 16,
-                height: 1.45,
-              ),
-            ),
-            const SizedBox(height: 24),
-            _SearchCard(
-              onTap: () => Navigator.pushNamed(context, AppRoutes.onboarding),
-            ),
-            const SizedBox(height: 16),
 
-            // Sitter Portal Quick Access Banner
-            InkWell(
-              onTap: () => Navigator.pushNamed(context, AppRoutes.sitterDashboard),
-              borderRadius: BorderRadius.circular(AppSizes.radius),
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppColors.mint.withValues(alpha: 0.5),
-                  borderRadius: BorderRadius.circular(AppSizes.radius),
-                  border: Border.all(color: AppColors.teal.withValues(alpha: 0.25)),
-                ),
-                child: Row(
+                const SizedBox(height: 26),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(Icons.child_care_rounded, color: AppColors.teal),
-                    ),
-                    const SizedBox(width: 14),
-                    const Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Babysitter Portal',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.ink,
-                              fontSize: 15,
-                            ),
-                          ),
-                          SizedBox(height: 2),
-                          Text(
-                            'Manage bookings, requests, & earnings',
-                            style: TextStyle(
-                              color: AppColors.muted,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
+                    const Text(
+                      'Popular near you',
+                      style: TextStyle(
+                        color: AppColors.ink,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
-                    const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: AppColors.teal),
+                    TextButton(
+                      onPressed: () => Navigator.pushNamed(context, AppRoutes.onboarding),
+                      child: const Text('See all'),
+                    ),
                   ],
                 ),
-              ),
-            ),
+                const SizedBox(height: 10),
+                if (_sitters.isNotEmpty)
+                  ..._sitters.take(4).map((sitter) {
+                    final sitterMap = sitter is Map<String, dynamic> ? sitter : <String, dynamic>{};
+                    final userMap = sitterMap['user'] is Map ? sitterMap['user'] as Map : {};
+                    final sitterName = (userMap['name'] ?? sitterMap['name'] ?? 'Babysitter').toString();
+                    final skills = (sitterMap['skills'] is List) ? (sitterMap['skills'] as List) : [];
+                    final bio = sitterMap['bio']?.toString() ?? '';
+                    final hourlyRate = sitterMap['hourlyRate'];
+                    final detail = skills.isNotEmpty
+                        ? skills.take(2).join(' • ')
+                        : (bio.isNotEmpty
+                            ? bio
+                            : (hourlyRate != null ? 'Rs. $hourlyRate / hour' : 'Verified Caregiver'));
+                    final avgRating = sitterMap['averageRating'];
+                    final totalReviews = sitterMap['totalReviews'] ?? 0;
+                    final ratingText = (totalReviews is num && totalReviews > 0)
+                        ? (avgRating is num ? avgRating.toStringAsFixed(1) : '5.0')
+                        : 'New';
 
-            const SizedBox(height: 26),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Popular near you',
-                  style: TextStyle(
-                    color: AppColors.ink,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: _SitterCard(
+                        name: sitterName,
+                        detail: detail,
+                        rating: ratingText,
+                        color: AppColors.mint,
+                        initials: _getInitials(sitterName),
+                      ),
+                    );
+                  })
+                else if (!_isLoadingSitters)
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.info_outline_rounded, color: AppColors.muted),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'No babysitters found yet. Register a sitter to get started!',
+                            style: TextStyle(color: AppColors.muted, fontSize: 13),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                else
+                  const SizedBox(
+                    height: 60,
+                    child: Center(
+                      child: SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppColors.teal,
+                        ),
+                      ),
+                    ),
                   ),
-                ),
-                TextButton(onPressed: () {}, child: const Text('See all')),
               ],
             ),
-            const SizedBox(height: 10),
-            const _SitterCard(
-              name: 'Amelia R.',
-              detail: 'Early years specialist',
-              rating: '4.9',
-              color: AppColors.mint,
-              initials: 'AR',
-            ),
-            const SizedBox(height: 12),
-            const _SitterCard(
-              name: 'Sofia M.',
-              detail: 'First aid certified',
-              rating: '4.8',
-              color: AppColors.sand,
-              initials: 'SM',
-            ),
-          ],
+          ),
         ),
       ),
-    ),
-  ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: 0,
         onDestinationSelected: (idx) {
@@ -352,7 +449,7 @@ class _SitterCard extends StatelessWidget {
                 Text(detail, style: const TextStyle(color: AppColors.muted)),
                 const SizedBox(height: 5),
                 Text(
-                  '★ $rating  ·  Available today',
+                  rating == 'New' ? '★ New Caregiver' : '★ $rating  ·  Available',
                   style: const TextStyle(
                     color: AppColors.coral,
                     fontSize: 12,

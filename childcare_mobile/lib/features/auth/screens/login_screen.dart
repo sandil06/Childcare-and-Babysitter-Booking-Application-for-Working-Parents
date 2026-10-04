@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../config/routes.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/network/api_exception.dart';
 import '../../../core/storage/local_storage.dart';
 import '../../babysitter/providers/babysitter_provider.dart';
 import '../../babysitter/services/babysitter_service.dart';
@@ -223,6 +224,9 @@ class _LoginScreenState extends State<LoginScreen> {
           if (userObj['id'] != null) {
             await LocalStorage.instance.write('user_id', userObj['id'].toString());
           }
+          if (userObj['phone'] != null && userObj['phone'].toString().isNotEmpty) {
+            await LocalStorage.instance.write('user_phone', userObj['phone'].toString());
+          }
           if (userObj['role'] != null) {
             await LocalStorage.instance.write('user_role', userObj['role'].toString());
           }
@@ -233,7 +237,9 @@ class _LoginScreenState extends State<LoginScreen> {
         await BabysitterProvider.instance.fetchDashboard();
 
         if (mounted) {
-          if (_isSitterMode) {
+          final serverRole = userObj?['role']?.toString();
+          final targetIsSitter = _isSitterMode || serverRole == 'babysitter';
+          if (targetIsSitter) {
             Navigator.pushNamedAndRemoveUntil(
               context,
               AppRoutes.sitterDashboard,
@@ -248,12 +254,35 @@ class _LoginScreenState extends State<LoginScreen> {
           }
         }
       } else {
-        // Fallback for demo / offline exploration
-        await _loginSuccessFallback();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Invalid response received from server.'),
+              backgroundColor: AppColors.coral,
+            ),
+          );
+        }
       }
-    } catch (_) {
-      // If backend offline or custom demo credentials, proceed seamlessly for demo
-      await _loginSuccessFallback();
+    } on ApiException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.message),
+            backgroundColor: AppColors.coral,
+          ),
+        );
+      }
+    } catch (e) {
+      if (e.toString().contains('Network error')) {
+        await _loginSuccessFallback();
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Login failed: ${e.toString()}'),
+            backgroundColor: AppColors.coral,
+          ),
+        );
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }

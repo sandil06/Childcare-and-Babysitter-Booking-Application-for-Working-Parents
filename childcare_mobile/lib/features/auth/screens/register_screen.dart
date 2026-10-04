@@ -184,6 +184,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final password = _passwordController.text;
     final role = _selectedRole;
 
+    final phone = _phoneController.text.trim();
+
     setState(() => _isVerifying = true);
 
     try {
@@ -191,6 +193,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       final res = await client.post('auth/register', body: {
         'name': name,
         'email': email,
+        'phone': phone,
         'password': password,
         'role': role,
         'verificationCode': code,
@@ -209,6 +212,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
             : null;
         await LocalStorage.instance.write('user_name', userObj?['name']?.toString() ?? name);
         await LocalStorage.instance.write('user_email', userObj?['email']?.toString() ?? email);
+        final savedPhone = userObj?['phone']?.toString() ?? phone;
+        if (savedPhone.isNotEmpty) {
+          await LocalStorage.instance.write('user_phone', savedPhone);
+        }
         if (userObj?['id'] != null) {
           await LocalStorage.instance.write('user_id', userObj!['id'].toString());
         }

@@ -67,8 +67,9 @@ async function verifyEmailCode(req, res, next) {
 
 async function register(req, res, next) {
   try {
-    const { name, email, password, role = ROLES.PARENT, verificationCode, code } = req.body;
+    const { name, email, phone, password, role = ROLES.PARENT, verificationCode, code } = req.body;
     const cleanEmail = (email || '').trim().toLowerCase();
+    const cleanPhone = (phone || '').trim();
     const otp = (verificationCode || code || '').toString().trim();
 
     // Verify OTP if supplied or check if already verified
@@ -86,6 +87,7 @@ async function register(req, res, next) {
       const user = await User.create({
         name,
         email: cleanEmail,
+        phone: cleanPhone,
         passwordHash,
         role,
         isEmailVerified: true,
@@ -96,14 +98,40 @@ async function register(req, res, next) {
         try {
           const ParentProfile = require('../models/ParentProfile');
           await ParentProfile.create({
-            userId: user._id,
+            user: user._id,
+            phone: cleanPhone,
+            address: '',
             emergencyContact: '',
-            preferences: {},
+            children: [],
+            isNicVerified: false,
           });
         } catch (_) {}
       }
 
-      const token = generateToken({ sub: user._id.toString(), role: user.role });
+      // Initialize BabysitterProfile if role is babysitter
+      if (role === ROLES.BABYSITTER) {
+        try {
+          const BabysitterProfile = require('../models/BabysitterProfile');
+          await BabysitterProfile.create({
+            user: user._id,
+            phone: cleanPhone,
+            hourlyRate: 1500.0,
+            experienceYears: 0,
+            averageRating: 0.0,
+            totalReviews: 0,
+            totalCompletedBookings: 0,
+            verificationStatus: 'verified',
+          });
+        } catch (_) {}
+      }
+
+      const token = generateToken({
+        sub: user._id.toString(),
+        role: user.role,
+        name: user.name,
+        email: user.email,
+        phone: user.phone || cleanPhone,
+      });
       return ApiResponse.success(
         res,
         {
@@ -111,6 +139,7 @@ async function register(req, res, next) {
             id: user._id.toString(),
             name: user.name,
             email: user.email,
+            phone: user.phone || cleanPhone,
             role: user.role,
             isEmailVerified: true,
           },
@@ -125,15 +154,33 @@ async function register(req, res, next) {
       id: `local-${Date.now()}`,
       name,
       email: cleanEmail,
+      phone: cleanPhone,
       role,
       passwordHash,
       isEmailVerified: true,
     };
+    if (role === ROLES.PARENT) {
+      try {
+        const { setMemoryParentProfile } = require('./parentController');
+        setMemoryParentProfile(user.id, {
+          name: user.name,
+          email: user.email,
+          phone: user.phone,
+        });
+      } catch (_) {}
+    }
+    const token = generateToken({
+      sub: user.id,
+      role,
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+    });
     return ApiResponse.success(
       res,
       {
-        user: { id: user.id, name, email: cleanEmail, role, isEmailVerified: true },
-        token: generateToken({ sub: user.id, role }),
+        user: { id: user.id, name, email: cleanEmail, phone: cleanPhone, role, isEmailVerified: true },
+        token,
       },
       'Registered',
       201
@@ -150,33 +197,69 @@ async function login(req, res, next) {
     if (!loginKey || !password) return next(new ApiError(400, 'Mobile number/email and password are required'));
 
     if (mongoose.connection.readyState === 1) {
-      let user = await User.findOne({ email: loginKey.toLowerCase() });
+      const cleanKey = loginKey.replace(/[\s\-]/g, '');
+      const phoneVariants = [
+        loginKey,
+        cleanKey,
+        cleanKey.startsWith('+94') ? '0' + cleanKey.substring(3) : cleanKey,
+        cleanKey.startsWith('0') ? '+94' + cleanKey.substring(1) : cleanKey,
+      ];
+
+      // 1. Search directly on User by email or phone
+      let user = await User.findOne({
+        $or: [
+          { email: loginKey.toLowerCase() },
+          { phone: { $in: phoneVariants } },
+        ],
+      });
+
+      // 2. Search in BabysitterProfile by phone
       if (!user) {
         try {
           const BabysitterProfile = require('../models/BabysitterProfile');
-          const cleanKey = loginKey.replace(/[\s\-]/g, '');
           const profile = await BabysitterProfile.findOne({
-            $or: [
-              { phone: loginKey },
-              { phone: cleanKey },
-              { phone: cleanKey.startsWith('+94') ? '0' + cleanKey.substring(3) : cleanKey },
-              { phone: cleanKey.startsWith('0') ? '+94' + cleanKey.substring(1) : cleanKey }
-            ]
+            phone: { $in: phoneVariants },
           });
-          if (profile) {
-            user = await User.findById(profile.userId);
+          if (profile && (profile.user || profile.userId)) {
+            user = await User.findById(profile.user || profile.userId);
           }
         } catch (_) {}
       }
+
+      // 3. Search in ParentProfile by phone
+      if (!user) {
+        try {
+          const ParentProfile = require('../models/ParentProfile');
+          const pProfile = await ParentProfile.findOne({
+            phone: { $in: phoneVariants },
+          });
+          if (pProfile && (pProfile.user || pProfile.userId)) {
+            user = await User.findById(pProfile.user || pProfile.userId);
+          }
+        } catch (_) {}
+      }
+
       if (!user) return next(new ApiError(401, 'Invalid mobile number/email or password'));
       const valid = await bcrypt.compare(password, user.passwordHash);
       if (!valid) return next(new ApiError(401, 'Invalid mobile number/email or password'));
 
-      const token = generateToken({ sub: user._id.toString(), role: user.role });
+      const token = generateToken({
+        sub: user._id.toString(),
+        role: user.role,
+        name: user.name,
+        email: user.email,
+        phone: user.phone || '',
+      });
       return ApiResponse.success(
         res,
         {
-          user: { id: user._id.toString(), name: user.name, email: user.email, role: user.role },
+          user: {
+            id: user._id.toString(),
+            name: user.name,
+            email: user.email,
+            phone: user.phone || '',
+            role: user.role,
+          },
           token,
         },
         'Logged in successfully'
@@ -188,7 +271,10 @@ async function login(req, res, next) {
     if (!valid) return next(new ApiError(401, 'Invalid credentials'));
     return ApiResponse.success(
       res,
-      { user: { id: user.id, email: user.email, role: user.role }, token: generateToken({ sub: user.id, role: user.role }) }
+      {
+        user: { id: user.id, email: user.email, role: user.role },
+        token: generateToken({ sub: user.id, role: user.role, email: user.email, name: 'Parent' }),
+      }
     );
   } catch (error) {
     next(error);

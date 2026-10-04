@@ -1,3 +1,136 @@
+const mongoose = require('mongoose');
+const ParentProfile = require('../models/ParentProfile');
+const User = require('../models/User');
 const ApiResponse = require('../utils/ApiResponse');
-function getProfile(req, res) { return ApiResponse.success(res, { userId: req.user?.sub || null }); }
-module.exports = { getProfile };
+const ApiError = require('../utils/ApiError');
+
+function isDbConnected() {
+  return mongoose.connection.readyState === 1;
+}
+
+const memoryParents = new Map();
+
+async function getProfile(req, res, next) {
+  try {
+    const userId = req.user?.sub || req.user?.id;
+    if (!userId) return next(new ApiError(401, 'Authentication required'));
+
+    if (isDbConnected()) {
+      let profile = await ParentProfile.findOne({ user: userId }).populate('user', 'name email phone avatar');
+      if (!profile) {
+        const user = await User.findById(userId);
+        if (user) {
+          profile = await ParentProfile.create({
+            user: user._id,
+            phone: user.phone || '',
+            address: '',
+            emergencyContact: '',
+            children: [],
+            isNicVerified: false,
+          });
+          await profile.populate('user', 'name email phone avatar');
+        }
+      }
+
+      const responseData = {
+        userId,
+        name: profile?.user?.name || req.user?.name || 'Parent',
+        email: profile?.user?.email || req.user?.email || '',
+        phone: profile?.phone || profile?.user?.phone || '',
+        address: profile?.address || '',
+        emergencyContact: profile?.emergencyContact || '',
+        isNicVerified: profile?.isNicVerified || false,
+        children: profile?.children || [],
+        childrenCount: (profile?.children || []).length,
+      };
+
+      return ApiResponse.success(res, responseData, 'Parent profile retrieved');
+    }
+
+    // Memory store fallback
+    let mem = memoryParents.get(userId.toString());
+    if (!mem) {
+      mem = {
+        userId: userId.toString(),
+        name: req.user?.name || 'Parent',
+        email: req.user?.email || '',
+        phone: req.user?.phone || '',
+        address: '',
+        emergencyContact: '',
+        isNicVerified: false,
+        children: [],
+        childrenCount: 0,
+      };
+      memoryParents.set(userId.toString(), mem);
+    }
+    return ApiResponse.success(res, mem, 'Parent profile retrieved');
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function updateProfile(req, res, next) {
+  try {
+    const userId = req.user?.sub || req.user?.id;
+    if (!userId) return next(new ApiError(401, 'Authentication required'));
+
+    const { name, phone, address, emergencyContact, children } = req.body;
+
+    if (isDbConnected()) {
+      if (name) {
+        await User.findByIdAndUpdate(userId, { name });
+      }
+      if (phone !== undefined) {
+        await User.findByIdAndUpdate(userId, { phone });
+      }
+      const updateData = {};
+      if (phone !== undefined) updateData.phone = phone;
+      if (address !== undefined) updateData.address = address;
+      if (emergencyContact !== undefined) updateData.emergencyContact = emergencyContact;
+      if (children !== undefined) updateData.children = children;
+
+      const profile = await ParentProfile.findOneAndUpdate(
+        { user: userId },
+        { $set: updateData },
+        { new: true, upsert: true }
+      ).populate('user', 'name email phone avatar');
+
+      const responseData = {
+        userId,
+        name: profile?.user?.name || name,
+        email: profile?.user?.email || '',
+        phone: profile?.phone || phone || '',
+        address: profile?.address || address || '',
+        emergencyContact: profile?.emergencyContact || emergencyContact || '',
+        isNicVerified: profile?.isNicVerified || false,
+        children: profile?.children || [],
+        childrenCount: (profile?.children || []).length,
+      };
+
+      return ApiResponse.success(res, responseData, 'Parent profile updated successfully');
+    }
+
+    const existing = memoryParents.get(userId.toString()) || {};
+    const updated = { ...existing, ...req.body };
+    memoryParents.set(userId.toString(), updated);
+    return ApiResponse.success(res, updated, 'Parent profile updated successfully');
+  } catch (err) {
+    next(err);
+  }
+}
+
+function setMemoryParentProfile(userId, data) {
+  memoryParents.set(userId.toString(), {
+    userId: userId.toString(),
+    name: data.name || 'Parent',
+    email: data.email || '',
+    phone: data.phone || '',
+    address: data.address || '',
+    emergencyContact: data.emergencyContact || '',
+    isNicVerified: data.isNicVerified || false,
+    children: data.children || [],
+    childrenCount: (data.children || []).length,
+  });
+}
+
+module.exports = { getProfile, updateProfile, setMemoryParentProfile, memoryParents };

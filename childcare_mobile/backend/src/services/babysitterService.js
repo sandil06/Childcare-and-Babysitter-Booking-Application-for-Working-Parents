@@ -25,6 +25,7 @@ async function getProfileByUserId(userId) {
       if (user && user.role === ROLES.BABYSITTER) {
         profile = await BabysitterProfile.create({
           user: user._id,
+          phone: user.phone || '',
           hourlyRate: 1500.0,
           experienceYears: 0,
           averageRating: 0.0,
@@ -33,6 +34,14 @@ async function getProfileByUserId(userId) {
           verificationStatus: 'verified',
         });
         await profile.populate('user', 'name email phone avatar');
+      }
+    }
+    if (profile) {
+      if (!profile.phone && profile.user?.phone) {
+        profile.phone = profile.user.phone;
+      }
+      if (profile.totalReviews === 0) {
+        profile.averageRating = 0.0;
       }
     }
     return profile;
@@ -89,6 +98,9 @@ async function updateProfileByUserId(userId, updateData) {
   delete safeUpdate._id;
 
   if (isDbConnected()) {
+    if (safeUpdate.phone !== undefined) {
+      await User.findByIdAndUpdate(userId, { phone: safeUpdate.phone });
+    }
     const profile = await BabysitterProfile.findOneAndUpdate(
       { user: userId },
       { $set: safeUpdate },
@@ -200,7 +212,12 @@ async function listBabysitters(filter = {}) {
   const page = Math.max(1, Number.parseInt(filter.page, 10) || 1);
   const limit = Math.min(50, Math.max(1, Number.parseInt(filter.limit, 10) || 20));
   const skip = (page - 1) * limit;
-  const query = { verificationStatus: 'verified' };
+  const query = {};
+  if (filter.verificationStatus) {
+    query.verificationStatus = filter.verificationStatus;
+  } else if (filter.status) {
+    query.verificationStatus = filter.status;
+  }
   if (filter.isAvailable !== undefined) query.isAvailable = filter.isAvailable === 'true' || filter.isAvailable === true;
   if (filter.minHourlyRate != null) query.hourlyRate = { $gte: Number(filter.minHourlyRate) };
   if (filter.maxHourlyRate != null) query.hourlyRate = { ...query.hourlyRate, $lte: Number(filter.maxHourlyRate) };
