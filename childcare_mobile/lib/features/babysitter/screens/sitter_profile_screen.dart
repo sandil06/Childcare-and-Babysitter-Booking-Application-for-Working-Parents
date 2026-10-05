@@ -28,11 +28,9 @@ class _SitterProfileScreenState extends State<SitterProfileScreen> {
     super.initState();
     _loadUserData();
     _provider.addListener(_onStateChanged);
-    if (_provider.profile == null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _provider.fetchProfile();
-      });
-    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _provider.fetchProfile(showLoading: false);
+    });
   }
 
   Future<void> _loadUserData() async {
@@ -75,7 +73,8 @@ class _SitterProfileScreenState extends State<SitterProfileScreen> {
       ),
     );
     if (updated == true && mounted) {
-      _provider.fetchProfile();
+      await _provider.fetchProfile();
+      setState(() {});
     }
   }
 
@@ -974,15 +973,21 @@ class _SitterProfileScreenState extends State<SitterProfileScreen> {
                           ? null
                           : () async {
                               setModalState(() => saving = true);
-                              final ok = await _provider.updateProfile({'bio': controller.text.trim()});
+                              final bioText = controller.text.trim();
+                              final ok = await _provider.updateProfile({'bio': bioText});
                               if (ctx.mounted) Navigator.pop(ctx);
-                              if (mounted && ok) {
+                              if (mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Biography updated successfully!'),
-                                    backgroundColor: AppColors.teal,
+                                  SnackBar(
+                                    content: Text(ok
+                                        ? 'Biography updated successfully!'
+                                        : (_provider.errorMessage ??
+                                            'Failed to update biography')),
+                                    backgroundColor:
+                                        ok ? AppColors.teal : AppColors.coral,
                                   ),
                                 );
+                                setState(() {});
                               }
                             },
                       style: FilledButton.styleFrom(
@@ -1175,6 +1180,7 @@ class _SitterProfileScreenState extends State<SitterProfileScreen> {
                                           ok ? AppColors.teal : AppColors.coral,
                                     ),
                                   );
+                                  setState(() {});
                                 }
                               },
                         style: FilledButton.styleFrom(
@@ -1367,6 +1373,7 @@ class _SitterProfileScreenState extends State<SitterProfileScreen> {
                                           ok ? AppColors.teal : AppColors.coral,
                                     ),
                                   );
+                                  setState(() {});
                                 }
                               },
                         style: FilledButton.styleFrom(
@@ -1554,6 +1561,7 @@ class _SitterProfileScreenState extends State<SitterProfileScreen> {
                                         ok ? AppColors.teal : AppColors.coral,
                                   ),
                                 );
+                                setState(() {});
                               }
                             },
                       style: FilledButton.styleFrom(
@@ -1839,6 +1847,7 @@ class _SitterProfileScreenState extends State<SitterProfileScreen> {
                                           ok ? AppColors.teal : AppColors.coral,
                                     ),
                                   );
+                                  setState(() {});
                                 }
                               },
                         style: FilledButton.styleFrom(
@@ -1959,13 +1968,18 @@ class _SitterProfileScreenState extends State<SitterProfileScreen> {
                                 'address': addressCtrl.text.trim(),
                               });
                               if (ctx.mounted) Navigator.pop(ctx);
-                              if (mounted && ok) {
+                              if (mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Contact details updated successfully!'),
-                                    backgroundColor: AppColors.teal,
+                                  SnackBar(
+                                    content: Text(ok
+                                        ? 'Contact details updated successfully!'
+                                        : (_provider.errorMessage ??
+                                            'Failed to update contact details')),
+                                    backgroundColor:
+                                        ok ? AppColors.teal : AppColors.coral,
                                   ),
                                 );
+                                setState(() {});
                               }
                             },
                       style: FilledButton.styleFrom(

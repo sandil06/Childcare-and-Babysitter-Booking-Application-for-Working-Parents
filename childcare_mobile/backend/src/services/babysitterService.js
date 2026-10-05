@@ -13,42 +13,49 @@ function isDbConnected() {
   return mongoose.connection.readyState === 1;
 }
 
+function isValidObjectId(id) {
+  if (!id) return false;
+  return mongoose.Types.ObjectId.isValid(id) && String(new mongoose.Types.ObjectId(id)) === String(id);
+}
+
 async function getProfileByUserId(userId) {
-  if (isDbConnected()) {
-    let profile = await BabysitterProfile.findOne({ user: userId }).populate(
-      'user',
-      'name email phone avatar'
-    );
-    if (!profile) {
-      // Auto-create a profile if user exists in database
-      const user = await User.findById(userId);
-      if (user) {
-        profile = await BabysitterProfile.create({
-          user: user._id,
-          phone: user.phone || '',
-          hourlyRate: 1500.0,
-          experienceYears: 1,
-          skills: ['Child Care', 'First Aid & CPR'],
-          languages: ['English', 'Sinhala'],
-          qualifications: [],
-          averageRating: 0.0,
-          totalReviews: 0,
-          totalCompletedBookings: 0,
-          verificationStatus: 'verified',
-          isAvailable: true,
-        });
-        await profile.populate('user', 'name email phone avatar');
+  if (isDbConnected() && isValidObjectId(userId)) {
+    try {
+      let profile = await BabysitterProfile.findOne({ user: userId }).populate(
+        'user',
+        'name email phone avatar'
+      );
+      if (!profile) {
+        // Auto-create a profile if user exists in database
+        const user = await User.findById(userId);
+        if (user) {
+          profile = await BabysitterProfile.create({
+            user: user._id,
+            phone: user.phone || '',
+            hourlyRate: 1500.0,
+            experienceYears: 1,
+            skills: ['Child Care', 'First Aid & CPR'],
+            languages: ['English', 'Sinhala'],
+            qualifications: [],
+            averageRating: 0.0,
+            totalReviews: 0,
+            totalCompletedBookings: 0,
+            verificationStatus: 'verified',
+            isAvailable: true,
+          });
+          await profile.populate('user', 'name email phone avatar');
+        }
       }
-    }
-    if (profile) {
-      if (!profile.phone && profile.user?.phone) {
-        profile.phone = profile.user.phone;
+      if (profile) {
+        if (!profile.phone && profile.user?.phone) {
+          profile.phone = profile.user.phone;
+        }
+        if (profile.totalReviews === 0) {
+          profile.averageRating = 0.0;
+        }
+        return profile;
       }
-      if (profile.totalReviews === 0) {
-        profile.averageRating = 0.0;
-      }
-    }
-    return profile;
+    } catch (_) {}
   }
 
   // Memory fallback
@@ -104,24 +111,30 @@ async function updateProfileByUserId(userId, updateData) {
   delete safeUpdate.user;
   delete safeUpdate._id;
 
-  if (isDbConnected()) {
-    if (safeUpdate.phone !== undefined) {
-      await User.findByIdAndUpdate(userId, { phone: safeUpdate.phone });
-    }
-    if (safeUpdate.name !== undefined) {
-      await User.findByIdAndUpdate(userId, { name: safeUpdate.name });
-    }
-    let profile = await BabysitterProfile.findOne({ user: userId });
-    if (!profile) {
-      await getProfileByUserId(userId);
-    }
-    profile = await BabysitterProfile.findOneAndUpdate(
-      { user: userId },
-      { $set: safeUpdate },
-      { new: true, runValidators: true }
-    ).populate('user', 'name email phone avatar');
-    if (!profile) throw new ApiError(404, 'Babysitter profile not found');
-    return profile;
+  if (isDbConnected() && isValidObjectId(userId)) {
+    try {
+      if (safeUpdate.phone !== undefined) {
+        await User.findByIdAndUpdate(userId, { phone: safeUpdate.phone });
+      }
+      if (safeUpdate.name !== undefined) {
+        await User.findByIdAndUpdate(userId, { name: safeUpdate.name });
+      }
+      let profile = await BabysitterProfile.findOne({ user: userId });
+      if (!profile) {
+        profile = await getProfileByUserId(userId);
+      }
+      if (profile && profile._id) {
+        profile = await BabysitterProfile.findOneAndUpdate(
+          { user: userId },
+          { $set: safeUpdate },
+          { new: true, runValidators: true }
+        ).populate('user', 'name email phone avatar');
+        if (profile) {
+          memoryBabysitters.set(userId.toString(), profile.toObject ? profile.toObject() : profile);
+          return profile;
+        }
+      }
+    } catch (_) {}
   }
 
   const existing = await getProfileByUserId(userId);
