@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 import '../../../config/routes.dart';
 import '../../../core/constants/app_colors.dart';
@@ -80,12 +81,19 @@ class _LoginScreenState extends State<LoginScreen> {
             const SizedBox(height: 10),
             const Text(
               'Need assistance logging in or booking a caregiver? Our Colombo support team is available 24/7.',
-              style: TextStyle(fontSize: 13.5, color: AppColors.muted, height: 1.45),
+              style: TextStyle(
+                fontSize: 13.5,
+                color: AppColors.muted,
+                height: 1.45,
+              ),
             ),
             const SizedBox(height: 18),
             _buildContactRow(Icons.phone_outlined, 'Helpline: +94 11 234 5678'),
             const SizedBox(height: 10),
-            _buildContactRow(Icons.email_outlined, 'Email: support@littlehands.lk'),
+            _buildContactRow(
+              Icons.email_outlined,
+              'Email: support@littlehands.lk',
+            ),
             const SizedBox(height: 10),
             _buildContactRow(Icons.chat_outlined, 'WhatsApp: +94 77 123 4567'),
             const SizedBox(height: 20),
@@ -198,10 +206,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       final client = ApiClient();
-      final res = await client.post('auth/login', body: {
-        'email': identifier,
-        'password': password,
-      });
+      final res = await client.post(
+        'auth/login',
+        body: {'email': identifier, 'password': password},
+      );
 
       if (res is Map<String, dynamic> && res['token'] != null) {
         final token = res['token'].toString();
@@ -216,19 +224,35 @@ class _LoginScreenState extends State<LoginScreen> {
             : null;
         if (userObj != null) {
           if (userObj['name'] != null) {
-            await LocalStorage.instance.write('user_name', userObj['name'].toString());
+            await LocalStorage.instance.write(
+              'user_name',
+              userObj['name'].toString(),
+            );
           }
           if (userObj['email'] != null) {
-            await LocalStorage.instance.write('user_email', userObj['email'].toString());
+            await LocalStorage.instance.write(
+              'user_email',
+              userObj['email'].toString(),
+            );
           }
           if (userObj['id'] != null) {
-            await LocalStorage.instance.write('user_id', userObj['id'].toString());
+            await LocalStorage.instance.write(
+              'user_id',
+              userObj['id'].toString(),
+            );
           }
-          if (userObj['phone'] != null && userObj['phone'].toString().isNotEmpty) {
-            await LocalStorage.instance.write('user_phone', userObj['phone'].toString());
+          if (userObj['phone'] != null &&
+              userObj['phone'].toString().isNotEmpty) {
+            await LocalStorage.instance.write(
+              'user_phone',
+              userObj['phone'].toString(),
+            );
           }
           if (userObj['role'] != null) {
-            await LocalStorage.instance.write('user_role', userObj['role'].toString());
+            await LocalStorage.instance.write(
+              'user_role',
+              userObj['role'].toString(),
+            );
           }
         }
 
@@ -266,10 +290,7 @@ class _LoginScreenState extends State<LoginScreen> {
     } on ApiException catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.message),
-            backgroundColor: AppColors.coral,
-          ),
+          SnackBar(content: Text(e.message), backgroundColor: AppColors.coral),
         );
       }
     } catch (e) {
@@ -321,11 +342,78 @@ class _LoginScreenState extends State<LoginScreen> {
         (_) => false,
       );
     } else {
+      Navigator.pushNamedAndRemoveUntil(context, AppRoutes.home, (_) => false);
+    }
+  }
+
+  Future<void> _handleGoogleLogin() async {
+    setState(() => _isLoading = true);
+    try {
+      final account = await GoogleSignIn(
+        serverClientId:
+            '425057325610-22tf05j6lbot0t5hu7dic4plu5srth81.apps.googleusercontent.com',
+      ).signIn();
+      if (account == null) return;
+
+      final authentication = await account.authentication;
+      final idToken = authentication.idToken;
+      if (idToken == null || idToken.isEmpty) {
+        throw Exception('Google did not return an ID token.');
+      }
+
+      final res = await ApiClient().post(
+        'auth/google',
+        body: {
+          'idToken': idToken,
+          'role': _isSitterMode ? 'babysitter' : 'parent',
+        },
+      );
+      if (res is! Map<String, dynamic> || res['token'] == null) {
+        throw Exception('Invalid response received from server.');
+      }
+
+      final token = res['token'].toString();
+      ApiClient.authToken = token;
+      await LocalStorage.instance.write('auth_token', token);
+      final user = res['user'] is Map<String, dynamic>
+          ? res['user'] as Map<String, dynamic>
+          : <String, dynamic>{};
+      for (final entry in {
+        'user_name': user['name'],
+        'user_email': user['email'],
+        'user_id': user['id'],
+        'user_phone': user['phone'],
+        'user_role': user['role'],
+      }.entries) {
+        if (entry.value != null && entry.value.toString().isNotEmpty) {
+          await LocalStorage.instance.write(entry.key, entry.value.toString());
+        }
+      }
+
+      BabysitterService.clearCurrentProfile();
+      BabysitterProvider.instance.reset();
+      await BabysitterProvider.instance.fetchProfile();
+      await BabysitterProvider.instance.fetchDashboard();
+
+      if (!mounted) return;
+      final isSitter =
+          user['role']?.toString() == 'babysitter' || _isSitterMode;
       Navigator.pushNamedAndRemoveUntil(
         context,
-        AppRoutes.home,
+        isSitter ? AppRoutes.sitterDashboard : AppRoutes.home,
         (_) => false,
       );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Google sign-in failed: $e'),
+            backgroundColor: AppColors.coral,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -610,10 +698,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 _isEmailInput
                     ? 'Registered email address on LittleHands'
                     : 'Registered with Dialog, Mobitel, Airtel or Hutch',
-                style: const TextStyle(
-                  fontSize: 11,
-                  color: Color(0xFF94A3B8),
-                ),
+                style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
               ),
               const SizedBox(height: 18),
 
@@ -746,10 +831,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     padding: EdgeInsets.symmetric(horizontal: 14),
                     child: Text(
                       'or continue with',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Color(0xFF94A3B8),
-                      ),
+                      style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
                     ),
                   ),
                   Expanded(child: Divider(color: Color(0xFFE2E8F0))),
@@ -763,7 +845,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   // Google Button
                   Expanded(
                     child: OutlinedButton(
-                      onPressed: _loginSuccessFallback,
+                      onPressed: _isLoading ? null : _handleGoogleLogin,
                       style: OutlinedButton.styleFrom(
                         backgroundColor: Colors.white,
                         foregroundColor: AppColors.ink,
@@ -827,11 +909,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: const [
-                          Icon(
-                            Icons.apple,
-                            size: 19,
-                            color: Colors.black,
-                          ),
+                          Icon(Icons.apple, size: 19, color: Colors.black),
                           SizedBox(width: 8),
                           Text(
                             'Apple',

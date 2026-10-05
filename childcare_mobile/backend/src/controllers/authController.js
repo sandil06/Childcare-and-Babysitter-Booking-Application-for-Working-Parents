@@ -1,12 +1,84 @@
 const bcrypt = require('bcryptjs');
+const crypto = require('node:crypto');
 const mongoose = require('mongoose');
+const { OAuth2Client } = require('google-auth-library');
 const User = require('../models/User');
 const ApiError = require('../utils/ApiError');
 const ApiResponse = require('../utils/ApiResponse');
 const generateToken = require('../utils/generateToken');
 const ROLES = require('../constants/roles');
+const env = require('../config/env');
 
 const emailService = require('../services/emailService');
+const googleClient = new OAuth2Client();
+
+async function googleLogin(req, res, next) {
+  try {
+    const { idToken, role = ROLES.PARENT } = req.body;
+    if (!idToken || !env.googleClientId) {
+      return next(new ApiError(400, 'Google authentication is not configured'));
+    }
+    if (![ROLES.PARENT, ROLES.BABYSITTER].includes(role)) {
+      return next(new ApiError(400, 'Invalid account role'));
+    }
+
+    const ticket = await googleClient.verifyIdToken({
+      idToken,
+      audience: env.googleClientId,
+    });
+    const payload = ticket.getPayload();
+    if (!payload?.sub || !payload.email || payload.email_verified !== true) {
+      return next(new ApiError(401, 'Google account email could not be verified'));
+    }
+
+    const email = payload.email.trim().toLowerCase();
+    const name = payload.name || email.split('@')[0];
+    let user;
+
+    if (mongoose.connection.readyState === 1) {
+      user = await User.findOne({ $or: [{ googleId: payload.sub }, { email }] });
+      if (user) {
+        if (!user.googleId) user.googleId = payload.sub;
+        user.isEmailVerified = true;
+        await user.save();
+      } else {
+        user = await User.create({
+          name,
+          email,
+          googleId: payload.sub,
+          passwordHash: await bcrypt.hash(crypto.randomBytes(32).toString('hex'), 12),
+          role,
+          isEmailVerified: true,
+        });
+      }
+
+      if (user.role === ROLES.PARENT) {
+        try {
+          const ParentProfile = require('../models/ParentProfile');
+          await ParentProfile.findOneAndUpdate(
+            { user: user._id },
+            { $setOnInsert: { user: user._id, phone: '', address: '', emergencyContact: '', children: [], isNicVerified: false } },
+            { upsert: true }
+          );
+        } catch (_) {}
+      }
+    } else {
+      user = { id: `google-${payload.sub}`, name, email, phone: '', role };
+    }
+
+    const userId = user._id?.toString() || user.id;
+    const token = generateToken({ sub: userId, role: user.role, name: user.name, email: user.email, phone: user.phone || '' });
+    return ApiResponse.success(res, {
+      user: { id: userId, name: user.name, email: user.email, phone: user.phone || '', role: user.role, isEmailVerified: true },
+      token,
+    }, 'Logged in with Google');
+  } catch (err) {
+    if (err.message?.includes('Wrong number of segments') || err.message?.includes('Invalid token')) {
+      return next(new ApiError(401, 'Invalid Google token'));
+    }
+    next(err);
+  }
+}
 
 async function sendVerification(req, res, next) {
   try {
@@ -288,6 +360,7 @@ function me(req, res) {
 module.exports = {
   register,
   login,
+  googleLogin,
   me,
   sendVerification,
   verifyEmailCode,

@@ -2,6 +2,7 @@ const router = require('express').Router();
 const {
   register,
   login,
+  googleLogin,
   me,
   sendVerification,
   verifyEmailCode,
@@ -15,6 +16,7 @@ router.post('/send-otp', sendVerification);
 router.post('/verify-code', verifyEmailCode);
 router.post('/register', registerValidator, validationMiddleware, register);
 router.post('/login', loginValidator, validationMiddleware, login);
+router.post('/google', googleLogin);
 router.get('/me', authMiddleware, me);
 
 module.exports = router;
