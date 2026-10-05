@@ -13,6 +13,7 @@ const env = {
   jwtSecret: process.env.JWT_SECRET || 'development-secret',
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '7d',
   clientOrigin: process.env.CLIENT_ORIGIN || '*',
+  googleClientId: process.env.GOOGLE_CLIENT_ID || process.env.Google_client_id || '',
 };
 
 module.exports = env;
