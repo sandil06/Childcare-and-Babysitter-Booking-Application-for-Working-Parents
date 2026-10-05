@@ -56,11 +56,31 @@ const bookingSchema = new mongoose.Schema(
       min: 0,
       default: 6000.0,
     },
+    subtotal: {
+      type: Number,
+      default: 0,
+    },
+    serviceFee: {
+      type: Number,
+      default: 0,
+    },
+    totalAmount: {
+      type: Number,
+      default: 0,
+    },
     location: {
       type: String,
       required: true,
       trim: true,
       default: 'Colombo, Sri Lanka',
+    },
+    latitude: {
+      type: Number,
+      default: 6.9271,
+    },
+    longitude: {
+      type: Number,
+      default: 79.8612,
     },
     children: {
       type: [childSchema],
@@ -88,12 +108,43 @@ const bookingSchema = new mongoose.Schema(
     },
     paymentStatus: {
       type: String,
-      enum: ['pending', 'paid', 'refunded'],
-      default: 'paid',
+      enum: ['pending', 'processing', 'succeeded', 'paid', 'failed', 'refunded'],
+      default: 'pending',
+    },
+    paymentIntentId: {
+      type: String,
+      default: null,
+    },
+    cancellationReason: {
+      type: String,
+      default: null,
+    },
+    cancelledBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
+    cancelledAt: {
+      type: Date,
+      default: null,
     },
     rejectionReason: {
       type: String,
       default: null,
+    },
+    rescheduleHistory: {
+      type: [
+        {
+          oldDate: { type: Date },
+          oldStartTime: { type: String },
+          oldEndTime: { type: String },
+          newDate: { type: Date },
+          newStartTime: { type: String },
+          newEndTime: { type: String },
+          requestedAt: { type: Date, default: Date.now },
+        },
+      ],
+      default: [],
     },
   },
   { timestamps: true }
@@ -110,6 +161,19 @@ bookingSchema.pre('save', function (next) {
     const [eH, eM] = this.endTime.split(':').map(Number);
     this.startAt = new Date(base.getFullYear(), base.getMonth(), base.getDate(), sH, sM);
     this.endAt = new Date(base.getFullYear(), base.getMonth(), base.getDate(), eH, eM);
+    if (!this.durationHours || this.durationHours <= 0) {
+      const diffMs = this.endAt - this.startAt;
+      this.durationHours = Math.max(0.5, Math.round((diffMs / (1000 * 60 * 60)) * 10) / 10);
+    }
+  }
+  if (!this.subtotal && this.hourlyRate && this.durationHours) {
+    this.subtotal = Math.round(this.hourlyRate * this.durationHours);
+  }
+  if (!this.total && this.subtotal) {
+    this.total = this.subtotal + (this.serviceFee || 0);
+  }
+  if (!this.totalAmount) {
+    this.totalAmount = this.total || 0;
   }
   next();
 });

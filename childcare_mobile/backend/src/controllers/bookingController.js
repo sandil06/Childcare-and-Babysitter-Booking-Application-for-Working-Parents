@@ -3,6 +3,7 @@ const Booking = require('../models/Booking');
 const BabysitterProfile = require('../models/BabysitterProfile');
 const ApiResponse = require('../utils/ApiResponse');
 const ApiError = require('../utils/ApiError');
+const bookingService = require('../services/bookingService');
 
 // Memory store fallback
 const memoryBookings = new Map();
@@ -307,6 +308,22 @@ async function updateStatus(req, res, next) {
   }
 }
 
+async function calculatePrice(req, res, next) {
+  try {
+    const babysitterId = req.body.babysitterId || req.body.babysitter;
+    const { date, startTime, endTime } = req.body;
+    const priceData = await bookingService.calculatePrice({
+      babysitterId,
+      date: date || new Date(),
+      startTime,
+      endTime,
+    });
+    return ApiResponse.success(res, priceData, 'Price calculated successfully');
+  } catch (err) {
+    next(err);
+  }
+}
+
 async function create(req, res, next) {
   try {
     const parentId = getUserId(req) || req.body.parent || req.body.parentId;
@@ -324,6 +341,9 @@ async function create(req, res, next) {
       endTime = `${String(e.getHours()).padStart(2, '0')}:${String(e.getMinutes()).padStart(2, '0')}`;
     }
 
+    startTime = startTime || '09:00';
+    endTime = endTime || '13:00';
+
     if (isDbConnected()) {
       if (babysitterId && mongoose.Types.ObjectId.isValid(babysitterId)) {
         const profile = await BabysitterProfile.findById(babysitterId);
@@ -332,16 +352,50 @@ async function create(req, res, next) {
         }
       }
 
+      // Check for overlapping bookings
+      const conflictCheck = await bookingService.checkAvailabilityAndConflicts({
+        babysitterId,
+        date,
+        startTime,
+        endTime,
+      });
+      if (!conflictCheck.available) {
+        return next(new ApiError(400, conflictCheck.reason));
+      }
+
+      // Calculate server-side duration & price
+      let durationHours = req.body.durationHours || req.body.duration;
+      try {
+        durationHours = bookingService.calculateDurationHours(startTime, endTime);
+      } catch (_) {
+        durationHours = durationHours || 4.0;
+      }
+
+      const hourlyRate = req.body.hourlyRate || (await bookingService.getBabysitterHourlyRate(babysitterId));
+      const subtotal = Math.round(durationHours * hourlyRate);
+      const serviceFee = req.body.serviceFee || 0;
+      const totalAmount = subtotal + serviceFee;
+
       const booking = await Booking.create({
         ...req.body,
         parent: parentId,
         babysitter: babysitterId,
         date,
-        startTime: startTime || '09:00',
-        endTime: endTime || '13:00',
+        startTime,
+        endTime,
+        durationHours,
+        hourlyRate,
+        subtotal,
+        serviceFee,
+        total: totalAmount,
+        totalAmount,
+        location: req.body.address || req.body.location || 'Colombo, Sri Lanka',
+        status: 'pending',
+        paymentStatus: req.body.paymentStatus || 'pending',
       });
       return ApiResponse.success(res, booking, 'Booking created', 201);
     }
+
     const id = `bk-${Date.now()}`;
     const newBooking = {
       _id: id,
@@ -350,9 +404,17 @@ async function create(req, res, next) {
       parent: parentId,
       babysitter: babysitterId,
       date,
-      startTime: startTime || '09:00',
-      endTime: endTime || '13:00',
+      startTime,
+      endTime,
+      durationHours: req.body.durationHours || 4.0,
+      hourlyRate: req.body.hourlyRate || 1500.0,
+      subtotal: req.body.subtotal || 6000.0,
+      serviceFee: 0,
+      total: req.body.total || 6000.0,
+      totalAmount: req.body.total || 6000.0,
+      location: req.body.address || req.body.location || 'Colombo, Sri Lanka',
       status: 'pending',
+      paymentStatus: 'pending',
       createdAt: new Date(),
     };
     memoryBookings.set(id, newBooking);
@@ -366,19 +428,205 @@ async function list(req, res, next) {
   try {
     const userId = getUserId(req);
     const { page, limit, skip } = getPageParams(req.query);
+    const requestedStatus = req.query.status;
+
     if (isDbConnected()) {
       const filter = { $or: [{ parent: userId }, { babysitter: userId }] };
-      if (req.query.status) filter.status = req.query.status;
+
+      if (requestedStatus) {
+        if (requestedStatus === 'upcoming') {
+          filter.status = { $in: ['accepted', 'confirmed', 'travelling', 'arrived', 'in_progress', 'pending'] };
+        } else if (requestedStatus === 'completed') {
+          filter.status = 'completed';
+        } else if (requestedStatus === 'cancelled') {
+          filter.status = { $in: ['cancelled', 'rejected'] };
+        } else {
+          filter.status = requestedStatus;
+        }
+      }
+
       const bookings = await Booking.find(filter)
-        .sort({ date: -1 })
+        .populate('parent', 'name email phone avatar')
+        .populate('babysitter', 'name email phone avatar')
+        .sort({ date: -1, startTime: 1 })
         .skip(skip)
         .limit(limit);
+
+      res.set('X-Page', String(page));
+      res.set('X-Limit', String(limit));
+      res.set('X-Has-More', String(bookings.length === limit));
       return ApiResponse.success(res, bookings, 'Bookings retrieved');
     }
-    const list = Array.from(memoryBookings.values()).filter(
-      (booking) => booking.parent.toString() === userId.toString() || booking.babysitter.toString() === userId.toString()
+
+    let list = Array.from(memoryBookings.values()).filter(
+      (b) =>
+        b.parent?.toString() === userId.toString() ||
+        b.babysitter?.toString() === userId.toString()
     );
-    return ApiResponse.success(res, list.slice(skip, skip + limit), 'Bookings retrieved');
+
+    if (requestedStatus) {
+      if (requestedStatus === 'upcoming') {
+        list = list.filter((b) =>
+          ['accepted', 'confirmed', 'travelling', 'arrived', 'in_progress', 'pending'].includes(b.status)
+        );
+      } else if (requestedStatus === 'completed') {
+        list = list.filter((b) => b.status === 'completed');
+      } else if (requestedStatus === 'cancelled') {
+        list = list.filter((b) => ['cancelled', 'rejected'].includes(b.status));
+      } else {
+        list = list.filter((b) => b.status === requestedStatus);
+      }
+    }
+
+    const paged = list.slice(skip, skip + limit);
+    res.set('X-Page', String(page));
+    res.set('X-Limit', String(limit));
+    res.set('X-Has-More', String(skip + limit < list.length));
+    return ApiResponse.success(res, paged, 'Bookings retrieved');
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function cancel(req, res, next) {
+  try {
+    const userId = getUserId(req);
+    const bookingId = req.params.id;
+    const reason = req.body.reason || req.body.cancellationReason || 'Cancelled by user';
+
+    if (isDbConnected() && mongoose.Types.ObjectId.isValid(bookingId)) {
+      const booking = await Booking.findById(bookingId).populate('parent babysitter', 'name email phone avatar');
+      if (!booking) return next(new ApiError(404, 'Booking not found'));
+
+      const parentId = booking.parent?._id ? booking.parent._id.toString() : booking.parent?.toString();
+      const sitterId = booking.babysitter?._id ? booking.babysitter._id.toString() : booking.babysitter?.toString();
+
+      if (parentId !== userId.toString() && sitterId !== userId.toString()) {
+        return next(new ApiError(403, 'You are not authorized to cancel this booking'));
+      }
+
+      if (['completed', 'cancelled', 'rejected'].includes(booking.status)) {
+        return next(new ApiError(400, `Cannot cancel booking with current status "${booking.status}"`));
+      }
+
+      booking.status = 'cancelled';
+      booking.cancelledBy = userId;
+      booking.cancellationReason = reason;
+      booking.cancelledAt = new Date();
+      await booking.save();
+
+      return ApiResponse.success(res, booking, 'Booking cancelled successfully');
+    }
+
+    const booking = memoryBookings.get(bookingId);
+    if (!booking) return next(new ApiError(404, 'Booking not found'));
+    const parentId = booking.parent?._id ? booking.parent._id.toString() : booking.parent?.toString();
+    const sitterId = booking.babysitter?._id ? booking.babysitter._id.toString() : booking.babysitter?.toString();
+    if (parentId !== userId.toString() && sitterId !== userId.toString()) {
+      return next(new ApiError(403, 'You are not authorized to cancel this booking'));
+    }
+
+    if (['completed', 'cancelled', 'rejected'].includes(booking.status)) {
+      return next(new ApiError(400, `Cannot cancel booking with current status "${booking.status}"`));
+    }
+
+    booking.status = 'cancelled';
+    booking.cancelledBy = userId;
+    booking.cancellationReason = reason;
+    booking.cancelledAt = new Date();
+    booking.updatedAt = new Date();
+    memoryBookings.set(bookingId, booking);
+    return ApiResponse.success(res, booking, 'Booking cancelled successfully');
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function reschedule(req, res, next) {
+  try {
+    const userId = getUserId(req);
+    const bookingId = req.params.id;
+    const { date, startTime, endTime } = req.body;
+
+    if (!date || !startTime || !endTime) {
+      return next(new ApiError(400, 'date, startTime, and endTime are required for rescheduling'));
+    }
+
+    if (isDbConnected() && mongoose.Types.ObjectId.isValid(bookingId)) {
+      const booking = await Booking.findById(bookingId).populate('parent babysitter', 'name email phone avatar');
+      if (!booking) return next(new ApiError(404, 'Booking not found'));
+
+      const parentId = booking.parent?._id ? booking.parent._id.toString() : booking.parent?.toString();
+      const sitterId = booking.babysitter?._id ? booking.babysitter._id.toString() : booking.babysitter?.toString();
+
+      if (parentId !== userId.toString() && sitterId !== userId.toString()) {
+        return next(new ApiError(403, 'You are not authorized to reschedule this booking'));
+      }
+
+      if (['completed', 'cancelled', 'rejected'].includes(booking.status)) {
+        return next(new ApiError(400, `Cannot reschedule a booking that is ${booking.status}`));
+      }
+
+      // Check conflict for new time slot
+      const conflictCheck = await bookingService.checkAvailabilityAndConflicts({
+        babysitterId: sitterId,
+        date,
+        startTime,
+        endTime,
+        excludeBookingId: booking._id,
+      });
+      if (!conflictCheck.available) {
+        return next(new ApiError(400, conflictCheck.reason));
+      }
+
+      // Calculate new pricing
+      const newDuration = bookingService.calculateDurationHours(startTime, endTime);
+      const newSubtotal = Math.round(newDuration * (booking.hourlyRate || 1500));
+      const newTotal = newSubtotal + (booking.serviceFee || 0);
+
+      // Record reschedule history
+      booking.rescheduleHistory.push({
+        oldDate: booking.date,
+        oldStartTime: booking.startTime,
+        oldEndTime: booking.endTime,
+        newDate: new Date(date),
+        newStartTime: startTime,
+        newEndTime: endTime,
+        requestedAt: new Date(),
+      });
+
+      booking.date = new Date(date);
+      booking.startTime = startTime;
+      booking.endTime = endTime;
+      booking.durationHours = newDuration;
+      booking.subtotal = newSubtotal;
+      booking.total = newTotal;
+      booking.totalAmount = newTotal;
+
+      await booking.save();
+      return ApiResponse.success(res, booking, 'Booking rescheduled successfully');
+    }
+
+    const booking = memoryBookings.get(bookingId);
+    if (!booking) return next(new ApiError(404, 'Booking not found'));
+
+    booking.rescheduleHistory = booking.rescheduleHistory || [];
+    booking.rescheduleHistory.push({
+      oldDate: booking.date,
+      oldStartTime: booking.startTime,
+      oldEndTime: booking.endTime,
+      newDate: new Date(date),
+      newStartTime: startTime,
+      newEndTime: endTime,
+      requestedAt: new Date(),
+    });
+
+    booking.date = new Date(date);
+    booking.startTime = startTime;
+    booking.endTime = endTime;
+    booking.updatedAt = new Date();
+    memoryBookings.set(bookingId, booking);
+    return ApiResponse.success(res, booking, 'Booking rescheduled successfully');
   } catch (err) {
     next(err);
   }
@@ -393,5 +641,9 @@ module.exports = {
   updateStatus,
   create,
   list,
+  calculatePrice,
+  cancel,
+  reschedule,
   memoryBookings,
 };
+
