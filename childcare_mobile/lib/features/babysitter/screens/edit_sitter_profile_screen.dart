@@ -99,6 +99,25 @@ class _EditSitterProfileScreenState extends State<EditSitterProfileScreen> {
 
     setState(() => _isSaving = true);
 
+    final pendingQual = _qualificationInputController.text.trim();
+    if (pendingQual.isNotEmpty && !_qualifications.contains(pendingQual)) {
+      _qualifications.add(pendingQual);
+      _qualificationInputController.clear();
+    }
+
+    final pendingDoc = _docNameController.text.trim();
+    if (pendingDoc.isNotEmpty) {
+      _documents.add(
+        VerificationDocumentModel(
+          type: _selectedDocType,
+          name: pendingDoc,
+          status: 'pending',
+          uploadedAt: DateTime.now(),
+        ),
+      );
+      _docNameController.clear();
+    }
+
     final updateData = {
       'bio': _bioController.text.trim(),
       'hourlyRate': double.tryParse(_hourlyRateController.text) ?? widget.profile.hourlyRate,

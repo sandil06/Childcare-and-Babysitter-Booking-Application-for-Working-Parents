@@ -107,10 +107,15 @@ class BabysitterModel {
     var rawDocs = json['documents'];
     List<VerificationDocumentModel> docsList = [];
     if (rawDocs is List) {
-      docsList = rawDocs
-          .whereType<Map<String, dynamic>>()
-          .map(VerificationDocumentModel.fromJson)
-          .toList();
+      for (final item in rawDocs) {
+        if (item is Map) {
+          docsList.add(
+            VerificationDocumentModel.fromJson(
+              Map<String, dynamic>.from(item),
+            ),
+          );
+        }
+      }
     }
 
     return BabysitterModel(

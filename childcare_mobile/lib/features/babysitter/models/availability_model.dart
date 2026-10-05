@@ -28,9 +28,23 @@ class AvailabilityModel {
   factory AvailabilityModel.fromJson(Map<String, dynamic> json) {
     DateTime parsedDate;
     if (json['date'] != null) {
-      parsedDate = DateTime.tryParse(json['date'].toString()) ?? DateTime.now();
+      final dateStr = json['date'].toString();
+      final clean = dateStr.split('T').first;
+      final parts = clean.split('-');
+      if (parts.length == 3) {
+        final y = int.tryParse(parts[0]);
+        final m = int.tryParse(parts[1]);
+        final d = int.tryParse(parts[2]);
+        if (y != null && m != null && d != null) {
+          parsedDate = DateTime(y, m, d);
+        } else {
+          parsedDate = DateTime.tryParse(dateStr)?.toLocal() ?? DateTime.now();
+        }
+      } else {
+        parsedDate = DateTime.tryParse(dateStr)?.toLocal() ?? DateTime.now();
+      }
     } else if (json['startAt'] != null) {
-      parsedDate = DateTime.tryParse(json['startAt'].toString()) ?? DateTime.now();
+      parsedDate = DateTime.tryParse(json['startAt'].toString())?.toLocal() ?? DateTime.now();
     } else {
       parsedDate = DateTime.now();
     }
@@ -70,7 +84,7 @@ class AvailabilityModel {
   Map<String, dynamic> toJson() => {
         'id': id,
         'babysitterId': babysitterId,
-        'date': date.toIso8601String().split('T').first,
+        'date': '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}',
         'startTime': startTime,
         'endTime': endTime,
         'available': available,

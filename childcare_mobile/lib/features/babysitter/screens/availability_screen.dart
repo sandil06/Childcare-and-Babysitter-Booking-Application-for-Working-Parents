@@ -43,9 +43,17 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
 
   List<AvailabilityModel> get _slotsForSelectedDate {
     return _provider.availabilities.where((slot) {
-      return slot.date.year == _selectedDate.year &&
+      final isSameDay = slot.date.year == _selectedDate.year &&
           slot.date.month == _selectedDate.month &&
           slot.date.day == _selectedDate.day;
+      if (isSameDay) return true;
+      if (slot.isRecurring) {
+        if (slot.repeatDays.isNotEmpty) {
+          return slot.repeatDays.contains(_selectedDate.weekday);
+        }
+        return slot.date.weekday == _selectedDate.weekday;
+      }
+      return false;
     }).toList();
   }
 
@@ -57,20 +65,31 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
 
   void _toggleDateUnavailable(bool makeUnavailable) async {
     final slots = _slotsForSelectedDate;
-    if (slots.isEmpty && makeUnavailable) {
-      final slot = AvailabilityModel(
-        id: 'av-${DateTime.now().millisecondsSinceEpoch}',
-        babysitterId: _provider.profile?.id ?? 'sitter-1',
-        date: _selectedDate,
-        startTime: '00:00',
-        endTime: '23:59',
-        available: false,
-      );
-      await _provider.addAvailabilitySlot(slot);
+    if (makeUnavailable) {
+      if (slots.isEmpty) {
+        final slot = AvailabilityModel(
+          id: 'av-${DateTime.now().millisecondsSinceEpoch}',
+          babysitterId: _provider.profile?.id ?? 'sitter-1',
+          date: _selectedDate,
+          startTime: '00:00',
+          endTime: '23:59',
+          available: false,
+        );
+        await _provider.addAvailabilitySlot(slot);
+      } else {
+        for (var s in slots) {
+          final updated = s.copyWith(available: false);
+          await _provider.updateAvailabilitySlot(updated);
+        }
+      }
     } else {
       for (var s in slots) {
-        final updated = s.copyWith(available: !makeUnavailable);
-        await _provider.updateAvailabilitySlot(updated);
+        if (!s.available && s.startTime == '00:00' && s.endTime == '23:59') {
+          await _provider.deleteAvailabilitySlot(s.id);
+        } else {
+          final updated = s.copyWith(available: true);
+          await _provider.updateAvailabilitySlot(updated);
+        }
       }
     }
     setState(() {});
@@ -289,11 +308,17 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
                                 ok = await _provider.addAvailabilitySlot(newSlot);
                               }
                               if (ctx.mounted) Navigator.pop(ctx);
-                              if (mounted && !ok && _provider.errorMessage != null) {
+                              if (mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
-                                    content: Text(_provider.errorMessage!),
-                                    backgroundColor: AppColors.coral,
+                                    content: Text(ok
+                                        ? (existing != null
+                                            ? 'Slot updated successfully!'
+                                            : 'Slot added successfully!')
+                                        : (_provider.errorMessage ??
+                                            'Failed to save slot')),
+                                    backgroundColor:
+                                        ok ? AppColors.teal : AppColors.coral,
                                   ),
                                 );
                               }
@@ -343,7 +368,17 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
           FilledButton(
             onPressed: () async {
               Navigator.pop(ctx);
-              await _provider.deleteAvailabilitySlot(slot.id);
+              final ok = await _provider.deleteAvailabilitySlot(slot.id);
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(ok
+                        ? 'Slot removed successfully!'
+                        : (_provider.errorMessage ?? 'Failed to delete slot')),
+                    backgroundColor: ok ? AppColors.teal : AppColors.coral,
+                  ),
+                );
+              }
             },
             style: FilledButton.styleFrom(
               backgroundColor: AppColors.coral,

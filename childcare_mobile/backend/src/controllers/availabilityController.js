@@ -15,12 +15,30 @@ function getUserId(req) {
   return req.user?.sub || req.user?.id;
 }
 
+function parseDateUtc(dateInput) {
+  if (!dateInput) return new Date();
+  if (dateInput instanceof Date) {
+    return new Date(Date.UTC(dateInput.getUTCFullYear(), dateInput.getUTCMonth(), dateInput.getUTCDate(), 0, 0, 0, 0));
+  }
+  const clean = dateInput.toString().split('T')[0];
+  const parts = clean.split('-').map(Number);
+  if (parts.length === 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2])) {
+    return new Date(Date.UTC(parts[0], parts[1] - 1, parts[2], 0, 0, 0, 0));
+  }
+  const d = new Date(dateInput);
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 0, 0, 0, 0));
+}
+
 function checkOverlap(existingSlots, newStart, newEnd, excludeId = null) {
   const newStartMin = parseMinutes(newStart);
   const newEndMin = parseMinutes(newEnd);
 
   return existingSlots.some((slot) => {
     if (excludeId && (slot._id?.toString() === excludeId || slot.id?.toString() === excludeId)) {
+      return false;
+    }
+    // A full-day unavailable marker (00:00 - 23:59, available: false) should not block adding working hours
+    if (slot.available === false && slot.startTime === '00:00' && slot.endTime === '23:59') {
       return false;
     }
     const slotStartMin = parseMinutes(slot.startTime);
@@ -37,10 +55,9 @@ async function getMeAvailability(req, res, next) {
     if (isDbConnected()) {
       const query = { babysitter: userId };
       if (req.query.date) {
-        const d = new Date(req.query.date);
-        const nextDay = new Date(d);
-        nextDay.setDate(nextDay.getDate() + 1);
-        query.date = { $gte: d, $lt: nextDay };
+        const dateStart = parseDateUtc(req.query.date);
+        const nextDay = new Date(dateStart.getTime() + 24 * 60 * 60 * 1000);
+        query.date = { $gte: dateStart, $lt: nextDay };
       }
       const slots = await Availability.find(query).sort({ date: 1, startTime: 1 });
       return ApiResponse.success(res, slots, 'Availability retrieved');
@@ -50,6 +67,13 @@ async function getMeAvailability(req, res, next) {
     const userSlots = Array.from(memorySlots.values()).filter(
       (s) => s.babysitter.toString() === userId.toString()
     );
+    if (req.query.date) {
+      const targetStr = parseDateUtc(req.query.date).toISOString().split('T')[0];
+      const filtered = userSlots.filter(
+        (s) => parseDateUtc(s.date).toISOString().split('T')[0] === targetStr
+      );
+      return ApiResponse.success(res, filtered, 'Availability retrieved');
+    }
     return ApiResponse.success(res, userSlots, 'Availability retrieved');
   } catch (err) {
     next(err);
@@ -61,12 +85,20 @@ async function createMeAvailability(req, res, next) {
     const userId = getUserId(req);
     const { date, startTime, endTime, available = true, isRecurring = false, repeatDays = [] } = req.body;
 
-    const parsedDate = new Date(date);
-    const dateStart = new Date(parsedDate.getFullYear(), parsedDate.getMonth(), parsedDate.getDate());
+    const dateStart = parseDateUtc(date);
+    const nextDay = new Date(dateStart.getTime() + 24 * 60 * 60 * 1000);
 
     if (isDbConnected()) {
-      const nextDay = new Date(dateStart);
-      nextDay.setDate(nextDay.getDate() + 1);
+      // If adding an available working slot, clear any full-day unavailable blocker for that date
+      if (available) {
+        await Availability.deleteMany({
+          babysitter: userId,
+          date: { $gte: dateStart, $lt: nextDay },
+          startTime: '00:00',
+          endTime: '23:59',
+          available: false,
+        });
+      }
 
       const existingForDay = await Availability.find({
         babysitter: userId,
@@ -91,10 +123,24 @@ async function createMeAvailability(req, res, next) {
     }
 
     // Memory fallback
+    if (available) {
+      for (const [key, val] of memorySlots.entries()) {
+        if (
+          val.babysitter.toString() === userId.toString() &&
+          parseDateUtc(val.date).toISOString().split('T')[0] === dateStart.toISOString().split('T')[0] &&
+          val.startTime === '00:00' &&
+          val.endTime === '23:59' &&
+          !val.available
+        ) {
+          memorySlots.delete(key);
+        }
+      }
+    }
+
     const existingMemory = Array.from(memorySlots.values()).filter(
       (s) =>
         s.babysitter.toString() === userId.toString() &&
-        new Date(s.date).toDateString() === dateStart.toDateString()
+        parseDateUtc(s.date).toISOString().split('T')[0] === dateStart.toISOString().split('T')[0]
     );
 
     if (checkOverlap(existingMemory, startTime, endTime)) {
@@ -142,12 +188,12 @@ async function update(req, res, next) {
         return next(new ApiError(400, 'End time must be after start time'));
       }
 
-      const nextDay = new Date(slot.date);
-      nextDay.setDate(nextDay.getDate() + 1);
+      const dateStart = parseDateUtc(slot.date);
+      const nextDay = new Date(dateStart.getTime() + 24 * 60 * 60 * 1000);
 
       const existingForDay = await Availability.find({
         babysitter: userId,
-        date: { $gte: slot.date, $lt: nextDay },
+        date: { $gte: dateStart, $lt: nextDay },
       });
 
       if (checkOverlap(existingForDay, newStart, newEnd, slotId)) {
@@ -155,6 +201,9 @@ async function update(req, res, next) {
       }
 
       Object.assign(slot, req.body);
+      if (req.body.date) {
+        slot.date = parseDateUtc(req.body.date);
+      }
       await slot.save();
 
       return ApiResponse.success(res, slot, 'Availability slot updated');
@@ -173,10 +222,11 @@ async function update(req, res, next) {
       return next(new ApiError(400, 'End time must be after start time'));
     }
 
+    const slotDateStr = parseDateUtc(slot.date).toISOString().split('T')[0];
     const existingMemory = Array.from(memorySlots.values()).filter(
       (candidate) =>
         candidate.babysitter.toString() === userId.toString() &&
-        new Date(candidate.date).toDateString() === new Date(slot.date).toDateString()
+        parseDateUtc(candidate.date).toISOString().split('T')[0] === slotDateStr
     );
     if (checkOverlap(existingMemory, newStart, newEnd, slotId)) {
       return next(new ApiError(400, 'Overlapping availability slot exists for this date'));

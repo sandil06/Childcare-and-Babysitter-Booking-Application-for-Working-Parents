@@ -1156,14 +1156,23 @@ class _SitterProfileScreenState extends State<SitterProfileScreen> {
                         onPressed: saving
                             ? null
                             : () async {
+                                final pending = customCtrl.text.trim();
+                                if (pending.isNotEmpty) {
+                                  selected.add(pending);
+                                  customCtrl.clear();
+                                }
                                 setModalState(() => saving = true);
                                 final ok = await _provider.updateProfile({'skills': selected.toList()});
                                 if (ctx.mounted) Navigator.pop(ctx);
-                                if (mounted && ok) {
+                                if (mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Skills updated successfully!'),
-                                      backgroundColor: AppColors.teal,
+                                    SnackBar(
+                                      content: Text(ok
+                                          ? 'Skills updated successfully!'
+                                          : (_provider.errorMessage ??
+                                              'Failed to update skills')),
+                                      backgroundColor:
+                                          ok ? AppColors.teal : AppColors.coral,
                                     ),
                                   );
                                 }
@@ -1338,15 +1347,24 @@ class _SitterProfileScreenState extends State<SitterProfileScreen> {
                         onPressed: saving
                             ? null
                             : () async {
+                                final pending = customCtrl.text.trim();
+                                if (pending.isNotEmpty) {
+                                  selected.add(pending);
+                                  customCtrl.clear();
+                                }
                                 setModalState(() => saving = true);
                                 final langs = selected.isEmpty ? ['English'] : selected.toList();
                                 final ok = await _provider.updateProfile({'languages': langs});
                                 if (ctx.mounted) Navigator.pop(ctx);
-                                if (mounted && ok) {
+                                if (mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Languages updated successfully!'),
-                                      backgroundColor: AppColors.teal,
+                                    SnackBar(
+                                      content: Text(ok
+                                          ? 'Languages updated successfully!'
+                                          : (_provider.errorMessage ??
+                                              'Failed to update languages')),
+                                      backgroundColor:
+                                          ok ? AppColors.teal : AppColors.coral,
                                     ),
                                   );
                                 }
@@ -1517,14 +1535,23 @@ class _SitterProfileScreenState extends State<SitterProfileScreen> {
                       onPressed: saving
                           ? null
                           : () async {
+                              final pending = ctrl.text.trim();
+                              if (pending.isNotEmpty) {
+                                list.add(pending);
+                                ctrl.clear();
+                              }
                               setModalState(() => saving = true);
                               final ok = await _provider.updateProfile({'qualifications': list});
                               if (ctx.mounted) Navigator.pop(ctx);
-                              if (mounted && ok) {
+                              if (mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Qualifications updated successfully!'),
-                                    backgroundColor: AppColors.teal,
+                                  SnackBar(
+                                    content: Text(ok
+                                        ? 'Qualifications updated successfully!'
+                                        : (_provider.errorMessage ??
+                                            'Failed to update qualifications')),
+                                    backgroundColor:
+                                        ok ? AppColors.teal : AppColors.coral,
                                   ),
                                 );
                               }
@@ -1785,15 +1812,31 @@ class _SitterProfileScreenState extends State<SitterProfileScreen> {
                         onPressed: saving
                             ? null
                             : () async {
+                                final pendingName = docNameCtrl.text.trim();
+                                if (pendingName.isNotEmpty) {
+                                  docs.add(
+                                    VerificationDocumentModel(
+                                      type: docType,
+                                      name: pendingName,
+                                      status: 'pending',
+                                      uploadedAt: DateTime.now(),
+                                    ),
+                                  );
+                                  docNameCtrl.clear();
+                                }
                                 setModalState(() => saving = true);
                                 final payload = docs.map((d) => d.toJson()).toList();
                                 final ok = await _provider.updateProfile({'documents': payload});
                                 if (ctx.mounted) Navigator.pop(ctx);
-                                if (mounted && ok) {
+                                if (mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Documents updated successfully!'),
-                                      backgroundColor: AppColors.teal,
+                                    SnackBar(
+                                      content: Text(ok
+                                          ? 'Documents updated successfully!'
+                                          : (_provider.errorMessage ??
+                                              'Failed to update documents')),
+                                      backgroundColor:
+                                          ok ? AppColors.teal : AppColors.coral,
                                     ),
                                   );
                                 }
