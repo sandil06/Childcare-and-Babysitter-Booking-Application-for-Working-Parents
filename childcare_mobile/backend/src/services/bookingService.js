@@ -73,51 +73,72 @@ async function calculatePrice({ babysitterId, date, startTime, endTime }) {
   };
 }
 
-async function checkAvailabilityAndConflicts({ babysitterId, date, startTime, endTime, excludeBookingId = null }) {
-  if (!isDbConnected()) return { available: true };
-
+async function checkAvailabilityAndConflicts({ babysitterId, date, startTime, endTime, excludeBookingId = null, memoryStore = null }) {
   const startM = timeToMinutes(startTime);
   const endM = timeToMinutes(endTime);
 
-  const targetDate = new Date(date);
-  const startOfDay = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate());
-  const endOfDay = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate(), 23, 59, 59, 999);
+  if (isDbConnected()) {
+    const targetDate = new Date(date);
+    const startOfDay = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate());
+    const endOfDay = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate(), 23, 59, 59, 999);
 
-  let sitterUserId = babysitterId;
-  if (mongoose.Types.ObjectId.isValid(babysitterId)) {
-    const profile = await BabysitterProfile.findById(babysitterId);
-    if (profile && profile.user) {
-      sitterUserId = profile.user;
+    let sitterUserId = babysitterId;
+    if (mongoose.Types.ObjectId.isValid(babysitterId)) {
+      const profile = await BabysitterProfile.findById(babysitterId);
+      if (profile && profile.user) {
+        sitterUserId = profile.user;
+      }
     }
-  }
 
-  const query = {
-    babysitter: sitterUserId,
-    date: { $gte: startOfDay, $lte: endOfDay },
-    status: { $in: ['pending', 'accepted', 'confirmed', 'travelling', 'arrived', 'in_progress'] },
-  };
+    const query = {
+      babysitter: sitterUserId,
+      date: { $gte: startOfDay, $lte: endOfDay },
+      status: { $in: ['pending', 'accepted', 'confirmed', 'travelling', 'arrived', 'in_progress'] },
+    };
 
-  if (excludeBookingId && mongoose.Types.ObjectId.isValid(excludeBookingId)) {
-    query._id = { $ne: excludeBookingId };
-  }
+    if (excludeBookingId && mongoose.Types.ObjectId.isValid(excludeBookingId)) {
+      query._id = { $ne: excludeBookingId };
+    }
 
-  const existingBookings = await Booking.find(query);
-  for (const b of existingBookings) {
-    const existingStartM = timeToMinutes(b.startTime);
-    const existingEndM = timeToMinutes(b.endTime);
+    const existingBookings = await Booking.find(query);
+    for (const b of existingBookings) {
+      const existingStartM = timeToMinutes(b.startTime);
+      const existingEndM = timeToMinutes(b.endTime);
 
-    // Overlap condition: start < existingEnd && end > existingStart
-    if (startM < existingEndM && endM > existingStartM) {
-      return {
-        available: false,
-        conflictBookingId: b.bookingId || b._id.toString(),
-        reason: `Babysitter has an existing booking (${b.startTime} - ${b.endTime}) that overlaps with requested time.`,
-      };
+      // Overlap condition: start < existingEnd && end > existingStart
+      if (startM < existingEndM && endM > existingStartM) {
+        return {
+          available: false,
+          conflictBookingId: b.bookingId || b._id.toString(),
+          reason: `Babysitter has an existing booking (${b.startTime} - ${b.endTime}) that overlaps with requested time.`,
+        };
+      }
+    }
+  } else if (memoryStore) {
+    const targetDateStr = new Date(date).toISOString().split('T')[0];
+    for (const b of memoryStore.values()) {
+      if (excludeBookingId && (b._id === excludeBookingId || b.id === excludeBookingId)) continue;
+      const bSitterId = (b.babysitter?._id || b.babysitter || '').toString();
+      if (bSitterId === babysitterId.toString()) {
+        const bDateStr = new Date(b.date).toISOString().split('T')[0];
+        if (bDateStr === targetDateStr && ['pending', 'accepted', 'confirmed', 'travelling', 'arrived', 'in_progress'].includes(b.status)) {
+          const existingStartM = timeToMinutes(b.startTime);
+          const existingEndM = timeToMinutes(b.endTime);
+          if (startM < existingEndM && endM > existingStartM) {
+            return {
+              available: false,
+              conflictBookingId: b.bookingId || b.id || b._id,
+              reason: `Babysitter has an existing booking (${b.startTime} - ${b.endTime}) that overlaps with requested time.`,
+            };
+          }
+        }
+      }
     }
   }
 
   return { available: true };
 }
+
 
 module.exports = {
   calculateDurationHours,

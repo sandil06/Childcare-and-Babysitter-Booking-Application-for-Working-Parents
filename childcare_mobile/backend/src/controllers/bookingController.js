@@ -344,24 +344,27 @@ async function create(req, res, next) {
     startTime = startTime || '09:00';
     endTime = endTime || '13:00';
 
-    if (isDbConnected()) {
-      if (babysitterId && mongoose.Types.ObjectId.isValid(babysitterId)) {
-        const profile = await BabysitterProfile.findById(babysitterId);
-        if (profile && profile.user) {
-          babysitterId = profile.user;
-        }
+    if (babysitterId && isDbConnected() && mongoose.Types.ObjectId.isValid(babysitterId)) {
+      const profile = await BabysitterProfile.findById(babysitterId);
+      if (profile && profile.user) {
+        babysitterId = profile.user;
       }
+    }
 
-      // Check for overlapping bookings
-      const conflictCheck = await bookingService.checkAvailabilityAndConflicts({
-        babysitterId,
-        date,
-        startTime,
-        endTime,
-      });
-      if (!conflictCheck.available) {
-        return next(new ApiError(400, conflictCheck.reason));
-      }
+    // Check for overlapping bookings (works for both MongoDB and in-memory store)
+    const conflictCheck = await bookingService.checkAvailabilityAndConflicts({
+      babysitterId,
+      date,
+      startTime,
+      endTime,
+      memoryStore: memoryBookings,
+    });
+    if (!conflictCheck.available) {
+      return next(new ApiError(400, conflictCheck.reason));
+    }
+
+    if (isDbConnected()) {
+
 
       // Calculate server-side duration & price
       let durationHours = req.body.durationHours || req.body.duration;
