@@ -28,6 +28,8 @@ import '../features/parent/screens/filter_screen.dart';
 import '../features/parent/screens/booking_date_screen.dart';
 import '../features/parent/screens/booking_time_screen.dart';
 import '../features/parent/screens/booking_summary_screen.dart';
+import '../features/parent/screens/price_screen.dart';
+import '../features/parent/screens/booking_confirmation_screen.dart';
 import '../features/bookings/screens/booking_details_screen.dart';
 import '../features/bookings/screens/booking_history_screen.dart'
     as parent_bookings;
@@ -64,6 +66,8 @@ class AppRoutes {
   static const bookingStartTime = '/parent/booking/start-time';
   static const bookingEndTime = '/parent/booking/end-time';
   static const bookingSummary = '/parent/booking/summary';
+  static const bookingPrice = '/parent/booking/price';
+  static const bookingConfirmation = '/parent/booking/confirmation';
   static const parentUpcomingBookings = '/parent/bookings/upcoming';
   static const parentBookingHistory = '/parent/bookings/history';
   static const parentBookingDetails = '/parent/bookings/details';
@@ -130,6 +134,10 @@ class AppRoutes {
             return const BookingTimeScreen(mode: BookingTimeMode.end);
           case bookingSummary:
             return const BookingSummaryScreen();
+          case bookingPrice:
+            return const PriceScreen();
+          case bookingConfirmation:
+            return const BookingConfirmationScreen();
           case parentUpcomingBookings:
             return const parent_bookings.UpcomingBookingsScreen();
           case parentBookingHistory:

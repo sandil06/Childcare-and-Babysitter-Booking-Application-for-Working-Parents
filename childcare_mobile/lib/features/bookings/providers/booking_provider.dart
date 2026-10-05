@@ -1,6 +1,9 @@
 import 'package:flutter/foundation.dart';
 
 import '../../../core/network/api_client.dart';
+import '../models/booking_model.dart';
+import '../models/booking_price_model.dart';
+import '../services/booking_service.dart';
 
 class BookingProvider extends ChangeNotifier {
   static BookingProvider? _instance;
@@ -22,8 +25,23 @@ class BookingProvider extends ChangeNotifier {
   String? _liveLocationError;
   String? get liveLocationError => _liveLocationError;
 
+  BookingPriceModel? _priceModel;
+  BookingPriceModel? get priceModel => _priceModel;
+  bool _isCalculatingPrice = false;
+  bool get isCalculatingPrice => _isCalculatingPrice;
+  String? _priceError;
+  String? get priceError => _priceError;
+
+  BookingModel? _createdBooking;
+  BookingModel? get createdBooking => _createdBooking;
+
   bool get isComplete =>
       _selectedDate != null && _startTime != null && _endTime != null;
+
+  void setCreatedBooking(BookingModel? booking) {
+    _createdBooking = booking;
+    notifyListeners();
+  }
 
   Future<void> loadLiveLocationStatus() async {
     try {
@@ -66,6 +84,7 @@ class BookingProvider extends ChangeNotifier {
     _selectedDate = DateTime(date.year, date.month, date.day);
     _startTime = null;
     _endTime = null;
+    _priceModel = null;
     _liveLocationEnabled = false;
     _isUpdatingLiveLocation = false;
     _liveLocationError = null;
@@ -77,19 +96,54 @@ class BookingProvider extends ChangeNotifier {
     if (_endTime != null && time.toMinutes >= _endTime!.toMinutes) {
       _endTime = null;
     }
+    _priceModel = null;
     notifyListeners();
   }
 
   void selectEndTime(TimeOfDayValue time) {
     if (_startTime == null || time.toMinutes <= _startTime!.toMinutes) return;
     _endTime = time;
+    _priceModel = null;
     notifyListeners();
+  }
+
+  Future<BookingPriceModel?> fetchPriceCalculation({required String babysitterId}) async {
+    if (_startTime == null || _endTime == null || _selectedDate == null) return null;
+    _isCalculatingPrice = true;
+    _priceError = null;
+    notifyListeners();
+
+    try {
+      final sH = _startTime!.hour.toString().padLeft(2, '0');
+      final sM = _startTime!.minute.toString().padLeft(2, '0');
+      final eH = _endTime!.hour.toString().padLeft(2, '0');
+      final eM = _endTime!.minute.toString().padLeft(2, '0');
+      final dateStr = '${_selectedDate!.year}-${_selectedDate!.month.toString().padLeft(2, '0')}-${_selectedDate!.day.toString().padLeft(2, '0')}';
+
+      final result = await BookingService().calculatePrice(
+        babysitterId: babysitterId,
+        date: dateStr,
+        startTime: '$sH:$sM',
+        endTime: '$eH:$eM',
+      );
+      _priceModel = result;
+      return result;
+    } catch (e) {
+      _priceError = e.toString();
+      return null;
+    } finally {
+      _isCalculatingPrice = false;
+      notifyListeners();
+    }
   }
 
   void reset() {
     _selectedDate = null;
     _startTime = null;
     _endTime = null;
+    _priceModel = null;
+    _createdBooking = null;
+    _priceError = null;
     notifyListeners();
   }
 }

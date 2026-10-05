@@ -120,15 +120,10 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
   }
 
   void _continueWithoutSubmitting() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          'Your booking details are ready for the next confirmation step.',
-        ),
-      ),
-    );
+    Navigator.pushNamed(context, AppRoutes.bookingPrice);
   }
 }
+
 
 class _StepPill extends StatelessWidget {
   @override
