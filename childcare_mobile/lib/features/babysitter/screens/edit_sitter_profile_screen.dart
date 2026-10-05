@@ -28,6 +28,16 @@ class _EditSitterProfileScreenState extends State<EditSitterProfileScreen> {
   late Set<String> _selectedSkills;
   late Set<String> _selectedLanguages;
   late List<String> _qualifications;
+  late List<VerificationDocumentModel> _documents;
+  final _docNameController = TextEditingController();
+  String _selectedDocType = 'id';
+  final Map<String, String> _docTypeLabels = {
+    'id': 'National ID / NIC',
+    'police_check': 'Police Background Check',
+    'qualification': 'Childcare Certificate / Degree',
+    'certificate': 'First Aid / CPR Certification',
+    'other': 'Other Document',
+  };
 
   final List<String> _allSkills = [
     'Infant Care',
@@ -69,6 +79,7 @@ class _EditSitterProfileScreenState extends State<EditSitterProfileScreen> {
     _selectedSkills = Set.from(widget.profile.skills);
     _selectedLanguages = Set.from(widget.profile.languages);
     _qualifications = List.from(widget.profile.qualifications);
+    _documents = List.from(widget.profile.documents);
   }
 
   @override
@@ -79,23 +90,12 @@ class _EditSitterProfileScreenState extends State<EditSitterProfileScreen> {
     _phoneController.dispose();
     _addressController.dispose();
     _qualificationInputController.dispose();
+    _docNameController.dispose();
     super.dispose();
   }
 
   Future<void> _saveProfile() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_selectedLanguages.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Select at least one language')),
-      );
-      return;
-    }
-    if (_selectedSkills.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Select at least one skill')),
-      );
-      return;
-    }
 
     setState(() => _isSaving = true);
 
@@ -106,8 +106,9 @@ class _EditSitterProfileScreenState extends State<EditSitterProfileScreen> {
       'phone': _phoneController.text.trim(),
       'address': _addressController.text.trim(),
       'skills': _selectedSkills.toList(),
-      'languages': _selectedLanguages.toList(),
+      'languages': _selectedLanguages.isEmpty ? ['English'] : _selectedLanguages.toList(),
       'qualifications': _qualifications,
+      'documents': _documents.map((d) => d.toJson()).toList(),
     };
 
     final success = await BabysitterProvider.instance.updateProfile(updateData);
@@ -257,8 +258,8 @@ class _EditSitterProfileScreenState extends State<EditSitterProfileScreen> {
                 hint: 'Describe your experience, approach, and care style...',
                 maxLines: 4,
                 validator: (v) {
-                  if (v == null || v.trim().length < 15) {
-                    return 'Please enter at least 15 characters';
+                  if (v != null && v.trim().isNotEmpty && v.trim().length < 5) {
+                    return 'Please enter at least 5 characters';
                   }
                   return null;
                 },
@@ -463,6 +464,229 @@ class _EditSitterProfileScreenState extends State<EditSitterProfileScreen> {
                     ),
                   ),
                 ],
+              ),
+              const SizedBox(height: 24),
+
+              // Verification Documents
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Verification Documents',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.ink,
+                    ),
+                  ),
+                  Text(
+                    '${_documents.length} items',
+                    style: const TextStyle(fontSize: 13, color: AppColors.muted),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              if (_documents.isEmpty)
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: AppColors.sand),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.info_outline_rounded,
+                          size: 18, color: AppColors.muted),
+                      SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'No documents added yet. Add your NIC, Police Clearance, or CPR certificate below.',
+                          style: TextStyle(fontSize: 13, color: AppColors.muted),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ..._documents.asMap().entries.map((entry) {
+                final doc = entry.value;
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: AppColors.sand),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.description_outlined,
+                          size: 20, color: AppColors.teal),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              doc.name,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.ink,
+                              ),
+                            ),
+                            Text(
+                              _docTypeLabels[doc.type] ?? doc.type,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.muted,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
+                        margin: const EdgeInsets.only(right: 4),
+                        decoration: BoxDecoration(
+                          color: doc.status == 'verified'
+                              ? AppColors.mint
+                              : AppColors.sand.withValues(alpha: 0.5),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          doc.status == 'verified' ? 'Verified' : 'Pending',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: doc.status == 'verified'
+                                ? AppColors.teal
+                                : AppColors.ink,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close_rounded,
+                            size: 18, color: AppColors.muted),
+                        onPressed: () =>
+                            setState(() => _documents.removeAt(entry.key)),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+              const SizedBox(height: 8),
+              // Document Type Selector & Add Document Form
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.sand),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Add Verification Document',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.ink,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    DropdownButtonFormField<String>(
+                      initialValue: _selectedDocType,
+                      decoration: InputDecoration(
+                        labelText: 'Document Type',
+                        labelStyle:
+                            const TextStyle(color: AppColors.muted, fontSize: 13),
+                        filled: true,
+                        fillColor: AppColors.cream,
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 12),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                      items: _docTypeLabels.entries.map((e) {
+                        return DropdownMenuItem(
+                          value: e.key,
+                          child: Text(e.value,
+                              style: const TextStyle(fontSize: 14)),
+                        );
+                      }).toList(),
+                      onChanged: (val) {
+                        if (val != null) {
+                          setState(() => _selectedDocType = val);
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            controller: _docNameController,
+                            style: const TextStyle(
+                                fontSize: 14, color: AppColors.ink),
+                            decoration: InputDecoration(
+                              labelText: 'Document Title / Details',
+                              hintText: 'e.g. NIC 200184501234',
+                              labelStyle: const TextStyle(
+                                  color: AppColors.muted, fontSize: 13),
+                              hintStyle: TextStyle(
+                                  color: AppColors.muted.withValues(alpha: 0.6),
+                                  fontSize: 13),
+                              filled: true,
+                              fillColor: AppColors.cream,
+                              contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 14, vertical: 12),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide.none,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        FilledButton.icon(
+                          onPressed: () {
+                            final name = _docNameController.text.trim();
+                            if (name.isNotEmpty) {
+                              setState(() {
+                                _documents.add(
+                                  VerificationDocumentModel(
+                                    type: _selectedDocType,
+                                    name: name,
+                                    status: 'pending',
+                                    uploadedAt: DateTime.now(),
+                                  ),
+                                );
+                                _docNameController.clear();
+                              });
+                            }
+                          },
+                          icon: const Icon(Icons.add_rounded, size: 18),
+                          label: const Text('Add'),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppColors.teal,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: 32),
 

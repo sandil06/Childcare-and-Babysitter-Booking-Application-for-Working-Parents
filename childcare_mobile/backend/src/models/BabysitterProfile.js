@@ -4,7 +4,7 @@ const documentSchema = new mongoose.Schema(
   {
     type: {
       type: String,
-      enum: ['id', 'police_check', 'qualification', 'photo'],
+      enum: ['id', 'police_check', 'qualification', 'photo', 'certificate', 'other'],
       required: true,
     },
     name: { type: String, required: true },

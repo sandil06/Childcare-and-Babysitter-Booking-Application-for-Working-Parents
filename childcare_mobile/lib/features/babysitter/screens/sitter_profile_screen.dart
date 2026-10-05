@@ -213,16 +213,47 @@ class _SitterProfileScreenState extends State<SitterProfileScreen> {
             _buildSectionCard(
               title: 'Biography / About Me',
               icon: Icons.person_outline_rounded,
-              child: Text(
-                profile.bio.isNotEmpty
-                    ? profile.bio
-                    : 'No biography added yet.',
-                style: const TextStyle(
-                  color: AppColors.ink,
-                  fontSize: 14,
-                  height: 1.5,
-                ),
-              ),
+              onEdit: () => _editBio(profile),
+              child: profile.bio.isNotEmpty
+                  ? Text(
+                      profile.bio,
+                      style: const TextStyle(
+                        color: AppColors.ink,
+                        fontSize: 14,
+                        height: 1.5,
+                      ),
+                    )
+                  : InkWell(
+                      onTap: () => _editBio(profile),
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppColors.cream,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.sand),
+                        ),
+                        child: const Row(
+                          children: [
+                            Icon(
+                              Icons.add_circle_outline_rounded,
+                              color: AppColors.teal,
+                              size: 18,
+                            ),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'No biography added yet. Tap to add your bio.',
+                                style: TextStyle(
+                                  color: AppColors.muted,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
             ),
             const SizedBox(height: 16),
 
@@ -230,6 +261,7 @@ class _SitterProfileScreenState extends State<SitterProfileScreen> {
             _buildSectionCard(
               title: 'Skills & Capabilities',
               icon: Icons.verified_user_outlined,
+              onEdit: () => _editSkills(profile),
               child: profile.skills.isNotEmpty
                   ? Wrap(
                       spacing: 8,
@@ -258,9 +290,36 @@ class _SitterProfileScreenState extends State<SitterProfileScreen> {
                         );
                       }).toList(),
                     )
-                  : const Text(
-                      'No skills listed',
-                      style: TextStyle(color: AppColors.muted),
+                  : InkWell(
+                      onTap: () => _editSkills(profile),
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppColors.cream,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.sand),
+                        ),
+                        child: const Row(
+                          children: [
+                            Icon(
+                              Icons.add_circle_outline_rounded,
+                              color: AppColors.teal,
+                              size: 18,
+                            ),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'No skills listed. Tap to add your childcare skills.',
+                                style: TextStyle(
+                                  color: AppColors.muted,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
             ),
             const SizedBox(height: 16),
@@ -269,6 +328,7 @@ class _SitterProfileScreenState extends State<SitterProfileScreen> {
             _buildSectionCard(
               title: 'Languages Spoken',
               icon: Icons.translate_rounded,
+              onEdit: () => _editLanguages(profile),
               child: profile.languages.isNotEmpty
                   ? Wrap(
                       spacing: 8,
@@ -294,9 +354,36 @@ class _SitterProfileScreenState extends State<SitterProfileScreen> {
                         );
                       }).toList(),
                     )
-                  : const Text(
-                      'No languages listed',
-                      style: TextStyle(color: AppColors.muted),
+                  : InkWell(
+                      onTap: () => _editLanguages(profile),
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppColors.cream,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.sand),
+                        ),
+                        child: const Row(
+                          children: [
+                            Icon(
+                              Icons.add_circle_outline_rounded,
+                              color: AppColors.teal,
+                              size: 18,
+                            ),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'No languages listed. Tap to add languages spoken.',
+                                style: TextStyle(
+                                  color: AppColors.muted,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
             ),
             const SizedBox(height: 16),
@@ -305,6 +392,7 @@ class _SitterProfileScreenState extends State<SitterProfileScreen> {
             _buildSectionCard(
               title: 'Qualifications & Certificates',
               icon: Icons.school_outlined,
+              onEdit: () => _editQualifications(profile),
               child: profile.qualifications.isNotEmpty
                   ? Column(
                       children: profile.qualifications.map((q) {
@@ -334,9 +422,36 @@ class _SitterProfileScreenState extends State<SitterProfileScreen> {
                         );
                       }).toList(),
                     )
-                  : const Text(
-                      'No qualifications listed',
-                      style: TextStyle(color: AppColors.muted),
+                  : InkWell(
+                      onTap: () => _editQualifications(profile),
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppColors.cream,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.sand),
+                        ),
+                        child: const Row(
+                          children: [
+                            Icon(
+                              Icons.add_circle_outline_rounded,
+                              color: AppColors.teal,
+                              size: 18,
+                            ),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'No qualifications listed. Tap to add certificates.',
+                                style: TextStyle(
+                                  color: AppColors.muted,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
             ),
             const SizedBox(height: 16),
@@ -345,15 +460,43 @@ class _SitterProfileScreenState extends State<SitterProfileScreen> {
             _buildSectionCard(
               title: 'Verification Documents',
               icon: Icons.security_rounded,
+              onEdit: () => _editDocuments(profile),
               child: profile.documents.isNotEmpty
                   ? Column(
                       children: profile.documents
                           .map((doc) => _buildDocStatusRow(doc.name, doc.status))
                           .toList(),
                     )
-                  : const Text(
-                      'No verification documents uploaded yet',
-                      style: TextStyle(color: AppColors.muted, fontSize: 13),
+                  : InkWell(
+                      onTap: () => _editDocuments(profile),
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppColors.cream,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.sand),
+                        ),
+                        child: const Row(
+                          children: [
+                            Icon(
+                              Icons.upload_file_rounded,
+                              color: AppColors.teal,
+                              size: 18,
+                            ),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'No verification documents uploaded yet. Tap to upload ID or certificates.',
+                                style: TextStyle(
+                                  color: AppColors.muted,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
             ),
             const SizedBox(height: 16),
@@ -362,6 +505,7 @@ class _SitterProfileScreenState extends State<SitterProfileScreen> {
             _buildSectionCard(
               title: 'Contact & Location',
               icon: Icons.location_on_outlined,
+              onEdit: () => _editContact(profile),
               child: Column(
                 children: [
                   _buildContactItem(
@@ -375,7 +519,7 @@ class _SitterProfileScreenState extends State<SitterProfileScreen> {
                     'Phone',
                     profile.phone.isNotEmpty
                         ? profile.phone
-                        : 'Not provided',
+                        : 'Not provided (tap Edit to set)',
                   ),
                   const Divider(height: 16, color: AppColors.sand),
                   _buildContactItem(
@@ -383,7 +527,7 @@ class _SitterProfileScreenState extends State<SitterProfileScreen> {
                     'Address',
                     profile.address.isNotEmpty
                         ? profile.address
-                        : 'Not provided',
+                        : 'Not provided (tap Edit to set)',
                   ),
                 ],
               ),
@@ -620,12 +764,20 @@ class _SitterProfileScreenState extends State<SitterProfileScreen> {
     required String title,
     required IconData icon,
     required Widget child,
+    VoidCallback? onEdit,
   }) {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -634,14 +786,49 @@ class _SitterProfileScreenState extends State<SitterProfileScreen> {
             children: [
               Icon(icon, color: AppColors.teal, size: 20),
               const SizedBox(width: 10),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.ink,
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.ink,
+                  ),
                 ),
               ),
+              if (onEdit != null)
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: onEdit,
+                    borderRadius: BorderRadius.circular(10),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.mint,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.edit_rounded, size: 14, color: AppColors.teal),
+                          SizedBox(width: 4),
+                          Text(
+                            'Edit',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.teal,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
             ],
           ),
           const SizedBox(height: 14),
@@ -652,13 +839,14 @@ class _SitterProfileScreenState extends State<SitterProfileScreen> {
   }
 
   Widget _buildDocStatusRow(String docName, String status) {
+    final isVer = status.toLowerCase() == 'verified';
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         children: [
-          const Icon(
-            Icons.file_present_rounded,
-            color: AppColors.teal,
+          Icon(
+            isVer ? Icons.verified_user_rounded : Icons.file_present_rounded,
+            color: isVer ? AppColors.teal : AppColors.muted,
             size: 18,
           ),
           const SizedBox(width: 10),
@@ -671,13 +859,13 @@ class _SitterProfileScreenState extends State<SitterProfileScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(
-              color: AppColors.mint,
+              color: isVer ? AppColors.mint : AppColors.sand.withValues(alpha: 0.5),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Text(
-              'Verified',
+            child: Text(
+              isVer ? 'Verified' : 'Pending',
               style: TextStyle(
-                color: AppColors.teal,
+                color: isVer ? AppColors.teal : AppColors.ink,
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
               ),
@@ -711,6 +899,1052 @@ class _SitterProfileScreenState extends State<SitterProfileScreen> {
           ],
         ),
       ],
+    );
+  }
+
+  Future<void> _editBio(BabysitterModel profile) async {
+    final controller = TextEditingController(text: profile.bio);
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        bool saving = false;
+        return StatefulBuilder(
+          builder: (ctx, setModalState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 20,
+                bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: AppColors.sand,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Edit Biography',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.ink,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Introduce yourself, share your childcare philosophy, and highlight your experience.',
+                    style: TextStyle(fontSize: 13, color: AppColors.muted),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: controller,
+                    maxLines: 4,
+                    style: const TextStyle(fontSize: 14, color: AppColors.ink),
+                    decoration: InputDecoration(
+                      hintText: 'e.g. Caring babysitter with over 4 years of hands-on experience...',
+                      filled: true,
+                      fillColor: AppColors.cream,
+                      contentPadding: const EdgeInsets.all(14),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      onPressed: saving
+                          ? null
+                          : () async {
+                              setModalState(() => saving = true);
+                              final ok = await _provider.updateProfile({'bio': controller.text.trim()});
+                              if (ctx.mounted) Navigator.pop(ctx);
+                              if (mounted && ok) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Biography updated successfully!'),
+                                    backgroundColor: AppColors.teal,
+                                  ),
+                                );
+                              }
+                            },
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.teal,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      ),
+                      child: saving
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            )
+                          : const Text('Save Biography', style: TextStyle(fontWeight: FontWeight.w700)),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _editSkills(BabysitterModel profile) async {
+    final selected = Set<String>.from(profile.skills);
+    final customCtrl = TextEditingController();
+    final allStandard = [
+      'Infant Care',
+      'Toddler Care',
+      'First Aid & CPR',
+      'Meal Preparation',
+      'Homework Help',
+      'Special Needs Care',
+      'Bedtime Routines',
+      'Child Activities',
+      'Creative Arts',
+      'Potty Training',
+    ];
+    final displaySkills = {...allStandard, ...selected}.toList();
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        bool saving = false;
+        return StatefulBuilder(
+          builder: (ctx, setModalState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 20,
+                bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: AppColors.sand,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Edit Skills & Capabilities',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.ink,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    const Text(
+                      'Select skills you offer or add custom childcare capabilities.',
+                      style: TextStyle(fontSize: 13, color: AppColors.muted),
+                    ),
+                    const SizedBox(height: 16),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: displaySkills.map((s) {
+                        final isSel = selected.contains(s);
+                        return FilterChip(
+                          selected: isSel,
+                          label: Text(s),
+                          labelStyle: TextStyle(
+                            color: isSel ? Colors.white : AppColors.ink,
+                            fontWeight: isSel ? FontWeight.w600 : FontWeight.normal,
+                            fontSize: 13,
+                          ),
+                          backgroundColor: AppColors.cream,
+                          selectedColor: AppColors.teal,
+                          checkmarkColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            side: BorderSide(
+                              color: isSel ? AppColors.teal : AppColors.sand,
+                            ),
+                          ),
+                          onSelected: (val) {
+                            setModalState(() {
+                              if (val) {
+                                selected.add(s);
+                              } else {
+                                selected.remove(s);
+                              }
+                            });
+                          },
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: customCtrl,
+                            decoration: InputDecoration(
+                              hintText: 'Add custom skill...',
+                              hintStyle: const TextStyle(fontSize: 13, color: AppColors.muted),
+                              filled: true,
+                              fillColor: AppColors.cream,
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide.none,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        FilledButton(
+                          onPressed: () {
+                            final text = customCtrl.text.trim();
+                            if (text.isNotEmpty) {
+                              setModalState(() {
+                                if (!displaySkills.contains(text)) {
+                                  displaySkills.add(text);
+                                }
+                                selected.add(text);
+                                customCtrl.clear();
+                              });
+                            }
+                          },
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppColors.ink,
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          child: const Text('Add'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton(
+                        onPressed: saving
+                            ? null
+                            : () async {
+                                setModalState(() => saving = true);
+                                final ok = await _provider.updateProfile({'skills': selected.toList()});
+                                if (ctx.mounted) Navigator.pop(ctx);
+                                if (mounted && ok) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Skills updated successfully!'),
+                                      backgroundColor: AppColors.teal,
+                                    ),
+                                  );
+                                }
+                              },
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.teal,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        ),
+                        child: saving
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                              )
+                            : const Text('Save Skills', style: TextStyle(fontWeight: FontWeight.w700)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _editLanguages(BabysitterModel profile) async {
+    final selected = Set<String>.from(profile.languages);
+    final customCtrl = TextEditingController();
+    final allStandard = [
+      'Sinhala',
+      'English',
+      'Tamil',
+      'French',
+      'German',
+      'Mandarin',
+      'Arabic',
+      'Sign Language',
+    ];
+    final displayLangs = {...allStandard, ...selected}.toList();
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        bool saving = false;
+        return StatefulBuilder(
+          builder: (ctx, setModalState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 20,
+                bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: AppColors.sand,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Edit Languages Spoken',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.ink,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    const Text(
+                      'Select languages you can comfortably communicate with children and parents.',
+                      style: TextStyle(fontSize: 13, color: AppColors.muted),
+                    ),
+                    const SizedBox(height: 16),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: displayLangs.map((l) {
+                        final isSel = selected.contains(l);
+                        return FilterChip(
+                          selected: isSel,
+                          label: Text(l),
+                          labelStyle: TextStyle(
+                            color: isSel ? Colors.white : AppColors.ink,
+                            fontWeight: isSel ? FontWeight.w600 : FontWeight.normal,
+                            fontSize: 13,
+                          ),
+                          backgroundColor: AppColors.cream,
+                          selectedColor: AppColors.ink,
+                          checkmarkColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            side: BorderSide(
+                              color: isSel ? AppColors.ink : AppColors.sand,
+                            ),
+                          ),
+                          onSelected: (val) {
+                            setModalState(() {
+                              if (val) {
+                                selected.add(l);
+                              } else {
+                                selected.remove(l);
+                              }
+                            });
+                          },
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: customCtrl,
+                            decoration: InputDecoration(
+                              hintText: 'Add custom language...',
+                              hintStyle: const TextStyle(fontSize: 13, color: AppColors.muted),
+                              filled: true,
+                              fillColor: AppColors.cream,
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide.none,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        FilledButton(
+                          onPressed: () {
+                            final text = customCtrl.text.trim();
+                            if (text.isNotEmpty) {
+                              setModalState(() {
+                                if (!displayLangs.contains(text)) {
+                                  displayLangs.add(text);
+                                }
+                                selected.add(text);
+                                customCtrl.clear();
+                              });
+                            }
+                          },
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppColors.ink,
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          child: const Text('Add'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton(
+                        onPressed: saving
+                            ? null
+                            : () async {
+                                setModalState(() => saving = true);
+                                final langs = selected.isEmpty ? ['English'] : selected.toList();
+                                final ok = await _provider.updateProfile({'languages': langs});
+                                if (ctx.mounted) Navigator.pop(ctx);
+                                if (mounted && ok) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Languages updated successfully!'),
+                                      backgroundColor: AppColors.teal,
+                                    ),
+                                  );
+                                }
+                              },
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.teal,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        ),
+                        child: saving
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                              )
+                            : const Text('Save Languages', style: TextStyle(fontWeight: FontWeight.w700)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _editQualifications(BabysitterModel profile) async {
+    final list = List<String>.from(profile.qualifications);
+    final ctrl = TextEditingController();
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        bool saving = false;
+        return StatefulBuilder(
+          builder: (ctx, setModalState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 20,
+                bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: AppColors.sand,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Qualifications & Certificates',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.ink,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Add educational certificates, diplomas, or professional qualifications.',
+                    style: TextStyle(fontSize: 13, color: AppColors.muted),
+                  ),
+                  const SizedBox(height: 16),
+                  if (list.isEmpty)
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      margin: const EdgeInsets.only(bottom: 12),
+                      decoration: BoxDecoration(
+                        color: AppColors.cream,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Text(
+                        'No qualifications added yet. Type a qualification title below.',
+                        style: TextStyle(fontSize: 13, color: AppColors.muted),
+                      ),
+                    )
+                  else
+                    ...list.asMap().entries.map((e) {
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: AppColors.cream,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.sand),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.school_outlined, size: 18, color: AppColors.teal),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                e.value,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.ink,
+                                ),
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.close_rounded, size: 18, color: AppColors.muted),
+                              onPressed: () => setModalState(() => list.removeAt(e.key)),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: ctrl,
+                          decoration: InputDecoration(
+                            hintText: 'e.g. Early Childhood Care Diploma (NVQ 4)',
+                            hintStyle: const TextStyle(fontSize: 13, color: AppColors.muted),
+                            filled: true,
+                            fillColor: AppColors.cream,
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      FilledButton(
+                        onPressed: () {
+                          final text = ctrl.text.trim();
+                          if (text.isNotEmpty) {
+                            setModalState(() {
+                              list.add(text);
+                              ctrl.clear();
+                            });
+                          }
+                        },
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.teal,
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: const Text('Add'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      onPressed: saving
+                          ? null
+                          : () async {
+                              setModalState(() => saving = true);
+                              final ok = await _provider.updateProfile({'qualifications': list});
+                              if (ctx.mounted) Navigator.pop(ctx);
+                              if (mounted && ok) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Qualifications updated successfully!'),
+                                    backgroundColor: AppColors.teal,
+                                  ),
+                                );
+                              }
+                            },
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.teal,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      ),
+                      child: saving
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            )
+                          : const Text('Save Qualifications', style: TextStyle(fontWeight: FontWeight.w700)),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _editDocuments(BabysitterModel profile) async {
+    final docs = List<VerificationDocumentModel>.from(profile.documents);
+    final docNameCtrl = TextEditingController();
+    String docType = 'id';
+    final docTypeLabels = {
+      'id': 'National ID / NIC',
+      'police_check': 'Police Background Check',
+      'qualification': 'Childcare Certificate / Degree',
+      'certificate': 'First Aid / CPR Certification',
+      'other': 'Other Document',
+    };
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        bool saving = false;
+        return StatefulBuilder(
+          builder: (ctx, setModalState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 20,
+                bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: AppColors.sand,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Verification Documents',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.ink,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    const Text(
+                      'Submit and verify your identity, background clearances, and certifications.',
+                      style: TextStyle(fontSize: 13, color: AppColors.muted),
+                    ),
+                    const SizedBox(height: 16),
+                    if (docs.isEmpty)
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        margin: const EdgeInsets.only(bottom: 12),
+                        decoration: BoxDecoration(
+                          color: AppColors.cream,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Text(
+                          'No documents uploaded yet. Choose a document type and name below.',
+                          style: TextStyle(fontSize: 13, color: AppColors.muted),
+                        ),
+                      )
+                    else
+                      ...docs.asMap().entries.map((e) {
+                        final d = e.value;
+                        final isVer = d.status == 'verified';
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: AppColors.cream,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: AppColors.sand),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                isVer ? Icons.verified_user_rounded : Icons.description_outlined,
+                                size: 18,
+                                color: isVer ? AppColors.teal : AppColors.ink,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      d.name,
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppColors.ink,
+                                      ),
+                                    ),
+                                    Text(
+                                      docTypeLabels[d.type] ?? d.type,
+                                      style: const TextStyle(fontSize: 11, color: AppColors.muted),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                margin: const EdgeInsets.only(right: 4),
+                                decoration: BoxDecoration(
+                                  color: isVer ? AppColors.mint : AppColors.sand.withValues(alpha: 0.5),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  isVer ? 'Verified' : 'Pending',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w700,
+                                    color: isVer ? AppColors.teal : AppColors.ink,
+                                  ),
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.close_rounded, size: 18, color: AppColors.muted),
+                                onPressed: () => setModalState(() => docs.removeAt(e.key)),
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppColors.cream,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: AppColors.sand),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Add New Document',
+                            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.ink),
+                          ),
+                          const SizedBox(height: 8),
+                          DropdownButtonFormField<String>(
+                            initialValue: docType,
+                            decoration: InputDecoration(
+                              labelText: 'Document Type',
+                              labelStyle: const TextStyle(color: AppColors.muted, fontSize: 12),
+                              filled: true,
+                              fillColor: Colors.white,
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: BorderSide.none,
+                              ),
+                            ),
+                            items: docTypeLabels.entries.map((entry) {
+                              return DropdownMenuItem(
+                                value: entry.key,
+                                child: Text(entry.value, style: const TextStyle(fontSize: 13)),
+                              );
+                            }).toList(),
+                            onChanged: (val) {
+                              if (val != null) setModalState(() => docType = val);
+                            },
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: TextField(
+                                  controller: docNameCtrl,
+                                  decoration: InputDecoration(
+                                    labelText: 'Document Title',
+                                    hintText: 'e.g. NIC 199012345678',
+                                    labelStyle: const TextStyle(color: AppColors.muted, fontSize: 12),
+                                    hintStyle: const TextStyle(color: AppColors.muted, fontSize: 12),
+                                    filled: true,
+                                    fillColor: Colors.white,
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                      borderSide: BorderSide.none,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              FilledButton(
+                                onPressed: () {
+                                  final name = docNameCtrl.text.trim();
+                                  if (name.isNotEmpty) {
+                                    setModalState(() {
+                                      docs.add(
+                                        VerificationDocumentModel(
+                                          type: docType,
+                                          name: name,
+                                          status: 'pending',
+                                          uploadedAt: DateTime.now(),
+                                        ),
+                                      );
+                                      docNameCtrl.clear();
+                                    });
+                                  }
+                                },
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: AppColors.teal,
+                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                ),
+                                child: const Text('Add'),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton(
+                        onPressed: saving
+                            ? null
+                            : () async {
+                                setModalState(() => saving = true);
+                                final payload = docs.map((d) => d.toJson()).toList();
+                                final ok = await _provider.updateProfile({'documents': payload});
+                                if (ctx.mounted) Navigator.pop(ctx);
+                                if (mounted && ok) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Documents updated successfully!'),
+                                      backgroundColor: AppColors.teal,
+                                    ),
+                                  );
+                                }
+                              },
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.teal,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        ),
+                        child: saving
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                              )
+                            : const Text('Save Documents', style: TextStyle(fontWeight: FontWeight.w700)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _editContact(BabysitterModel profile) async {
+    final phoneCtrl = TextEditingController(text: profile.phone);
+    final addressCtrl = TextEditingController(text: profile.address);
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        bool saving = false;
+        return StatefulBuilder(
+          builder: (ctx, setModalState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 20,
+                bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: AppColors.sand,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Edit Contact & Location',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.ink,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Keep your phone number and location updated for verified bookings.',
+                    style: TextStyle(fontSize: 13, color: AppColors.muted),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: phoneCtrl,
+                    keyboardType: TextInputType.phone,
+                    decoration: InputDecoration(
+                      labelText: 'Phone Number',
+                      hintText: '+94 77 123 4567',
+                      filled: true,
+                      fillColor: AppColors.cream,
+                      prefixIcon: const Icon(Icons.phone_outlined, color: AppColors.teal, size: 20),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: addressCtrl,
+                    decoration: InputDecoration(
+                      labelText: 'Street Address & City',
+                      hintText: 'No. 45, Galle Road, Colombo 03',
+                      filled: true,
+                      fillColor: AppColors.cream,
+                      prefixIcon: const Icon(Icons.home_outlined, color: AppColors.teal, size: 20),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      onPressed: saving
+                          ? null
+                          : () async {
+                              setModalState(() => saving = true);
+                              final ok = await _provider.updateProfile({
+                                'phone': phoneCtrl.text.trim(),
+                                'address': addressCtrl.text.trim(),
+                              });
+                              if (ctx.mounted) Navigator.pop(ctx);
+                              if (mounted && ok) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Contact details updated successfully!'),
+                                    backgroundColor: AppColors.teal,
+                                  ),
+                                );
+                              }
+                            },
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.teal,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      ),
+                      child: saving
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            )
+                          : const Text('Save Contact Details', style: TextStyle(fontWeight: FontWeight.w700)),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }

@@ -53,10 +53,36 @@ class BabysitterService {
       final res = await _client.patch('babysitters/me', body: data);
       if (res is Map<String, dynamic>) {
         _currentProfile = BabysitterModel.fromJson(res);
+        if (_currentProfile?.phone.isNotEmpty == true) {
+          await LocalStorage.instance.write('user_phone', _currentProfile!.phone);
+        }
         return _currentProfile;
       }
     } catch (e) {
       debugPrint('updateProfile API error: $e');
+      if (_currentProfile != null) {
+        _currentProfile = _currentProfile!.copyWith(
+          bio: data['bio'] as String?,
+          hourlyRate: (data['hourlyRate'] as num?)?.toDouble(),
+          experienceYears: (data['experienceYears'] as num?)?.toInt(),
+          phone: data['phone'] as String?,
+          address: data['address'] as String?,
+          skills: (data['skills'] as List?)?.map((e) => e.toString()).toList(),
+          languages: (data['languages'] as List?)?.map((e) => e.toString()).toList(),
+          qualifications: (data['qualifications'] as List?)?.map((e) => e.toString()).toList(),
+          documents: data['documents'] is List
+              ? (data['documents'] as List)
+                  .whereType<Map<String, dynamic>>()
+                  .map(VerificationDocumentModel.fromJson)
+                  .toList()
+              : null,
+        );
+        if (data['phone'] != null) {
+          await LocalStorage.instance.write('user_phone', data['phone'].toString());
+        }
+        return _currentProfile;
+      }
+      rethrow;
     }
     return _currentProfile;
   }
