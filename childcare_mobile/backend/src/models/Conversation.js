@@ -9,6 +9,11 @@ const conversationSchema = new mongoose.Schema(
         required: true,
       },
     ],
+    bookingId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Booking',
+      default: null,
+    },
     lastMessage: {
       type: String,
       default: '',
@@ -16,6 +21,11 @@ const conversationSchema = new mongoose.Schema(
     lastMessageAt: {
       type: Date,
       default: Date.now,
+    },
+    unreadCounts: {
+      type: Map,
+      of: Number,
+      default: {},
     },
   },
   { timestamps: true }

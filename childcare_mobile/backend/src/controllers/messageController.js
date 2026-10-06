@@ -255,10 +255,37 @@ async function sendMessage(req, res, next) {
   }
 }
 
+async function markAsRead(req, res, next) {
+  try {
+    const userId = getUserId(req);
+    const { id } = req.params;
+
+    if (isDbConnected() && mongoose.Types.ObjectId.isValid(id)) {
+      await Message.updateMany(
+        { $or: [{ conversation: id }, { _id: id }], sender: { $ne: userId } },
+        { status: 'read', readAt: new Date() }
+      );
+      return ApiResponse.success(res, { markedRead: true }, 'Messages marked as read');
+    }
+
+    const conv = memoryConversations.get(id);
+    if (conv) {
+      conv.unreadCount = 0;
+    }
+    return ApiResponse.success(res, { markedRead: true }, 'Messages marked as read');
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   getConversations,
   getMessages,
   sendMessage,
+  markAsRead,
   list: getConversations,
   create: sendMessage,
+  memoryConversations,
+  memoryMessages,
 };
+
