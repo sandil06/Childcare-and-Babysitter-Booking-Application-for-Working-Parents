@@ -49,6 +49,7 @@ import '../features/agency/screens/agency_login_screen.dart';
 import '../features/agency/screens/reports_screen.dart';
 import '../features/agency/screens/sitter_verification_screen.dart';
 import '../features/agency/screens/verification_requests_screen.dart';
+import '../features/agency/models/verification_request_model.dart';
 
 class AppRoutes {
   static const splash = '/splash';
@@ -169,6 +170,12 @@ class AppRoutes {
           case agencyVerificationRequests:
             return const VerificationRequestsScreen();
           case agencySitterVerification:
+            final args = settings.arguments;
+            if (args is VerificationRequestModel) {
+              return SitterVerificationScreen(request: args);
+            } else if (args is String) {
+              return SitterVerificationScreen(verificationId: args);
+            }
             return const SitterVerificationScreen();
           case sitterDashboard:
             return const SitterDashboardScreen();

@@ -154,6 +154,24 @@ class AgencyProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<VerificationRequestModel?> loadVerificationDetails(String id) async {
+    _isInitialLoading = true;
+    notifyListeners();
+    try {
+      final detail = await _service.getVerificationDetails(id);
+      if (detail != null) {
+        _selectedVerification = detail;
+      }
+      return detail;
+    } catch (e) {
+      _errorMessage = e.toString();
+      return null;
+    } finally {
+      _isInitialLoading = false;
+      notifyListeners();
+    }
+  }
+
   Future<bool> approveVerification(String id, {String? notes}) async {
     _isSubmitting = true;
     notifyListeners();
