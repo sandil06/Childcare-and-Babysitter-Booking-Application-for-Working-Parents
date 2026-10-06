@@ -18,7 +18,14 @@ app.use(cors({
 	allowedHeaders: ['Content-Type', 'Accept', 'Authorization'],
 	methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
 }));
-app.use(express.json({ limit: '1mb' }));
+app.use(
+	express.json({
+		limit: '1mb',
+		verify: (req, res, buf) => {
+			req.rawBody = buf;
+		},
+	})
+);
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan(env.nodeEnv === 'production' ? 'combined' : 'dev'));
 app.use(apiRateLimit);

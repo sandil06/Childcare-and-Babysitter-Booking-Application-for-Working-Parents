@@ -43,6 +43,9 @@ const env = {
   clientOrigin: process.env.CLIENT_ORIGIN || '*',
   isAllowedClientOrigin,
   googleClientId: process.env.GOOGLE_CLIENT_ID || process.env.Google_client_id || '',
+  stripeSecretKey: process.env.STRIPE_SECRET_KEY || '',
+  stripePublishableKey: process.env.STRIPE_PUBLISHABLE_KEY || '',
+  stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET || '',
 };
 
 module.exports = env;
