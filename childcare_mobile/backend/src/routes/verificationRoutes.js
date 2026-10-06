@@ -8,5 +8,8 @@ const requireAgency = roleMiddleware(ROLES.AGENCY, ROLES.ADMIN);
 
 router.get('/', auth, requireAgency, verificationController.list);
 router.get('/:id', auth, requireAgency, verificationController.getById);
+router.patch('/:id/approve', auth, requireAgency, verificationController.approve);
+router.patch('/:id/reject', auth, requireAgency, verificationController.reject);
+router.patch('/:id/request-changes', auth, requireAgency, verificationController.requestChanges);
 
 module.exports = router;

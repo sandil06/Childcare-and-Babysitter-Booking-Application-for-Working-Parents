@@ -20,6 +20,7 @@ router.get('/health', health);
 router.use('/auth', authRoutes);
 router.use('/parents', parentRoutes);
 router.use('/babysitters', babysitterRoutes);
+router.use('/agency', agencyRoutes);
 router.use('/agencies', agencyRoutes);
 router.use('/bookings', bookingRoutes);
 router.use('/availability', availabilityRoutes);

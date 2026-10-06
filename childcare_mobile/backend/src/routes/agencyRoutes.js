@@ -14,5 +14,8 @@ router.get('/dashboard', auth, requireAgency, getDashboard);
 // Verifications
 router.get('/verifications', auth, requireAgency, verificationController.list);
 router.get('/verifications/:id', auth, requireAgency, verificationController.getById);
+router.patch('/verifications/:id/approve', auth, requireAgency, verificationController.approve);
+router.patch('/verifications/:id/reject', auth, requireAgency, verificationController.reject);
+router.patch('/verifications/:id/request-changes', auth, requireAgency, verificationController.requestChanges);
 
 module.exports = router;
