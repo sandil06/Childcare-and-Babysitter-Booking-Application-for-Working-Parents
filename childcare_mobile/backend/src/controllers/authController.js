@@ -315,12 +315,25 @@ async function login(req, res, next) {
       const valid = await bcrypt.compare(password, user.passwordHash);
       if (!valid) return next(new ApiError(401, 'Invalid mobile number/email or password'));
 
+      if (user.isActive === false || user.accountStatus === 'suspended') {
+        return next(
+          new ApiError(
+            403,
+            user.suspensionReason
+              ? `Account suspended: ${user.suspensionReason}`
+              : 'Your account has been suspended by administration.'
+          )
+        );
+      }
+
       const token = generateToken({
         sub: user._id.toString(),
         role: user.role,
         name: user.name,
         email: user.email,
         phone: user.phone || '',
+        accountStatus: user.accountStatus || 'active',
+        isActive: user.isActive !== false,
       });
       return ApiResponse.success(
         res,
@@ -331,6 +344,8 @@ async function login(req, res, next) {
             email: user.email,
             phone: user.phone || '',
             role: user.role,
+            accountStatus: user.accountStatus || 'active',
+            isActive: user.isActive !== false,
           },
           token,
         },
@@ -338,14 +353,44 @@ async function login(req, res, next) {
       );
     }
 
-    const user = { id: 'local-user', email, role: ROLES.PARENT, passwordHash: await bcrypt.hash(password, 12) };
+    let userRole = req.body.role;
+    if (!userRole) {
+      if (loginKey.toLowerCase().includes('agency')) userRole = ROLES.AGENCY;
+      else if (loginKey.toLowerCase().includes('admin')) userRole = ROLES.ADMIN;
+      else if (loginKey.toLowerCase().includes('sitter')) userRole = ROLES.BABYSITTER;
+      else userRole = ROLES.PARENT;
+    }
+
+    const user = {
+      id: `local-${userRole}-1`,
+      email: loginKey,
+      name: userRole === ROLES.AGENCY ? 'Agency Admin' : (userRole === ROLES.ADMIN ? 'Super Admin' : 'User'),
+      role: userRole,
+      accountStatus: 'active',
+      isActive: true,
+      passwordHash: await bcrypt.hash(password, 12),
+    };
     const valid = await bcrypt.compare(password, user.passwordHash);
     if (!valid) return next(new ApiError(401, 'Invalid credentials'));
     return ApiResponse.success(
       res,
       {
-        user: { id: user.id, email: user.email, role: user.role },
-        token: generateToken({ sub: user.id, role: user.role, email: user.email, name: 'Parent' }),
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+          accountStatus: user.accountStatus,
+          isActive: user.isActive,
+        },
+        token: generateToken({
+          sub: user.id,
+          role: user.role,
+          email: user.email,
+          name: user.name,
+          accountStatus: user.accountStatus,
+          isActive: user.isActive,
+        }),
       }
     );
   } catch (error) {
