@@ -59,11 +59,15 @@ class _UpcomingBookingsScreenState extends State<UpcomingBookingsScreen> {
     }
 
     try {
+      if (isRefresh) {
+        _bookingService.invalidateCache();
+      }
       _currentPage = 1;
       final results = await _bookingService.getBookings(
         status: _selectedTab,
         page: _currentPage,
         limit: _limit,
+        forceRefresh: isRefresh,
       );
       if (mounted) {
         setState(() {

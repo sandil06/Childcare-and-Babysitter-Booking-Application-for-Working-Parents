@@ -115,10 +115,33 @@ class BookingService {
     return fallback;
   }
 
+  // Memory TTL cache for fast tab-switching
+  final Map<String, List<BookingModel>> _cachedResponses = {};
+  final Map<String, DateTime> _cacheTimestamps = {};
+  static const _cacheTtl = Duration(seconds: 25);
+
+  void invalidateCache() {
+    _cachedResponses.clear();
+    _cacheTimestamps.clear();
+  }
+
   // ==========================================
   // LIST BOOKINGS
   // ==========================================
-  Future<List<BookingModel>> getBookings({String? status, int page = 1, int limit = 10}) async {
+  Future<List<BookingModel>> getBookings({
+    String? status,
+    int page = 1,
+    int limit = 10,
+    bool forceRefresh = false,
+  }) async {
+    final cacheKey = '${status ?? "all"}_p$page';
+    if (!forceRefresh && page == 1 && _cachedResponses.containsKey(cacheKey)) {
+      final ts = _cacheTimestamps[cacheKey];
+      if (ts != null && DateTime.now().difference(ts) < _cacheTtl) {
+        return _cachedResponses[cacheKey]!;
+      }
+    }
+
     try {
       final token = await LocalStorage.instance.read('auth_token');
       if (token != null && token.toString().isNotEmpty) {
@@ -145,6 +168,8 @@ class BookingService {
             .map((item) => BookingModel.fromJson(Map<String, dynamic>.from(item)))
             .toList();
         if (page == 1) {
+          _cachedResponses[cacheKey] = results;
+          _cacheTimestamps[cacheKey] = DateTime.now();
           _localBookings.clear();
           _localBookings.addAll(results);
           await _saveLocalBookings();
