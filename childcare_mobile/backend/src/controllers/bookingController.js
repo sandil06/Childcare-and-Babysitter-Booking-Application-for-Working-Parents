@@ -4,6 +4,7 @@ const BabysitterProfile = require('../models/BabysitterProfile');
 const ApiResponse = require('../utils/ApiResponse');
 const ApiError = require('../utils/ApiError');
 const bookingService = require('../services/bookingService');
+const { createNotification } = require('./notificationController');
 
 // Memory store fallback
 const memoryBookings = new Map();
@@ -279,6 +280,26 @@ async function updateStatus(req, res, next) {
         );
       }
 
+      // Notify parent of caregiver progress
+      const parentId = booking.parent?._id || booking.parent;
+      if (parentId) {
+        const notifMap = {
+          travelling: { title: 'Caregiver Travelling', message: 'Your babysitter is on the way to your address.' },
+          arrived: { title: 'Caregiver Arrived', message: 'Your babysitter has arrived at your address.' },
+          in_progress: { title: 'Service In Progress', message: 'Childcare service has officially started.' },
+          completed: { title: 'Service Completed', message: 'Childcare service is completed. Please review your caregiver.' },
+        };
+        if (notifMap[newStatus]) {
+          createNotification({
+            userId: parentId,
+            title: notifMap[newStatus].title,
+            message: notifMap[newStatus].message,
+            type: newStatus,
+            data: { bookingId: booking._id || booking.id },
+          }).catch(() => {});
+        }
+      }
+
       return ApiResponse.success(res, booking, `Booking status updated to ${newStatus}`);
     }
 
@@ -302,6 +323,27 @@ async function updateStatus(req, res, next) {
     booking.status = newStatus;
     booking.updatedAt = new Date();
     memoryBookings.set(bookingId, booking);
+
+    // Notify parent in memory mode
+    const memParentId = booking.parent?._id || booking.parent;
+    if (memParentId) {
+      const notifMap = {
+        travelling: { title: 'Caregiver Travelling', message: 'Your babysitter is on the way to your address.' },
+        arrived: { title: 'Caregiver Arrived', message: 'Your babysitter has arrived at your address.' },
+        in_progress: { title: 'Service In Progress', message: 'Childcare service has officially started.' },
+        completed: { title: 'Service Completed', message: 'Childcare service is completed. Please review your caregiver.' },
+      };
+      if (notifMap[newStatus]) {
+        createNotification({
+          userId: memParentId,
+          title: notifMap[newStatus].title,
+          message: notifMap[newStatus].message,
+          type: newStatus,
+          data: { bookingId: booking._id || booking.id },
+        }).catch(() => {});
+      }
+    }
+
     return ApiResponse.success(res, booking, `Booking status updated to ${newStatus}`);
   } catch (err) {
     next(err);
