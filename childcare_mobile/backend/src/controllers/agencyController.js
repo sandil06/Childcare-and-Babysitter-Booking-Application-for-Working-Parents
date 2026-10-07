@@ -530,6 +530,196 @@ async function reactivateUser(req, res, next) {
   }
 }
 
+/**
+ * GET /api/v1/agency/parents
+ * Paginated list of parent users with ParentProfile details
+ */
+async function getParents(req, res, next) {
+  try {
+    const { search, status } = req.query;
+    const { page, limit, skip } = pagination(req.query);
+
+    if (isDbConnected()) {
+      const filter = { role: ROLES.PARENT };
+      if (status && status !== 'all') {
+        if (status === 'suspended') {
+          filter.$or = [{ accountStatus: 'suspended' }, { isActive: false }];
+        } else if (status === 'active') {
+          filter.accountStatus = 'active';
+          filter.isActive = true;
+        }
+      }
+
+      let users = await User.find(filter)
+        .select('-passwordHash')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean();
+
+      if (search && search.trim()) {
+        const query = search.trim().toLowerCase();
+        users = users.filter(
+          (u) =>
+            u.name?.toLowerCase().includes(query) ||
+            u.email?.toLowerCase().includes(query)
+        );
+      }
+
+      const ParentProfile = require('../models/ParentProfile');
+      const enhanced = await Promise.all(
+        users.map(async (u) => {
+          const profile = await ParentProfile.findOne({ user: u._id }).lean();
+          return {
+            ...u,
+            profile: profile || null,
+            childrenCount: profile?.children?.length || 0,
+            isNicVerified: profile?.isNicVerified || false,
+            address: profile?.address || '',
+          };
+        })
+      );
+
+      const total = await User.countDocuments(filter);
+      res.set('X-Page', String(page));
+      res.set('X-Limit', String(limit));
+      res.set('X-Total', String(total));
+      res.set('X-Has-More', String(skip + limit < total));
+
+      return ApiResponse.success(res, enhanced, 'Parents retrieved successfully');
+    }
+
+    initSampleUsers();
+    let list = Array.from(memoryUsers.values()).filter((u) => u.role === 'parent');
+    if (status && status !== 'all') {
+      list = list.filter((u) => u.accountStatus.toLowerCase() === status.toLowerCase());
+    }
+    if (search && search.trim()) {
+      const q = search.trim().toLowerCase();
+      list = list.filter((u) => u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q));
+    }
+
+    const enhanced = list.map((u) => ({
+      ...u,
+      childrenCount: 2,
+      isNicVerified: true,
+      address: 'Colombo, Western Province',
+      emergencyContact: '+94 77 999 8888',
+      children: [
+        { name: 'Dinuka', age: '4 yrs', notes: 'Allergic to peanuts' },
+        { name: 'Senuka', age: '1 yr', notes: 'Needs afternoon nap' },
+      ],
+    }));
+
+    const total = enhanced.length;
+    const paged = enhanced.slice(skip, skip + limit);
+
+    res.set('X-Page', String(page));
+    res.set('X-Limit', String(limit));
+    res.set('X-Total', String(total));
+    res.set('X-Has-More', String(skip + limit < total));
+
+    return ApiResponse.success(res, paged, 'Parents retrieved successfully');
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * GET /api/v1/agency/babysitters
+ * Paginated list of babysitters with BabysitterProfile details
+ */
+async function getBabysitters(req, res, next) {
+  try {
+    const { search, status } = req.query;
+    const { page, limit, skip } = pagination(req.query);
+
+    if (isDbConnected()) {
+      const filter = { role: ROLES.BABYSITTER };
+      if (status && status !== 'all') {
+        if (status === 'suspended') {
+          filter.$or = [{ accountStatus: 'suspended' }, { isActive: false }];
+        } else if (status === 'active') {
+          filter.accountStatus = 'active';
+          filter.isActive = true;
+        }
+      }
+
+      let users = await User.find(filter)
+        .select('-passwordHash')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean();
+
+      if (search && search.trim()) {
+        const query = search.trim().toLowerCase();
+        users = users.filter(
+          (u) =>
+            u.name?.toLowerCase().includes(query) ||
+            u.email?.toLowerCase().includes(query)
+        );
+      }
+
+      const enhanced = await Promise.all(
+        users.map(async (u) => {
+          const profile = await BabysitterProfile.findOne({ user: u._id }).lean();
+          return {
+            ...u,
+            profile: profile || null,
+            experienceYears: profile?.experienceYears || 1,
+            hourlyRate: profile?.hourlyRate || 1500,
+            verificationStatus: profile?.verificationStatus || 'pending',
+            rating: profile?.rating || 5.0,
+            skills: profile?.skills || [],
+          };
+        })
+      );
+
+      const total = await User.countDocuments(filter);
+      res.set('X-Page', String(page));
+      res.set('X-Limit', String(limit));
+      res.set('X-Total', String(total));
+      res.set('X-Has-More', String(skip + limit < total));
+
+      return ApiResponse.success(res, enhanced, 'Babysitters retrieved successfully');
+    }
+
+    initSampleUsers();
+    let list = Array.from(memoryUsers.values()).filter((u) => u.role === 'babysitter');
+    if (status && status !== 'all') {
+      list = list.filter((u) => u.accountStatus.toLowerCase() === status.toLowerCase());
+    }
+    if (search && search.trim()) {
+      const q = search.trim().toLowerCase();
+      list = list.filter((u) => u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q));
+    }
+
+    const enhanced = list.map((u) => ({
+      ...u,
+      experienceYears: 4,
+      hourlyRate: 1500,
+      verificationStatus: 'verified',
+      rating: u.averageRating || 4.9,
+      skills: ['First Aid & CPR', 'Toddler Care', 'Creative Play'],
+      languages: ['English', 'Sinhala'],
+      qualifications: ['Diploma in Early Childhood Education'],
+    }));
+
+    const total = enhanced.length;
+    const paged = enhanced.slice(skip, skip + limit);
+
+    res.set('X-Page', String(page));
+    res.set('X-Limit', String(limit));
+    res.set('X-Total', String(total));
+    res.set('X-Has-More', String(skip + limit < total));
+
+    return ApiResponse.success(res, paged, 'Babysitters retrieved successfully');
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   getDashboard,
   dashboard: getDashboard,
@@ -537,6 +727,8 @@ module.exports = {
   getUserById,
   suspendUser,
   reactivateUser,
+  getParents,
+  getBabysitters,
   memoryUsers,
   memoryVerifications,
   memoryReports,

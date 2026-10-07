@@ -8,6 +8,8 @@ const {
   getUserById,
   suspendUser,
   reactivateUser,
+  getParents,
+  getBabysitters,
 } = require('../controllers/agencyController');
 const verificationController = require('../controllers/verificationController');
 
@@ -29,5 +31,9 @@ router.get('/users', auth, requireAgency, getUsers);
 router.get('/users/:id', auth, requireAgency, getUserById);
 router.patch('/users/:id/suspend', auth, requireAgency, suspendUser);
 router.patch('/users/:id/reactivate', auth, requireAgency, reactivateUser);
+
+// Parent & Babysitter Management
+router.get('/parents', auth, requireAgency, getParents);
+router.get('/babysitters', auth, requireAgency, getBabysitters);
 
 module.exports = router;

@@ -173,6 +173,10 @@ class _AgencyDashboardScreenState extends State<AgencyDashboardScreen> {
                               iconColor: const Color(0xFF16A34A),
                               iconBgColor: const Color(0xFFDCFCE7),
                               subtitle: 'Active in search catalog',
+                              onTap: () => Navigator.pushNamed(
+                                context,
+                                AppRoutes.agencyBabysitterManagement,
+                              ),
                             ),
                             DashboardStatCard(
                               title: 'Rejected Applications',
