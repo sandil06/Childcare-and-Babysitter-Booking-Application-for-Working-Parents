@@ -4,6 +4,8 @@ const BabysitterProfile = require('../models/BabysitterProfile');
 const Booking = require('../models/Booking');
 const VerificationRequest = require('../models/VerificationRequest');
 const Report = require('../models/Report');
+const AuditLog = require('../models/AuditLog');
+const Notification = require('../models/Notification');
 const ApiResponse = require('../utils/ApiResponse');
 const ApiError = require('../utils/ApiError');
 const pagination = require('../utils/pagination');
@@ -399,11 +401,142 @@ async function getUserById(req, res, next) {
   }
 }
 
+/**
+ * PATCH /api/v1/agency/users/:id/suspend
+ * Suspend user account with mandatory reason
+ */
+async function suspendUser(req, res, next) {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body;
+    const adminUser = req.user;
+
+    if (!reason || !reason.trim()) {
+      return next(new ApiError(400, 'Suspension reason is required'));
+    }
+
+    if (isDbConnected() && mongoose.Types.ObjectId.isValid(id)) {
+      const user = await User.findById(id);
+      if (!user) return next(new ApiError(404, 'User not found'));
+
+      user.accountStatus = 'suspended';
+      user.isActive = false;
+      user.suspensionReason = reason.trim();
+      await user.save();
+
+      try {
+        await AuditLog.create({
+          actor: adminUser?._id,
+          action: 'suspend_user',
+          targetType: 'User',
+          targetId: id,
+          notes: reason.trim(),
+          metadata: { email: user.email, role: user.role },
+        });
+      } catch (logErr) {
+        // continue
+      }
+
+      try {
+        await Notification.create({
+          user: user._id,
+          title: 'Account Suspended',
+          message: `Your account has been suspended by the agency. Reason: ${reason.trim()}`,
+          type: 'system',
+        });
+      } catch (notifErr) {
+        // continue
+      }
+
+      const safeUser = user.toObject();
+      delete safeUser.passwordHash;
+      return ApiResponse.success(res, safeUser, 'User suspended successfully');
+    }
+
+    initSampleUsers();
+    const user = memoryUsers.get(id);
+    if (!user) return next(new ApiError(404, 'User not found'));
+
+    user.accountStatus = 'suspended';
+    user.isActive = false;
+    user.suspensionReason = reason.trim();
+    memoryUsers.set(id, user);
+
+    return ApiResponse.success(res, user, 'User suspended successfully');
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * PATCH /api/v1/agency/users/:id/reactivate
+ * Reactivate suspended user account
+ */
+async function reactivateUser(req, res, next) {
+  try {
+    const { id } = req.params;
+    const adminUser = req.user;
+
+    if (isDbConnected() && mongoose.Types.ObjectId.isValid(id)) {
+      const user = await User.findById(id);
+      if (!user) return next(new ApiError(404, 'User not found'));
+
+      user.accountStatus = 'active';
+      user.isActive = true;
+      user.suspensionReason = '';
+      await user.save();
+
+      try {
+        await AuditLog.create({
+          actor: adminUser?._id,
+          action: 'reactivate_user',
+          targetType: 'User',
+          targetId: id,
+          notes: 'User account restored to active status',
+          metadata: { email: user.email, role: user.role },
+        });
+      } catch (logErr) {
+        // continue
+      }
+
+      try {
+        await Notification.create({
+          user: user._id,
+          title: 'Account Reactivated',
+          message: 'Your account has been reactivated. You can now access all services.',
+          type: 'system',
+        });
+      } catch (notifErr) {
+        // continue
+      }
+
+      const safeUser = user.toObject();
+      delete safeUser.passwordHash;
+      return ApiResponse.success(res, safeUser, 'User reactivated successfully');
+    }
+
+    initSampleUsers();
+    const user = memoryUsers.get(id);
+    if (!user) return next(new ApiError(404, 'User not found'));
+
+    user.accountStatus = 'active';
+    user.isActive = true;
+    user.suspensionReason = '';
+    memoryUsers.set(id, user);
+
+    return ApiResponse.success(res, user, 'User reactivated successfully');
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   getDashboard,
   dashboard: getDashboard,
   getUsers,
   getUserById,
+  suspendUser,
+  reactivateUser,
   memoryUsers,
   memoryVerifications,
   memoryReports,
