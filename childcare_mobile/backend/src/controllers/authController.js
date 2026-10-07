@@ -184,7 +184,31 @@ async function register(req, res, next) {
       if (role === ROLES.BABYSITTER) {
         try {
           const BabysitterProfile = require('../models/BabysitterProfile');
-          await BabysitterProfile.create({
+          const VerificationRequest = require('../models/VerificationRequest');
+          const defaultDocs = [
+            {
+              type: 'id',
+              name: 'National Identity Card (NIC)',
+              url: 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=800',
+              status: 'pending',
+              uploadedAt: new Date(),
+            },
+            {
+              type: 'police_check',
+              name: 'Police Clearance Certificate',
+              url: 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=800',
+              status: 'pending',
+              uploadedAt: new Date(),
+            },
+            {
+              type: 'certificate',
+              name: 'First Aid & CPR Certificate',
+              url: 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=800',
+              status: 'pending',
+              uploadedAt: new Date(),
+            },
+          ];
+          const bProfile = await BabysitterProfile.create({
             user: user._id,
             phone: cleanPhone,
             hourlyRate: 1500.0,
@@ -192,7 +216,15 @@ async function register(req, res, next) {
             averageRating: 0.0,
             totalReviews: 0,
             totalCompletedBookings: 0,
-            verificationStatus: 'verified',
+            verificationStatus: 'pending',
+            documents: defaultDocs,
+          });
+          await VerificationRequest.create({
+            babysitter: user._id,
+            babysitterProfile: bProfile._id,
+            status: 'pending',
+            documents: defaultDocs,
+            submittedAt: new Date(),
           });
         } catch (_) {}
       }
@@ -238,6 +270,49 @@ async function register(req, res, next) {
           name: user.name,
           email: user.email,
           phone: user.phone,
+        });
+      } catch (_) {}
+    } else if (role === ROLES.BABYSITTER) {
+      try {
+        const { memoryBabysitters } = require('../services/babysitterService');
+        const defaultDocs = [
+          {
+            type: 'id',
+            name: 'National Identity Card (NIC)',
+            url: 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=800',
+            status: 'pending',
+            uploadedAt: new Date(),
+          },
+          {
+            type: 'police_check',
+            name: 'Police Clearance Certificate',
+            url: 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=800',
+            status: 'pending',
+            uploadedAt: new Date(),
+          },
+          {
+            type: 'certificate',
+            name: 'First Aid & CPR Certificate',
+            url: 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=800',
+            status: 'pending',
+            uploadedAt: new Date(),
+          },
+        ];
+        memoryBabysitters.set(user.id, {
+          id: user.id,
+          _id: user.id,
+          user,
+          name: user.name,
+          email: user.email,
+          phone: user.phone || '',
+          hourlyRate: 1500.0,
+          experienceYears: 1,
+          skills: ['Child Care', 'First Aid & CPR'],
+          languages: ['English', 'Sinhala'],
+          qualifications: [],
+          documents: defaultDocs,
+          verificationStatus: 'pending',
+          isAvailable: true,
         });
       } catch (_) {}
     }
