@@ -413,6 +413,19 @@ class AgencyService {
     ];
   }
 
+  Future<bool> cancelBooking(String id, {required String reason}) async {
+    await _ensureAuthToken();
+    try {
+      final res = await _client.patch('agency/bookings/$id/cancel', body: {
+        'reason': reason,
+      });
+      return res is Map && res['success'] == true;
+    } catch (e) {
+      debugPrint('[AgencyService] cancelBooking error: $e');
+      return false;
+    }
+  }
+
   // ==========================================
   // 6. SAFETY REPORTS / COMPLAINTS
   // ==========================================

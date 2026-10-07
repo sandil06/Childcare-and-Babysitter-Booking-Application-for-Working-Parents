@@ -10,6 +10,8 @@ const {
   reactivateUser,
   getParents,
   getBabysitters,
+  getBookings,
+  cancelBookingByAdmin,
 } = require('../controllers/agencyController');
 const verificationController = require('../controllers/verificationController');
 
@@ -35,5 +37,9 @@ router.patch('/users/:id/reactivate', auth, requireAgency, reactivateUser);
 // Parent & Babysitter Management
 router.get('/parents', auth, requireAgency, getParents);
 router.get('/babysitters', auth, requireAgency, getBabysitters);
+
+// Bookings Monitoring
+router.get('/bookings', auth, requireAgency, getBookings);
+router.patch('/bookings/:id/cancel', auth, requireAgency, cancelBookingByAdmin);
 
 module.exports = router;

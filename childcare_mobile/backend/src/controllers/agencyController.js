@@ -19,6 +19,92 @@ function isDbConnected() {
 const memoryVerifications = new Map();
 const memoryReports = new Map();
 const memoryUsers = new Map();
+const memoryBookings = new Map();
+
+function initSampleBookings() {
+  if (memoryBookings.size > 0) return;
+
+  const samples = [
+    {
+      _id: 'bk-901',
+      id: 'bk-901',
+      bookingId: '#BK-901',
+      parent: { _id: 'u-1', name: 'Dulani Senanayake', email: 'dulani.s@gmail.com', phone: '+94 77 445 5667' },
+      babysitter: { _id: 'u-2', name: 'Amaya Fernando', email: 'amaya.fernando@example.com', phone: '+94 77 123 4567' },
+      parentName: 'Dulani Senanayake',
+      babysitterName: 'Amaya Fernando',
+      parentPhone: '+94 77 445 5667',
+      babysitterPhone: '+94 77 123 4567',
+      date: '2026-10-08',
+      startTime: '09:00 AM',
+      endTime: '01:00 PM',
+      durationHours: 4,
+      hourlyRate: 1500,
+      subtotal: 6000,
+      serviceFee: 600,
+      totalAmount: 6600,
+      status: 'confirmed',
+      paymentStatus: 'paid',
+      address: 'No 45, Flower Road, Colombo 07',
+      notes: 'Please arrive 10 minutes early.',
+      createdAt: new Date(Date.now() - 86400000 * 2),
+    },
+    {
+      _id: 'bk-902',
+      id: 'bk-902',
+      bookingId: '#BK-902',
+      parent: { _id: 'u-4', name: 'Saman Jayatilleke', email: 'saman.j@yahoo.com', phone: '+94 70 334 8899' },
+      babysitter: { _id: 'u-3', name: 'Kavindi Perera', email: 'kavindi.perera@example.com', phone: '+94 71 987 6543' },
+      parentName: 'Saman Jayatilleke',
+      babysitterName: 'Kavindi Perera',
+      parentPhone: '+94 70 334 8899',
+      babysitterPhone: '+94 71 987 6543',
+      date: '2026-10-07',
+      startTime: '02:00 PM',
+      endTime: '06:00 PM',
+      durationHours: 4,
+      hourlyRate: 1350,
+      subtotal: 5400,
+      serviceFee: 540,
+      totalAmount: 5940,
+      status: 'in_progress',
+      paymentStatus: 'paid',
+      address: '22/4 Nawala Road, Nugegoda',
+      notes: 'Baby needs feeding at 3:30 PM.',
+      createdAt: new Date(Date.now() - 86400000 * 1),
+    },
+    {
+      _id: 'bk-903',
+      id: 'bk-903',
+      bookingId: '#BK-903',
+      parent: { _id: 'u-5', name: 'Nimali Disanayake', email: 'nimali.d@gmail.com', phone: '+94 75 221 4455' },
+      babysitter: { _id: 'u-6', name: 'Sanduni Jayawardena', email: 'sanduni.j@example.com', phone: '+94 76 555 8899' },
+      parentName: 'Nimali Disanayake',
+      babysitterName: 'Sanduni Jayawardena',
+      parentPhone: '+94 75 221 4455',
+      babysitterPhone: '+94 76 555 8899',
+      date: '2026-10-06',
+      startTime: '08:00 AM',
+      endTime: '12:00 PM',
+      durationHours: 4,
+      hourlyRate: 1800,
+      subtotal: 7200,
+      serviceFee: 720,
+      totalAmount: 7920,
+      status: 'completed',
+      paymentStatus: 'paid',
+      address: '15 Station Road, Dehiwala',
+      notes: 'Care completed smoothly.',
+      createdAt: new Date(Date.now() - 86400000 * 3),
+    },
+  ];
+
+  for (const s of samples) {
+    memoryBookings.set(s._id, s);
+  }
+}
+
+initSampleBookings();
 
 function initSampleUsers() {
   if (memoryUsers.size > 0) return;
@@ -720,6 +806,140 @@ async function getBabysitters(req, res, next) {
   }
 }
 
+/**
+ * GET /api/v1/agency/bookings
+ * Paginated list of bookings with status and search filters
+ */
+async function getBookings(req, res, next) {
+  try {
+    const { status, search } = req.query;
+    const { page, limit, skip } = pagination(req.query);
+
+    if (isDbConnected()) {
+      const filter = {};
+      if (status && status !== 'all') {
+        filter.status = status.toLowerCase();
+      }
+
+      let bookings = await Booking.find(filter)
+        .populate('parent', 'name email phone avatar')
+        .populate('babysitter', 'name email phone avatar')
+        .sort({ date: -1, createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean();
+
+      if (search && search.trim()) {
+        const q = search.trim().toLowerCase();
+        bookings = bookings.filter(
+          (b) =>
+            b.bookingId?.toLowerCase().includes(q) ||
+            b.parent?.name?.toLowerCase().includes(q) ||
+            b.babysitter?.name?.toLowerCase().includes(q)
+        );
+      }
+
+      const formatted = bookings.map((b) => ({
+        ...b,
+        id: b._id.toString(),
+        parentName: b.parent?.name || 'Parent',
+        babysitterName: b.babysitter?.name || 'Babysitter',
+        parentPhone: b.parent?.phone || '',
+        babysitterPhone: b.babysitter?.phone || '',
+      }));
+
+      const total = await Booking.countDocuments(filter);
+      res.set('X-Page', String(page));
+      res.set('X-Limit', String(limit));
+      res.set('X-Total', String(total));
+      res.set('X-Has-More', String(skip + limit < total));
+
+      return ApiResponse.success(res, formatted, 'Bookings retrieved successfully');
+    }
+
+    initSampleBookings();
+    let list = Array.from(memoryBookings.values());
+
+    if (status && status !== 'all') {
+      list = list.filter((b) => b.status.toLowerCase() === status.toLowerCase());
+    }
+
+    if (search && search.trim()) {
+      const q = search.trim().toLowerCase();
+      list = list.filter(
+        (b) =>
+          b.bookingId.toLowerCase().includes(q) ||
+          b.parentName.toLowerCase().includes(q) ||
+          b.babysitterName.toLowerCase().includes(q)
+      );
+    }
+
+    const total = list.length;
+    const paged = list.slice(skip, skip + limit);
+
+    res.set('X-Page', String(page));
+    res.set('X-Limit', String(limit));
+    res.set('X-Total', String(total));
+    res.set('X-Has-More', String(skip + limit < total));
+
+    return ApiResponse.success(res, paged, 'Bookings retrieved successfully');
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * PATCH /api/v1/agency/bookings/:id/cancel
+ * Emergency admin cancellation for active booking
+ */
+async function cancelBookingByAdmin(req, res, next) {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body;
+    const adminUser = req.user;
+
+    if (!reason || !reason.trim()) {
+      return next(new ApiError(400, 'Cancellation reason is required'));
+    }
+
+    if (isDbConnected() && mongoose.Types.ObjectId.isValid(id)) {
+      const booking = await Booking.findById(id);
+      if (!booking) return next(new ApiError(404, 'Booking not found'));
+
+      booking.status = 'cancelled';
+      booking.cancellationReason = reason.trim();
+      booking.cancelledBy = 'agency_admin';
+      await booking.save();
+
+      try {
+        await AuditLog.create({
+          actor: adminUser?._id,
+          action: 'update_booking_status',
+          targetType: 'Booking',
+          targetId: id,
+          notes: `Admin cancelled booking: ${reason.trim()}`,
+        });
+      } catch (logErr) {
+        // continue
+      }
+
+      return ApiResponse.success(res, booking, 'Booking cancelled by administrator');
+    }
+
+    initSampleBookings();
+    const booking = memoryBookings.get(id);
+    if (!booking) return next(new ApiError(404, 'Booking not found'));
+
+    booking.status = 'cancelled';
+    booking.cancellationReason = reason.trim();
+    memoryBookings.set(id, booking);
+
+    return ApiResponse.success(res, booking, 'Booking cancelled by administrator');
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   getDashboard,
   dashboard: getDashboard,
@@ -729,7 +949,10 @@ module.exports = {
   reactivateUser,
   getParents,
   getBabysitters,
+  getBookings,
+  cancelBookingByAdmin,
   memoryUsers,
+  memoryBookings,
   memoryVerifications,
   memoryReports,
 };

@@ -237,6 +237,10 @@ class _AgencyDashboardScreenState extends State<AgencyDashboardScreen> {
                               icon: Icons.calendar_today_rounded,
                               iconColor: const Color(0xFF0284C7),
                               iconBgColor: const Color(0xFFE0F2FE),
+                              onTap: () => Navigator.pushNamed(
+                                context,
+                                AppRoutes.agencyBookings,
+                              ),
                             ),
                             DashboardStatCard(
                               title: 'Completed',

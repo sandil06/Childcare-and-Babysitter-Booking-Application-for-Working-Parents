@@ -302,6 +302,21 @@ class AgencyProvider extends ChangeNotifier {
     }
   }
 
+  Future<bool> cancelBooking(String id, {required String reason}) async {
+    _isSubmitting = true;
+    notifyListeners();
+    try {
+      final ok = await _service.cancelBooking(id, reason: reason);
+      if (ok) {
+        await loadBookings(refresh: true);
+      }
+      return ok;
+    } finally {
+      _isSubmitting = false;
+      notifyListeners();
+    }
+  }
+
   // ==========================================
   // REPORTS
   // ==========================================
