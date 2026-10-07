@@ -78,7 +78,7 @@ class ChatService {
     try {
       final res = await _client.post('conversations', body: {
         'recipientId': recipientId,
-        if (bookingId != null) 'bookingId': bookingId,
+        'bookingId': ?bookingId,
       });
 
       if (res is Map && res['data'] != null) {
@@ -146,13 +146,13 @@ class ChatService {
       try {
         res = await _client.post('conversations/$conversationId/messages', body: {
           'text': text,
-          if (recipientId != null) 'recipientId': recipientId,
+          'recipientId': ?recipientId,
         });
       } catch (_) {
         res = await _client.post('messages', body: {
           'conversationId': conversationId,
           'text': text,
-          if (recipientId != null) 'recipientId': recipientId,
+          'recipientId': ?recipientId,
         });
       }
 

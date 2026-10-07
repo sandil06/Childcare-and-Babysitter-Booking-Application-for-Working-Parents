@@ -37,7 +37,7 @@ class PaymentService {
     }
 
     // Offline / Mock fallback
-    final mockIntentId = 'pi_test_${Date.now()}_mock';
+    final mockIntentId = 'pi_test_${DateTime.now().millisecondsSinceEpoch}_mock';
     return {
       'paymentIntentId': mockIntentId,
       'clientSecret': '${mockIntentId}_secret_sample',

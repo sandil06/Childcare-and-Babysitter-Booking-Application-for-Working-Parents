@@ -187,7 +187,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                         : ListView.separated(
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                             itemCount: _notifications.length,
-                            separatorBuilder: (_, __) => const SizedBox(height: 10),
+                            separatorBuilder: (_, index) => const SizedBox(height: 10),
                             itemBuilder: (context, index) {
                               final notif = _notifications[index];
                               return _buildNotificationCard(notif);
@@ -246,9 +246,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               offset: const Offset(0, 2),
             ),
           ],
-        ],
-      ),
-      child: Row(
+        ),
+        child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Icon Container
@@ -316,8 +315,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           ],
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildEmptyState() {
     return Center(

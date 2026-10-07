@@ -1,9 +1,7 @@
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../../config/routes.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../core/constants/app_sizes.dart';
 import '../../../core/services/location_service.dart';
 import '../../bookings/models/booking_model.dart';
 import '../services/tracking_service.dart';
@@ -29,8 +27,8 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> with SingleTick
   int _etaMinutes = 12;
   double _sitterLat = 6.8950;
   double _sitterLng = 79.8588;
-  double _destLat = 6.9044;
-  double _destLng = 79.8639;
+  final double _destLat = 6.9044;
+  final double _destLng = 79.8639;
   double _speed = 28.0;
 
   @override

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../../../config/routes.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../core/constants/app_sizes.dart';
 import '../../bookings/models/booking_model.dart';
 import '../../bookings/providers/booking_provider.dart';
 import '../models/payment_model.dart';

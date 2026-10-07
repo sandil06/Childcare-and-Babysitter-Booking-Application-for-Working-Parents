@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 
-import '../../../config/routes.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/storage/local_storage.dart';
 import '../models/message_model.dart';
@@ -256,7 +255,9 @@ class _ChatScreenState extends State<ChatScreen> {
                     ],
                   ),
                   Text(
-                    _isOtherTyping ? 'typing...' : 'Active now',
+                    _isOtherTyping
+                        ? '${_typingUserName.isNotEmpty ? _typingUserName : _otherName} is typing...'
+                        : 'Active now',
                     style: TextStyle(
                       fontSize: 11.5,
                       color: _isOtherTyping ? AppColors.teal : AppColors.muted,

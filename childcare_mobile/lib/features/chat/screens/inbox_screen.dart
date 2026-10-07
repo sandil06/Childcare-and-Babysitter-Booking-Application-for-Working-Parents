@@ -163,7 +163,7 @@ class _InboxScreenState extends State<InboxScreen> {
                         : ListView.separated(
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                             itemCount: _filteredConversations.length,
-                            separatorBuilder: (_, __) => const SizedBox(height: 10),
+                            separatorBuilder: (_, index) => const SizedBox(height: 10),
                             itemBuilder: (context, index) {
                               final conv = _filteredConversations[index];
                               return _buildConversationCard(conv);
@@ -209,9 +209,8 @@ class _InboxScreenState extends State<InboxScreen> {
               offset: const Offset(0, 3),
             ),
           ],
-        ],
-      ),
-      child: Row(
+        ),
+        child: Row(
         children: [
           // Avatar with Active Online Dot
           Stack(
@@ -325,8 +324,9 @@ class _InboxScreenState extends State<InboxScreen> {
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildEmptyState() {
     return Center(

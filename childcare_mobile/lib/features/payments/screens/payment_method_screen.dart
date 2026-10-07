@@ -3,11 +3,10 @@ import 'package:flutter/material.dart';
 import '../../../config/routes.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_sizes.dart';
-import '../../babysitter/providers/babysitter_provider.dart';
 import '../../bookings/models/booking_model.dart';
 import '../../bookings/providers/booking_provider.dart';
 import '../../bookings/services/booking_service.dart';
-import '../models/payment_model.dart';
+import '../../parent/providers/parent_provider.dart';
 import '../services/payment_service.dart';
 
 class PaymentMethodScreen extends StatefulWidget {
@@ -19,7 +18,7 @@ class PaymentMethodScreen extends StatefulWidget {
 
 class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
   final BookingProvider _bookingProvider = BookingProvider.instance;
-  final BabysitterProvider _sitterProvider = BabysitterProvider.instance;
+  final ParentProvider _parentProvider = ParentProvider.instance;
   final PaymentService _paymentService = PaymentService();
   final BookingService _bookingService = BookingService();
 
@@ -29,7 +28,7 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final sitter = _sitterProvider.selectedBabysitter;
+    final sitter = _parentProvider.selectedBabysitter;
     final priceModel = _bookingProvider.priceModel;
     final totalAmount = priceModel?.totalAmount ?? 6000.0;
     final duration = priceModel?.duration ?? 4.0;
@@ -514,27 +513,27 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
 
       // 1. If booking hasn't been created on backend yet, create it now
       if (booking == null) {
-        final sitter = _sitterProvider.selectedBabysitter;
+        final sitter = _parentProvider.selectedBabysitter;
         final selectedDate = _bookingProvider.selectedDate ?? DateTime.now();
         final start = _bookingProvider.startTime?.formatted ?? '09:00 AM';
         final end = _bookingProvider.endTime?.formatted ?? '01:00 PM';
         final price = _bookingProvider.priceModel;
 
-        final newBooking = await _bookingService.createBooking(
-          babysitterId: sitter?.id ?? 'sitter-1',
-          date: '${selectedDate.year}-${selectedDate.month.toString().padLeft(2, '0')}-${selectedDate.day.toString().padLeft(2, '0')}',
-          startTime: start,
-          endTime: end,
-          hourlyRate: sitter?.hourlyRate ?? 1500.0,
-          location: 'Colombo, Sri Lanka',
-          specialNotes: 'Childcare booking via mobile app',
-          children: [
+        final newBooking = await _bookingService.createBooking({
+          'babysitterId': sitter?.id ?? 'sitter-1',
+          'date': '${selectedDate.year}-${selectedDate.month.toString().padLeft(2, '0')}-${selectedDate.day.toString().padLeft(2, '0')}',
+          'startTime': start,
+          'endTime': end,
+          'hourlyRate': sitter?.hourlyRate ?? 1500.0,
+          'location': 'Colombo, Sri Lanka',
+          'specialNotes': 'Childcare booking via mobile app',
+          'children': [
             {'name': 'Child', 'age': 4},
           ],
-          subtotal: price?.subtotal ?? totalAmount,
-          serviceFee: price?.serviceFee ?? 0.0,
-          totalAmount: totalAmount,
-        );
+          'subtotal': price?.subtotal ?? totalAmount,
+          'serviceFee': price?.serviceFee ?? 0.0,
+          'totalAmount': totalAmount,
+        });
 
         booking = newBooking;
         _bookingProvider.setCreatedBooking(newBooking);

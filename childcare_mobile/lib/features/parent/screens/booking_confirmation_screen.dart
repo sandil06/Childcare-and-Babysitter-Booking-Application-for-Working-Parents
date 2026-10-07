@@ -2,11 +2,10 @@ import 'package:flutter/material.dart';
 
 import '../../../config/routes.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../core/constants/app_sizes.dart';
-import '../../babysitter/providers/babysitter_provider.dart';
 import '../../bookings/models/booking_model.dart';
 import '../../bookings/providers/booking_provider.dart';
 import '../../bookings/widgets/status_chip.dart';
+import '../../parent/providers/parent_provider.dart';
 import '../../payments/models/payment_model.dart';
 
 class BookingConfirmationScreen extends StatelessWidget {
@@ -38,7 +37,7 @@ class BookingConfirmationScreen extends StatelessWidget {
     }
 
     activeBooking ??= BookingProvider.instance.createdBooking;
-    final sitter = BabysitterProvider.instance.selectedBabysitter;
+    final sitter = ParentProvider.instance.selectedBabysitter;
 
     final referenceId = activeBooking?.displayBookingId ?? 'BK-849204';
     final sitterName = activeBooking?.babysitterName ?? sitter?.name ?? 'Caregiver';
