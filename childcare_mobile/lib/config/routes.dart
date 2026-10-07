@@ -53,7 +53,9 @@ import '../features/agency/screens/user_management_screen.dart';
 import '../features/agency/screens/parent_management_screen.dart';
 import '../features/agency/screens/babysitter_management_screen.dart';
 import '../features/agency/screens/booking_monitoring_screen.dart';
+import '../features/agency/screens/complaint_details_screen.dart';
 import '../features/agency/models/verification_request_model.dart';
+import '../features/agency/models/report_model.dart';
 
 class AppRoutes {
   static const splash = '/splash';
@@ -87,6 +89,7 @@ class AppRoutes {
   static const agencyLogin = '/agency/login';
   static const agencyDashboard = '/agency/dashboard';
   static const agencyReports = '/agency/reports';
+  static const agencyComplaintDetails = '/agency/complaints/details';
   static const agencyVerificationRequests = '/agency/verification-requests';
   static const agencySitterVerification = '/agency/sitter-verification';
   static const agencyUserManagement = '/agency/users';
@@ -175,6 +178,14 @@ class AppRoutes {
             return const AgencyDashboardScreen();
           case agencyReports:
             return const ReportsScreen();
+          case agencyComplaintDetails:
+            final args = settings.arguments;
+            if (args is ReportModel) {
+              return ComplaintDetailsScreen(report: args);
+            } else if (args is String) {
+              return ComplaintDetailsScreen(reportId: args);
+            }
+            return const ComplaintDetailsScreen();
           case agencyVerificationRequests:
             return const VerificationRequestsScreen();
           case agencySitterVerification:

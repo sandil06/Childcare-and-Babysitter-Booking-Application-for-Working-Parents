@@ -491,6 +491,19 @@ class AgencyService {
     ];
   }
 
+  Future<ReportModel?> getReportById(String id) async {
+    await _ensureAuthToken();
+    try {
+      final res = await _client.get('agency/reports/$id');
+      if (res is Map && res['data'] != null) {
+        return ReportModel.fromJson(Map<String, dynamic>.from(res['data'] as Map));
+      }
+    } catch (e) {
+      debugPrint('[AgencyService] getReportById error: $e');
+    }
+    return null;
+  }
+
   Future<bool> updateReportStatus(
     String id, {
     required String status,
@@ -505,6 +518,54 @@ class AgencyService {
       return res is Map && res['success'] == true;
     } catch (e) {
       debugPrint('[AgencyService] updateReportStatus error: $e');
+      return false;
+    }
+  }
+
+  Future<bool> resolveReport(
+    String id, {
+    required String resolutionNotes,
+  }) async {
+    await _ensureAuthToken();
+    try {
+      final res = await _client.patch('agency/reports/$id/resolve', body: {
+        'resolutionNotes': resolutionNotes,
+      });
+      return res is Map && res['success'] == true;
+    } catch (e) {
+      debugPrint('[AgencyService] resolveReport error: $e');
+      return false;
+    }
+  }
+
+  Future<bool> escalateReport(
+    String id, {
+    String? notes,
+  }) async {
+    await _ensureAuthToken();
+    try {
+      final res = await _client.patch('agency/reports/$id/escalate', body: {
+        'notes': ?notes,
+      });
+      return res is Map && res['success'] == true;
+    } catch (e) {
+      debugPrint('[AgencyService] escalateReport error: $e');
+      return false;
+    }
+  }
+
+  Future<bool> dismissReport(
+    String id, {
+    required String reason,
+  }) async {
+    await _ensureAuthToken();
+    try {
+      final res = await _client.patch('agency/reports/$id/dismiss', body: {
+        'reason': reason,
+      });
+      return res is Map && res['success'] == true;
+    } catch (e) {
+      debugPrint('[AgencyService] dismissReport error: $e');
       return false;
     }
   }

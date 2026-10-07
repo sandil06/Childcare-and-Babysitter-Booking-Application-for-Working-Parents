@@ -371,4 +371,65 @@ class AgencyProvider extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+  Future<bool> resolveReport(
+    String id, {
+    required String resolutionNotes,
+  }) async {
+    _isSubmitting = true;
+    notifyListeners();
+    try {
+      final ok = await _service.resolveReport(id, resolutionNotes: resolutionNotes);
+      if (ok) {
+        await loadReports(refresh: true);
+        await loadDashboard(refresh: true);
+      }
+      return ok;
+    } finally {
+      _isSubmitting = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> escalateReport(
+    String id, {
+    String? notes,
+  }) async {
+    _isSubmitting = true;
+    notifyListeners();
+    try {
+      final ok = await _service.escalateReport(id, notes: notes);
+      if (ok) {
+        await loadReports(refresh: true);
+        await loadDashboard(refresh: true);
+      }
+      return ok;
+    } finally {
+      _isSubmitting = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> dismissReport(
+    String id, {
+    required String reason,
+  }) async {
+    _isSubmitting = true;
+    notifyListeners();
+    try {
+      final ok = await _service.dismissReport(id, reason: reason);
+      if (ok) {
+        await loadReports(refresh: true);
+        await loadDashboard(refresh: true);
+      }
+      return ok;
+    } finally {
+      _isSubmitting = false;
+      notifyListeners();
+    }
+  }
+
+  Future<ReportModel?> getReportById(String id) async {
+    return _service.getReportById(id);
+  }
 }
