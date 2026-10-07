@@ -5,6 +5,8 @@ const Booking = require('../models/Booking');
 const VerificationRequest = require('../models/VerificationRequest');
 const Report = require('../models/Report');
 const ApiResponse = require('../utils/ApiResponse');
+const ApiError = require('../utils/ApiError');
+const pagination = require('../utils/pagination');
 const ROLES = require('../constants/roles');
 
 function isDbConnected() {
@@ -14,6 +16,122 @@ function isDbConnected() {
 // In-memory mock stores for offline / test resilience
 const memoryVerifications = new Map();
 const memoryReports = new Map();
+const memoryUsers = new Map();
+
+function initSampleUsers() {
+  if (memoryUsers.size > 0) return;
+
+  const samples = [
+    {
+      _id: 'u-1',
+      id: 'u-1',
+      name: 'Dulani Senanayake',
+      email: 'dulani.s@gmail.com',
+      phone: '+94 77 445 5667',
+      role: 'parent',
+      accountStatus: 'active',
+      isActive: true,
+      isEmailVerified: true,
+      totalBookings: 14,
+      openReports: 0,
+      createdAt: new Date(Date.now() - 86400000 * 45),
+    },
+    {
+      _id: 'u-2',
+      id: 'u-2',
+      name: 'Amaya Fernando',
+      email: 'amaya.fernando@example.com',
+      phone: '+94 77 123 4567',
+      role: 'babysitter',
+      accountStatus: 'active',
+      isActive: true,
+      isEmailVerified: true,
+      totalBookings: 28,
+      averageRating: 4.9,
+      openReports: 0,
+      createdAt: new Date(Date.now() - 86400000 * 90),
+    },
+    {
+      _id: 'u-3',
+      id: 'u-3',
+      name: 'Kavindi Perera',
+      email: 'kavindi.perera@example.com',
+      phone: '+94 71 987 6543',
+      role: 'babysitter',
+      accountStatus: 'active',
+      isActive: true,
+      isEmailVerified: true,
+      totalBookings: 12,
+      averageRating: 4.8,
+      openReports: 0,
+      createdAt: new Date(Date.now() - 86400000 * 30),
+    },
+    {
+      _id: 'u-4',
+      id: 'u-4',
+      name: 'Saman Jayatilleke',
+      email: 'saman.j@yahoo.com',
+      phone: '+94 70 334 8899',
+      role: 'parent',
+      accountStatus: 'active',
+      isActive: true,
+      isEmailVerified: true,
+      totalBookings: 6,
+      openReports: 0,
+      createdAt: new Date(Date.now() - 86400000 * 60),
+    },
+    {
+      _id: 'u-5',
+      id: 'u-5',
+      name: 'Nimali Disanayake',
+      email: 'nimali.d@gmail.com',
+      phone: '+94 75 221 4455',
+      role: 'parent',
+      accountStatus: 'suspended',
+      isActive: false,
+      suspensionReason: 'Repeated late cancellations without notification',
+      isEmailVerified: true,
+      totalBookings: 3,
+      openReports: 1,
+      createdAt: new Date(Date.now() - 86400000 * 15),
+    },
+    {
+      _id: 'u-6',
+      id: 'u-6',
+      name: 'Sanduni Jayawardena',
+      email: 'sanduni.j@example.com',
+      phone: '+94 76 555 8899',
+      role: 'babysitter',
+      accountStatus: 'active',
+      isActive: true,
+      isEmailVerified: true,
+      totalBookings: 34,
+      averageRating: 5.0,
+      openReports: 0,
+      createdAt: new Date(Date.now() - 86400000 * 120),
+    },
+    {
+      _id: 'u-7',
+      id: 'u-7',
+      name: 'Chaminda Silva',
+      email: 'admin@littlehands.lk',
+      phone: '+94 11 234 5678',
+      role: 'agency',
+      accountStatus: 'active',
+      isActive: true,
+      isEmailVerified: true,
+      totalBookings: 0,
+      openReports: 0,
+      createdAt: new Date(Date.now() - 86400000 * 200),
+    },
+  ];
+
+  for (const s of samples) {
+    memoryUsers.set(s._id, s);
+  }
+}
+
+initSampleUsers();
 
 /**
  * GET /api/v1/agency/dashboard
@@ -172,9 +290,121 @@ async function getDashboard(req, res, next) {
   }
 }
 
+/**
+ * GET /api/v1/agency/users
+ * Paginated user listing with filters for role, status, and search
+ */
+async function getUsers(req, res, next) {
+  try {
+    const { role, status, search } = req.query;
+    const { page, limit, skip } = pagination(req.query);
+
+    if (isDbConnected()) {
+      const filter = {};
+      if (role && role !== 'all') {
+        filter.role = role.toLowerCase();
+      }
+      if (status && status !== 'all') {
+        if (status === 'suspended') {
+          filter.$or = [{ accountStatus: 'suspended' }, { isActive: false }];
+        } else if (status === 'active') {
+          filter.accountStatus = 'active';
+          filter.isActive = true;
+        }
+      }
+
+      let users = await User.find(filter)
+        .select('-passwordHash')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean();
+
+      if (search && search.trim()) {
+        const query = search.trim().toLowerCase();
+        users = users.filter(
+          (u) =>
+            u.name?.toLowerCase().includes(query) ||
+            u.email?.toLowerCase().includes(query) ||
+            u.phone?.toLowerCase().includes(query)
+        );
+      }
+
+      const total = await User.countDocuments(filter);
+
+      res.set('X-Page', String(page));
+      res.set('X-Limit', String(limit));
+      res.set('X-Total', String(total));
+      res.set('X-Has-More', String(skip + limit < total));
+
+      return ApiResponse.success(res, users, 'Users retrieved successfully');
+    }
+
+    initSampleUsers();
+    let list = Array.from(memoryUsers.values());
+
+    if (role && role !== 'all') {
+      list = list.filter((u) => u.role.toLowerCase() === role.toLowerCase());
+    }
+
+    if (status && status !== 'all') {
+      list = list.filter((u) => u.accountStatus.toLowerCase() === status.toLowerCase());
+    }
+
+    if (search && search.trim()) {
+      const query = search.trim().toLowerCase();
+      list = list.filter(
+        (u) =>
+          u.name?.toLowerCase().includes(query) ||
+          u.email?.toLowerCase().includes(query) ||
+          u.phone?.toLowerCase().includes(query)
+      );
+    }
+
+    const total = list.length;
+    const paged = list.slice(skip, skip + limit);
+
+    res.set('X-Page', String(page));
+    res.set('X-Limit', String(limit));
+    res.set('X-Total', String(total));
+    res.set('X-Has-More', String(skip + limit < total));
+
+    return ApiResponse.success(res, paged, 'Users retrieved successfully');
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * GET /api/v1/agency/users/:id
+ * Retrieve details for a specific user
+ */
+async function getUserById(req, res, next) {
+  try {
+    const { id } = req.params;
+
+    if (isDbConnected() && mongoose.Types.ObjectId.isValid(id)) {
+      const user = await User.findById(id).select('-passwordHash').lean();
+      if (!user) return next(new ApiError(404, 'User not found'));
+      return ApiResponse.success(res, user, 'User details retrieved');
+    }
+
+    initSampleUsers();
+    const user = memoryUsers.get(id);
+    if (!user) return next(new ApiError(404, 'User not found'));
+
+    return ApiResponse.success(res, user, 'User details retrieved');
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   getDashboard,
   dashboard: getDashboard,
+  getUsers,
+  getUserById,
+  memoryUsers,
   memoryVerifications,
   memoryReports,
 };

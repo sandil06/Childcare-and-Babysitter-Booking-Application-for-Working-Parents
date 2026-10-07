@@ -222,6 +222,10 @@ class _AgencyDashboardScreenState extends State<AgencyDashboardScreen> {
                               icon: Icons.people_alt_outlined,
                               iconColor: AppColors.teal,
                               iconBgColor: const Color(0xFFE6F5F2),
+                              onTap: () => Navigator.pushNamed(
+                                context,
+                                AppRoutes.agencyUserManagement,
+                              ),
                             ),
                             DashboardStatCard(
                               title: 'Active Bookings',

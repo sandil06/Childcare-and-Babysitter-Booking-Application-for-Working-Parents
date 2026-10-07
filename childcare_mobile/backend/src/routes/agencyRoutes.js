@@ -2,7 +2,7 @@ const router = require('express').Router();
 const auth = require('../middleware/authMiddleware');
 const roleMiddleware = require('../middleware/roleMiddleware');
 const ROLES = require('../constants/roles');
-const { getDashboard } = require('../controllers/agencyController');
+const { getDashboard, getUsers, getUserById } = require('../controllers/agencyController');
 const verificationController = require('../controllers/verificationController');
 
 // All agency endpoints require authenticated agency or admin role
@@ -17,5 +17,9 @@ router.get('/verifications/:id', auth, requireAgency, verificationController.get
 router.patch('/verifications/:id/approve', auth, requireAgency, verificationController.approve);
 router.patch('/verifications/:id/reject', auth, requireAgency, verificationController.reject);
 router.patch('/verifications/:id/request-changes', auth, requireAgency, verificationController.requestChanges);
+
+// User Management
+router.get('/users', auth, requireAgency, getUsers);
+router.get('/users/:id', auth, requireAgency, getUserById);
 
 module.exports = router;
