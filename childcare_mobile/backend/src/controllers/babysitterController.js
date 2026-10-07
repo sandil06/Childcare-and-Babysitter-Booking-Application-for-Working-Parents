@@ -75,11 +75,20 @@ async function syncVerificationForSitter(userId, profile) {
 
   if (isDbConnected() && mongoose.Types.ObjectId.isValid(userId)) {
     try {
-      let vReq = await VerificationRequest.findOne({ babysitter: userId });
+      try {
+        await User.findByIdAndUpdate(userId, { role: ROLES.BABYSITTER });
+      } catch (_) {}
+
+      let vReq = await VerificationRequest.findOne({
+        $or: [{ babysitter: userId }, { babysitterProfile: profile._id || profile.id }],
+      });
       if (vReq) {
         vReq.documents = preparedDocs;
         vReq.qualifications = quals;
         vReq.status = overallStatus;
+        if (!vReq.babysitterProfile) vReq.babysitterProfile = profile._id || profile.id;
+        if (!vReq.babysitter) vReq.babysitter = userId;
+        if (overallStatus === 'pending') vReq.submittedAt = new Date();
         await vReq.save();
       } else {
         await VerificationRequest.create({
