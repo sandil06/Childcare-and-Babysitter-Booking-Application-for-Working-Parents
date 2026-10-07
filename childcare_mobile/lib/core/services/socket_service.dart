@@ -10,9 +10,11 @@ class SocketService {
   SocketService._internal();
 
   io.Socket? _socket;
-  bool _isConnected = false;
+  final ValueNotifier<bool> isConnectedNotifier = ValueNotifier<bool>(false);
+  final Set<String> _activeRooms = <String>{};
+  final Map<String, List<void Function(dynamic)>> _registeredHandlers = {};
 
-  bool get isConnected => _isConnected;
+  bool get isConnected => isConnectedNotifier.value;
   io.Socket? get socket => _socket;
 
   static String get socketUrl {
@@ -20,51 +22,65 @@ class SocketService {
     return base.replaceAll('/api/v1', '');
   }
 
-  /// Initialize and connect socket
+  /// Initialize and connect socket with reconnect and deduplication guards
   Future<void> connect() async {
-    if (_socket != null && _isConnected) return;
+    if (_socket != null && isConnectedNotifier.value) return;
 
     final token = await LocalStorage.instance.read('auth_token');
 
     try {
-      _socket = io.io(
-        socketUrl,
-        io.OptionBuilder()
-            .setTransports(['websocket', 'polling'])
-            .enableAutoConnect()
-            .enableReconnection()
-            .setReconnectionDelay(1000)
-            .setReconnectionDelayMax(5000)
-            .setReconnectionAttempts(5)
-            .setAuth({'token': token?.toString() ?? ''})
-            .setQuery({'token': token?.toString() ?? ''})
-            .build(),
-      );
+      if (_socket == null) {
+        _socket = io.io(
+          socketUrl,
+          io.OptionBuilder()
+              .setTransports(['websocket', 'polling'])
+              .enableAutoConnect()
+              .enableReconnection()
+              .setReconnectionDelay(1000)
+              .setReconnectionDelayMax(5000)
+              .setReconnectionAttempts(10)
+              .setAuth({'token': token?.toString() ?? ''})
+              .setQuery({'token': token?.toString() ?? ''})
+              .build(),
+        );
 
-      _socket!.onConnect((_) {
-        _isConnected = true;
-        debugPrint('[SocketService] Connected to $socketUrl');
-      });
+        _socket!.onConnect((_) {
+          isConnectedNotifier.value = true;
+          debugPrint('[SocketService] Connected to $socketUrl. Rejoining ${_activeRooms.length} rooms.');
+          // Automatically re-join previously active rooms upon reconnect
+          for (final room in _activeRooms) {
+            if (room.startsWith('conv:')) {
+              _socket?.emit('join_conversation', room.replaceFirst('conv:', ''));
+            } else if (room.startsWith('track:')) {
+              _socket?.emit('tracking:join', room.replaceFirst('track:', ''));
+            }
+          }
+        });
 
-      _socket!.onDisconnect((_) {
-        _isConnected = false;
-        debugPrint('[SocketService] Disconnected');
-      });
+        _socket!.onDisconnect((_) {
+          isConnectedNotifier.value = false;
+          debugPrint('[SocketService] Disconnected from server');
+        });
 
-      _socket!.onConnectError((err) {
-        _isConnected = false;
-        debugPrint('[SocketService] Connect error: $err');
-      });
+        _socket!.onConnectError((err) {
+          isConnectedNotifier.value = false;
+          debugPrint('[SocketService] Connection error: $err');
+        });
+      } else if (!_socket!.connected) {
+        _socket!.connect();
+      }
     } catch (e) {
       debugPrint('[SocketService] Initialization error: $e');
     }
   }
 
-  /// Disconnect socket
+  /// Disconnect socket cleanly
   void disconnect() {
     _socket?.disconnect();
     _socket = null;
-    _isConnected = false;
+    isConnectedNotifier.value = false;
+    _activeRooms.clear();
+    _registeredHandlers.clear();
   }
 
   /// Emit event to server with optional ack callback
@@ -87,27 +103,49 @@ class SocketService {
     }
   }
 
-  /// Register event listener
+  /// Register event listener, safely removing old instance to avoid duplicate subscriptions
   void on(String event, void Function(dynamic) handler) {
-    _socket?.on(event, handler);
+    if (_socket != null) {
+      // Remove any existing handler first to prevent duplicate callbacks
+      _socket!.off(event);
+      _socket!.on(event, handler);
+    }
+    _registeredHandlers[event] = [handler];
   }
 
   /// Remove event listener
   void off(String event, [void Function(dynamic)? handler]) {
-    if (handler != null) {
-      _socket?.off(event, handler);
-    } else {
-      _socket?.off(event);
+    if (_socket != null) {
+      if (handler != null) {
+        _socket!.off(event, handler);
+      } else {
+        _socket!.off(event);
+      }
     }
+    _registeredHandlers.remove(event);
   }
 
-  /// Helper to join a conversation room
+  /// Helper to join a conversation room with auto-rejoin tracking
   void joinConversation(String conversationId) {
+    _activeRooms.add('conv:$conversationId');
     emit('join_conversation', conversationId);
   }
 
   /// Helper to leave a conversation room
   void leaveConversation(String conversationId) {
+    _activeRooms.remove('conv:$conversationId');
     emit('leave_conversation', conversationId);
+  }
+
+  /// Helper to join tracking room with auto-rejoin tracking
+  void joinTracking(String bookingId) {
+    _activeRooms.add('track:$bookingId');
+    emit('tracking:join', bookingId);
+  }
+
+  /// Helper to leave tracking room
+  void leaveTracking(String bookingId) {
+    _activeRooms.remove('track:$bookingId');
+    emit('tracking:leave', bookingId);
   }
 }
