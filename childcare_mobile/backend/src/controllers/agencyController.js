@@ -106,6 +106,99 @@ function initSampleBookings() {
 
 initSampleBookings();
 
+function initSampleReports() {
+  if (memoryReports.size > 0) return;
+
+  const samples = [
+    {
+      _id: 'rep-401',
+      id: 'rep-401',
+      reporter: { _id: 'u-1', name: 'Dulani Senanayake', email: 'dulani.s@gmail.com', role: 'parent', phone: '+94 77 445 5667' },
+      reportedUser: { _id: 'u-2', name: 'Amaya Fernando', email: 'amaya.fernando@example.com', role: 'babysitter', phone: '+94 77 123 4567' },
+      booking: { _id: 'bk-901', bookingId: '#BK-901', date: '2026-10-08', totalAmount: 6600 },
+      category: 'Inappropriate Behaviour',
+      priority: 'high',
+      status: 'open',
+      description: 'Sitter arrived 45 minutes late without prior notice and was continuously distracted on mobile device.',
+      evidence: ['https://images.unsplash.com/photo-1544717305-2782549b5136'],
+      resolutionNotes: '',
+      resolvedBy: null,
+      resolvedAt: null,
+      createdAt: new Date(Date.now() - 3600000 * 5),
+    },
+    {
+      _id: 'rep-402',
+      id: 'rep-402',
+      reporter: { _id: 'u-3', name: 'Kavindi Perera', email: 'kavindi.perera@example.com', role: 'babysitter', phone: '+94 71 987 6543' },
+      reportedUser: { _id: 'u-4', name: 'Saman Jayatilleke', email: 'saman.j@yahoo.com', role: 'parent', phone: '+94 70 334 8899' },
+      booking: { _id: 'bk-902', bookingId: '#BK-902', date: '2026-10-07', totalAmount: 5940 },
+      category: 'Payment Issue',
+      priority: 'medium',
+      status: 'under_review',
+      description: 'Extended care shift by 2 additional hours outside agreed booking window without settling overtime fee.',
+      evidence: [],
+      resolutionNotes: 'Agency rep reached out to parent regarding overtime charge adjustment.',
+      resolvedBy: null,
+      resolvedAt: null,
+      createdAt: new Date(Date.now() - 86400000 * 1),
+    },
+    {
+      _id: 'rep-403',
+      id: 'rep-403',
+      reporter: { _id: 'u-5', name: 'Nimali Disanayake', email: 'nimali.d@gmail.com', role: 'parent', phone: '+94 75 221 4455' },
+      reportedUser: { _id: 'u-6', name: 'Sanduni Jayawardena', email: 'sanduni.j@example.com', role: 'babysitter', phone: '+94 76 555 8899' },
+      booking: { _id: 'bk-903', bookingId: '#BK-903', date: '2026-10-06', totalAmount: 7920 },
+      category: 'Safety',
+      priority: 'urgent',
+      status: 'open',
+      description: 'Babysitter left the toddler unattended in the living room for more than 15 minutes near open balcony doors.',
+      evidence: [],
+      resolutionNotes: '',
+      resolvedBy: null,
+      resolvedAt: null,
+      createdAt: new Date(Date.now() - 3600000 * 12),
+    },
+    {
+      _id: 'rep-404',
+      id: 'rep-404',
+      reporter: { _id: 'u-1', name: 'Dulani Senanayake', email: 'dulani.s@gmail.com', role: 'parent', phone: '+94 77 445 5667' },
+      reportedUser: { _id: 'u-7', name: 'Kasun Rathnayake', email: 'kasun.r@example.com', role: 'babysitter', phone: '+94 72 333 4455' },
+      booking: null,
+      category: 'Fraud',
+      priority: 'low',
+      status: 'resolved',
+      description: 'Suspected fake profile details and mismatched profile picture compared to submitted identity documents.',
+      evidence: [],
+      resolutionNotes: 'Identity re-verified via government ID portal. Profile updated and cleared.',
+      resolvedBy: { name: 'Agency Admin' },
+      resolvedAt: new Date(Date.now() - 86400000 * 3),
+      createdAt: new Date(Date.now() - 86400000 * 5),
+    },
+    {
+      _id: 'rep-405',
+      id: 'rep-405',
+      reporter: { _id: 'u-4', name: 'Saman Jayatilleke', email: 'saman.j@yahoo.com', role: 'parent', phone: '+94 70 334 8899' },
+      reportedUser: { _id: 'u-8', name: 'Thilini Rajapaksha', email: 'thilini.r@example.com', role: 'babysitter', phone: '+94 77 888 9900' },
+      booking: null,
+      category: 'Service Quality',
+      priority: 'low',
+      status: 'dismissed',
+      description: 'Minor dispute regarding snack preferences provided during the booking.',
+      evidence: [],
+      resolutionNotes: 'Reviewed communication logs; no policy violation found. Advised both parties on clear prep notes.',
+      resolvedBy: { name: 'Agency Admin' },
+      resolvedAt: new Date(Date.now() - 86400000 * 4),
+      createdAt: new Date(Date.now() - 86400000 * 6),
+    },
+  ];
+
+  for (const s of samples) {
+    memoryReports.set(s._id, s);
+  }
+}
+
+initSampleReports();
+
 function initSampleUsers() {
   if (memoryUsers.size > 0) return;
 
@@ -940,6 +1033,307 @@ async function cancelBookingByAdmin(req, res, next) {
   }
 }
 
+async function getReports(req, res, next) {
+  try {
+    const { status, priority, category, search, page = 1, limit = 20 } = req.query;
+    initSampleReports();
+
+    if (isDbConnected()) {
+      const query = {};
+      if (status && status !== 'all') {
+        query.status = status;
+      }
+      if (priority && priority !== 'all') {
+        query.priority = priority;
+      }
+      if (category && category !== 'all') {
+        query.category = category;
+      }
+
+      let reports = await Report.find(query)
+        .populate('reporter', 'name email role phone')
+        .populate('reportedUser', 'name email role phone')
+        .populate('booking', 'bookingId date startTime endTime totalAmount')
+        .sort({ createdAt: -1 })
+        .lean();
+
+      if (search && search.trim()) {
+        const s = search.trim().toLowerCase();
+        reports = reports.filter((r) => {
+          const cat = (r.category || '').toLowerCase();
+          const desc = (r.description || '').toLowerCase();
+          const repName = (r.reporter?.name || '').toLowerCase();
+          const targetName = (r.reportedUser?.name || '').toLowerCase();
+          return cat.includes(s) || desc.includes(s) || repName.includes(s) || targetName.includes(s);
+        });
+      }
+
+      const total = reports.length;
+      const startIndex = (Number(page) - 1) * Number(limit);
+      const paginated = reports.slice(startIndex, startIndex + Number(limit));
+
+      return ApiResponse.success(res, paginated, 'Reports retrieved successfully');
+    }
+
+    let reports = Array.from(memoryReports.values());
+    if (status && status !== 'all') {
+      reports = reports.filter((r) => r.status === status);
+    }
+    if (priority && priority !== 'all') {
+      reports = reports.filter((r) => r.priority === priority);
+    }
+    if (category && category !== 'all') {
+      reports = reports.filter((r) => r.category === category);
+    }
+    if (search && search.trim()) {
+      const s = search.trim().toLowerCase();
+      reports = reports.filter((r) => {
+        const cat = (r.category || '').toLowerCase();
+        const desc = (r.description || '').toLowerCase();
+        const repName = (r.reporter?.name || '').toLowerCase();
+        const targetName = (r.reportedUser?.name || '').toLowerCase();
+        return cat.includes(s) || desc.includes(s) || repName.includes(s) || targetName.includes(s);
+      });
+    }
+
+    reports.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    const total = reports.length;
+    const startIndex = (Number(page) - 1) * Number(limit);
+    const paginated = reports.slice(startIndex, startIndex + Number(limit));
+
+    return ApiResponse.success(res, paginated, 'Reports retrieved successfully (mock)');
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function getReportById(req, res, next) {
+  try {
+    const { id } = req.params;
+    initSampleReports();
+
+    if (isDbConnected()) {
+      const report = await Report.findById(id)
+        .populate('reporter', 'name email role phone')
+        .populate('reportedUser', 'name email role phone')
+        .populate('booking')
+        .populate('assignedTo', 'name email')
+        .populate('resolvedBy', 'name email')
+        .lean();
+
+      if (!report) return next(new ApiError(404, 'Report not found'));
+      return ApiResponse.success(res, report, 'Report details retrieved');
+    }
+
+    const report = memoryReports.get(id);
+    if (!report) return next(new ApiError(404, 'Report not found'));
+    return ApiResponse.success(res, report, 'Report details retrieved (mock)');
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function updateReportStatus(req, res, next) {
+  try {
+    const { id } = req.params;
+    const { status, resolutionNotes, priority } = req.body;
+    initSampleReports();
+
+    if (!status && !priority && !resolutionNotes) {
+      return next(new ApiError(400, 'At least one field to update is required'));
+    }
+
+    if (isDbConnected()) {
+      const report = await Report.findById(id);
+      if (!report) return next(new ApiError(404, 'Report not found'));
+
+      if (status) report.status = status;
+      if (priority) report.priority = priority;
+      if (resolutionNotes !== undefined) report.resolutionNotes = resolutionNotes;
+      if (status === 'resolved' || status === 'dismissed') {
+        report.resolvedAt = new Date();
+        report.resolvedBy = req.user?._id || req.user?.id || null;
+      }
+
+      await report.save();
+
+      try {
+        await AuditLog.create({
+          adminId: req.user?._id || req.user?.id || null,
+          adminName: req.user?.name || 'Agency Admin',
+          adminEmail: req.user?.email || 'admin@childcare.com',
+          action: 'update_report_status',
+          targetType: 'Report',
+          targetId: id,
+          notes: `Report status updated to ${report.status}${resolutionNotes ? ': ' + resolutionNotes : ''}`,
+        });
+      } catch (logErr) {
+        // continue
+      }
+
+      return ApiResponse.success(res, report, 'Report status updated successfully');
+    }
+
+    const report = memoryReports.get(id);
+    if (!report) return next(new ApiError(404, 'Report not found'));
+
+    if (status) report.status = status;
+    if (priority) report.priority = priority;
+    if (resolutionNotes !== undefined) report.resolutionNotes = resolutionNotes;
+    if (status === 'resolved' || status === 'dismissed') {
+      report.resolvedAt = new Date();
+      report.resolvedBy = { name: req.user?.name || 'Agency Admin' };
+    }
+    memoryReports.set(id, report);
+
+    return ApiResponse.success(res, report, 'Report status updated successfully (mock)');
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function resolveReport(req, res, next) {
+  try {
+    const { id } = req.params;
+    const { resolutionNotes } = req.body;
+    initSampleReports();
+
+    if (isDbConnected()) {
+      const report = await Report.findById(id);
+      if (!report) return next(new ApiError(404, 'Report not found'));
+
+      report.status = 'resolved';
+      report.resolutionNotes = resolutionNotes || report.resolutionNotes || 'Resolved by agency administrator';
+      report.resolvedAt = new Date();
+      report.resolvedBy = req.user?._id || req.user?.id || null;
+      await report.save();
+
+      try {
+        await AuditLog.create({
+          adminId: req.user?._id || req.user?.id || null,
+          adminName: req.user?.name || 'Agency Admin',
+          adminEmail: req.user?.email || 'admin@childcare.com',
+          action: 'resolve_report',
+          targetType: 'Report',
+          targetId: id,
+          notes: `Report resolved: ${report.resolutionNotes}`,
+        });
+      } catch (logErr) {
+        // continue
+      }
+
+      return ApiResponse.success(res, report, 'Report resolved successfully');
+    }
+
+    const report = memoryReports.get(id);
+    if (!report) return next(new ApiError(404, 'Report not found'));
+
+    report.status = 'resolved';
+    report.resolutionNotes = resolutionNotes || report.resolutionNotes || 'Resolved by agency administrator';
+    report.resolvedAt = new Date();
+    report.resolvedBy = { name: req.user?.name || 'Agency Admin' };
+    memoryReports.set(id, report);
+
+    return ApiResponse.success(res, report, 'Report resolved successfully (mock)');
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function escalateReport(req, res, next) {
+  try {
+    const { id } = req.params;
+    const { notes } = req.body;
+    initSampleReports();
+
+    if (isDbConnected()) {
+      const report = await Report.findById(id);
+      if (!report) return next(new ApiError(404, 'Report not found'));
+
+      report.priority = 'urgent';
+      report.status = 'under_review';
+      if (notes) report.resolutionNotes = (report.resolutionNotes ? report.resolutionNotes + '\n' : '') + `Escalation note: ${notes}`;
+      await report.save();
+
+      try {
+        await AuditLog.create({
+          adminId: req.user?._id || req.user?.id || null,
+          adminName: req.user?.name || 'Agency Admin',
+          adminEmail: req.user?.email || 'admin@childcare.com',
+          action: 'escalate_report',
+          targetType: 'Report',
+          targetId: id,
+          notes: `Report escalated to URGENT priority`,
+        });
+      } catch (logErr) {
+        // continue
+      }
+
+      return ApiResponse.success(res, report, 'Report escalated to urgent priority');
+    }
+
+    const report = memoryReports.get(id);
+    if (!report) return next(new ApiError(404, 'Report not found'));
+
+    report.priority = 'urgent';
+    report.status = 'under_review';
+    if (notes) report.resolutionNotes = (report.resolutionNotes ? report.resolutionNotes + '\n' : '') + `Escalation note: ${notes}`;
+    memoryReports.set(id, report);
+
+    return ApiResponse.success(res, report, 'Report escalated to urgent priority (mock)');
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function dismissReport(req, res, next) {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body;
+    initSampleReports();
+
+    if (isDbConnected()) {
+      const report = await Report.findById(id);
+      if (!report) return next(new ApiError(404, 'Report not found'));
+
+      report.status = 'dismissed';
+      report.resolutionNotes = reason ? `Dismissed: ${reason}` : 'Dismissed by agency administrator';
+      report.resolvedAt = new Date();
+      report.resolvedBy = req.user?._id || req.user?.id || null;
+      await report.save();
+
+      try {
+        await AuditLog.create({
+          adminId: req.user?._id || req.user?.id || null,
+          adminName: req.user?.name || 'Agency Admin',
+          adminEmail: req.user?.email || 'admin@childcare.com',
+          action: 'dismiss_report',
+          targetType: 'Report',
+          targetId: id,
+          notes: `Report dismissed: ${report.resolutionNotes}`,
+        });
+      } catch (logErr) {
+        // continue
+      }
+
+      return ApiResponse.success(res, report, 'Report dismissed');
+    }
+
+    const report = memoryReports.get(id);
+    if (!report) return next(new ApiError(404, 'Report not found'));
+
+    report.status = 'dismissed';
+    report.resolutionNotes = reason ? `Dismissed: ${reason}` : 'Dismissed by agency administrator';
+    report.resolvedAt = new Date();
+    report.resolvedBy = { name: req.user?.name || 'Agency Admin' };
+    memoryReports.set(id, report);
+
+    return ApiResponse.success(res, report, 'Report dismissed (mock)');
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   getDashboard,
   dashboard: getDashboard,
@@ -951,6 +1345,12 @@ module.exports = {
   getBabysitters,
   getBookings,
   cancelBookingByAdmin,
+  getReports,
+  getReportById,
+  updateReportStatus,
+  resolveReport,
+  escalateReport,
+  dismissReport,
   memoryUsers,
   memoryBookings,
   memoryVerifications,

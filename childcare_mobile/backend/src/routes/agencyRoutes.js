@@ -12,6 +12,12 @@ const {
   getBabysitters,
   getBookings,
   cancelBookingByAdmin,
+  getReports,
+  getReportById,
+  updateReportStatus,
+  resolveReport,
+  escalateReport,
+  dismissReport,
 } = require('../controllers/agencyController');
 const verificationController = require('../controllers/verificationController');
 
@@ -41,5 +47,13 @@ router.get('/babysitters', auth, requireAgency, getBabysitters);
 // Bookings Monitoring
 router.get('/bookings', auth, requireAgency, getBookings);
 router.patch('/bookings/:id/cancel', auth, requireAgency, cancelBookingByAdmin);
+
+// Complaints & Safety Reports
+router.get('/reports', auth, requireAgency, getReports);
+router.get('/reports/:id', auth, requireAgency, getReportById);
+router.patch('/reports/:id/status', auth, requireAgency, updateReportStatus);
+router.patch('/reports/:id/resolve', auth, requireAgency, resolveReport);
+router.patch('/reports/:id/escalate', auth, requireAgency, escalateReport);
+router.patch('/reports/:id/dismiss', auth, requireAgency, dismissReport);
 
 module.exports = router;

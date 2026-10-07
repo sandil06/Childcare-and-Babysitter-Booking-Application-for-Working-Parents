@@ -359,13 +359,13 @@ class _AgencyDashboardScreenState extends State<AgencyDashboardScreen> {
             icon: Icons.group_outlined,
             label: 'Users',
             color: const Color(0xFF0284C7),
-            onTap: () => Navigator.pushNamed(context, AppRoutes.agencyReports),
+            onTap: () => Navigator.pushNamed(context, AppRoutes.agencyUserManagement),
           ),
           _actionItem(
             icon: Icons.calendar_month_outlined,
             label: 'Bookings',
             color: const Color(0xFF7C3AED),
-            onTap: () => Navigator.pushNamed(context, AppRoutes.agencyReports),
+            onTap: () => Navigator.pushNamed(context, AppRoutes.agencyBookings),
           ),
           _actionItem(
             icon: Icons.analytics_outlined,
