@@ -262,9 +262,14 @@ class _LoginScreenState extends State<LoginScreen> {
         await BabysitterProvider.instance.fetchDashboard();
 
         if (mounted) {
-          final serverRole = userObj?['role']?.toString();
-          final targetIsSitter = _isSitterMode || serverRole == 'babysitter';
-          if (targetIsSitter) {
+          final serverRole = userObj?['role']?.toString().toLowerCase();
+          if (serverRole == 'agency' || serverRole == 'admin') {
+            Navigator.pushNamedAndRemoveUntil(
+              context,
+              AppRoutes.agencyDashboard,
+              (_) => false,
+            );
+          } else if (_isSitterMode || serverRole == 'babysitter') {
             Navigator.pushNamedAndRemoveUntil(
               context,
               AppRoutes.sitterDashboard,
@@ -988,6 +993,29 @@ class _LoginScreenState extends State<LoginScreen> {
                       color: Color(0xFF005B60),
                       fontSize: 12.5,
                       fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 6),
+
+              // Agency & Administrator Portal Switcher
+              Center(
+                child: TextButton.icon(
+                  onPressed: () {
+                    Navigator.pushNamed(context, AppRoutes.agencyLogin);
+                  },
+                  icon: const Icon(
+                    Icons.admin_panel_settings_outlined,
+                    size: 16,
+                    color: Color(0xFF005B60),
+                  ),
+                  label: const Text(
+                    'Agency & Administrator Portal →',
+                    style: TextStyle(
+                      color: Color(0xFF005B60),
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),
