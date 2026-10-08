@@ -152,7 +152,7 @@ class _AgencyDashboardScreenState extends State<AgencyDashboardScreen> {
                           physics: const NeverScrollableScrollPhysics(),
                           crossAxisSpacing: 12,
                           mainAxisSpacing: 12,
-                          childAspectRatio: 1.45,
+                          childAspectRatio: 1.30,
                           children: [
                             DashboardStatCard(
                               title: 'Pending Verifications',
@@ -218,7 +218,7 @@ class _AgencyDashboardScreenState extends State<AgencyDashboardScreen> {
                           physics: const NeverScrollableScrollPhysics(),
                           crossAxisSpacing: 10,
                           mainAxisSpacing: 10,
-                          childAspectRatio: 1.15,
+                          childAspectRatio: 1.0,
                           children: [
                             DashboardStatCard(
                               title: 'Total Users',
