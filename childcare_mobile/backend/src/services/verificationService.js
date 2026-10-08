@@ -50,77 +50,196 @@ async function syncVerificationRequests() {
       const profile = await BabysitterProfile.findOne({ user: sitter._id });
       if (!profile) continue;
 
-      const existingReq = await VerificationRequest.findOne({ babysitter: sitter._id });
+      let existingReq = await VerificationRequest.findOne({ babysitter: sitter._id });
+      const profileDocs = Array.isArray(profile.documents) ? profile.documents : [];
+      const profileQuals = Array.isArray(profile.qualifications) ? profile.qualifications : [];
+
       if (!existingReq) {
-        const isProfileVerified = profile.verificationStatus === 'verified';
-        const docs = profile.documents && profile.documents.length > 0
-          ? profile.documents.map((d) => ({
+        const docs = profileDocs.length > 0
+          ? profileDocs.map((d) => ({
               type: d.type || 'id',
               name: d.name || 'Identity Document',
-              url: d.url || DEFAULT_DOCUMENTS[0].url,
-              status: isProfileVerified ? 'verified' : (profile.verificationStatus || 'pending'),
+              label: d.label || d.name,
+              documentNumber: d.documentNumber || '',
+              url: d.url || d.fileUrl || DEFAULT_DOCUMENTS[0].url,
+              fileUrl: d.fileUrl || d.url || DEFAULT_DOCUMENTS[0].url,
+              status: d.status || 'pending',
+              reviewNotes: d.reviewNotes || null,
+              reviewedAt: d.reviewedAt || null,
+              reviewedBy: d.reviewedBy || null,
               uploadedAt: d.uploadedAt || profile.createdAt || new Date(),
             }))
           : DEFAULT_DOCUMENTS.map((d) => ({
               ...d,
-              status: isProfileVerified ? 'verified' : (profile.verificationStatus || 'pending'),
+              status: profile.verificationStatus === 'verified' ? 'verified' : 'pending',
               uploadedAt: profile.createdAt || new Date(),
             }));
 
-        await VerificationRequest.create({
+        const hasPending =
+          docs.some((d) => ['pending', 'under_review'].includes(d.status)) ||
+          profileQuals.some((q) => typeof q === 'object' && ['pending', 'under_review'].includes(q.status));
+
+        let initialStatus = profile.verificationStatus || 'pending';
+        if (hasPending) {
+          initialStatus = 'pending';
+        }
+
+        existingReq = await VerificationRequest.create({
           babysitter: sitter._id,
           babysitterProfile: profile._id,
-          status: profile.verificationStatus || 'pending',
+          status: initialStatus,
           documents: docs,
+          qualifications: profileQuals,
           reviewNotes: profile.verificationNotes || '',
           reviewedAt: profile.verificationReviewedAt || null,
           reviewedBy: profile.verificationReviewedBy || null,
           submittedAt: profile.createdAt || new Date(),
         });
-
-        if (isProfileVerified && Array.isArray(profile.documents)) {
-          let updatedDocs = false;
-          profile.documents.forEach((d) => {
-            if (d.status !== 'verified') {
-              d.status = 'verified';
-              updatedDocs = true;
-            }
-          });
-          if (updatedDocs) await profile.save();
-        }
       } else {
-        // Bi-directional document and status synchronization
-        if (existingReq.status === 'verified' || profile.verificationStatus === 'verified') {
-          let profileChanged = false;
-          if (profile.verificationStatus !== 'verified') {
-            profile.verificationStatus = 'verified';
-            profileChanged = true;
-          }
-          if (Array.isArray(profile.documents) && profile.documents.length > 0) {
-            profile.documents.forEach((d) => {
-              if (d.status !== 'verified') {
-                d.status = 'verified';
-                profileChanged = true;
-              }
-            });
-          }
-          if (profileChanged) await profile.save();
+        // Bi-directional document and qualification synchronization
+        let reqModified = false;
+        let profileModified = false;
 
-          let reqChanged = false;
+        if (!existingReq.babysitterProfile) {
+          existingReq.babysitterProfile = profile._id;
+          reqModified = true;
+        }
+
+        // 1. Sync documents from profile to request
+        const reqDocs = Array.isArray(existingReq.documents) ? existingReq.documents : [];
+        for (const pDoc of profileDocs) {
+          const matchIndex = reqDocs.findIndex(
+            (d) =>
+              (d._id && pDoc._id && d._id.toString() === pDoc._id.toString()) ||
+              d.name === pDoc.name ||
+              (d.type === pDoc.type && d.type === 'id')
+          );
+          if (matchIndex === -1) {
+            reqDocs.push({
+              _id: pDoc._id || new mongoose.Types.ObjectId(),
+              type: pDoc.type || 'other',
+              name: pDoc.name || 'Document',
+              label: pDoc.label || pDoc.name,
+              documentNumber: pDoc.documentNumber || '',
+              url: pDoc.url || pDoc.fileUrl || '',
+              fileUrl: pDoc.fileUrl || pDoc.url || '',
+              status: pDoc.status || 'pending',
+              reviewNotes: pDoc.reviewNotes || null,
+              reviewedBy: pDoc.reviewedBy || null,
+              reviewedAt: pDoc.reviewedAt || null,
+              uploadedAt: pDoc.uploadedAt || new Date(),
+            });
+            reqModified = true;
+          } else {
+            const rDoc = reqDocs[matchIndex];
+            // If admin reviewed in VerificationRequest, sync down to profile
+            if (['verified', 'rejected', 'changes_requested'].includes(rDoc.status) && pDoc.status !== rDoc.status) {
+              pDoc.status = rDoc.status;
+              pDoc.reviewNotes = rDoc.reviewNotes;
+              pDoc.reviewedBy = rDoc.reviewedBy;
+              pDoc.reviewedAt = rDoc.reviewedAt;
+              profileModified = true;
+            } else if (pDoc.status === 'pending' && rDoc.status !== 'pending') {
+              // Sitter re-uploaded / replaced as pending
+              rDoc.status = 'pending';
+              rDoc.url = pDoc.url || pDoc.fileUrl || rDoc.url;
+              rDoc.fileUrl = pDoc.fileUrl || pDoc.url || rDoc.fileUrl;
+              rDoc.reviewNotes = null;
+              rDoc.reviewedBy = null;
+              rDoc.reviewedAt = null;
+              reqModified = true;
+            }
+          }
+        }
+        existingReq.documents = reqDocs;
+
+        // 2. Sync qualifications
+        if (profileQuals.length > 0) {
+          const reqQuals = Array.isArray(existingReq.qualifications) ? existingReq.qualifications : [];
+          for (const pQ of profileQuals) {
+            const qTitle = typeof pQ === 'string' ? pQ : (pQ.title || pQ.name || '');
+            const matchIndex = reqQuals.findIndex((q) => {
+              if (typeof q === 'string') return q === qTitle;
+              return q.title === qTitle || (pQ._id && q._id && q._id.toString() === pQ._id.toString());
+            });
+            if (matchIndex === -1) {
+              reqQuals.push(typeof pQ === 'string' ? { title: pQ, status: 'pending' } : pQ);
+              reqModified = true;
+            } else if (typeof pQ === 'object' && reqQuals[matchIndex]) {
+              const rQ = reqQuals[matchIndex];
+              if (typeof rQ === 'object' && ['verified', 'rejected', 'changes_requested'].includes(rQ.status) && pQ.status !== rQ.status) {
+                pQ.status = rQ.status;
+                pQ.reviewNotes = rQ.reviewNotes;
+                profileModified = true;
+              }
+            }
+          }
+          existingReq.qualifications = reqQuals;
+        }
+
+        // 3. Compute overall status accurately
+        const hasPendingItems =
+          existingReq.documents.some((d) => ['pending', 'under_review'].includes(d.status)) ||
+          (Array.isArray(existingReq.qualifications) &&
+            existingReq.qualifications.some((q) => typeof q === 'object' && ['pending', 'under_review'].includes(q.status)));
+
+        const hasChangesRequested =
+          existingReq.documents.some((d) => d.status === 'changes_requested') ||
+          (Array.isArray(existingReq.qualifications) &&
+            existingReq.qualifications.some((q) => typeof q === 'object' && q.status === 'changes_requested'));
+
+        const hasRejected =
+          existingReq.documents.some((d) => d.status === 'rejected') ||
+          (Array.isArray(existingReq.qualifications) &&
+            existingReq.qualifications.some((q) => typeof q === 'object' && q.status === 'rejected'));
+
+        const allDocsVerified =
+          existingReq.documents.length > 0 &&
+          existingReq.documents.every((d) => d.status === 'verified');
+
+        if (hasPendingItems) {
+          if (existingReq.status === 'verified') {
+            existingReq.status = 'under_review';
+            reqModified = true;
+          } else if (!['pending', 'under_review'].includes(existingReq.status)) {
+            existingReq.status = 'under_review';
+            reqModified = true;
+          }
+          if (profile.verificationStatus === 'verified') {
+            profile.verificationStatus = 'under_review';
+            profileModified = true;
+          }
+        } else if (hasChangesRequested) {
+          if (existingReq.status !== 'changes_requested') {
+            existingReq.status = 'changes_requested';
+            reqModified = true;
+          }
+          if (profile.verificationStatus !== 'changes_requested') {
+            profile.verificationStatus = 'changes_requested';
+            profileModified = true;
+          }
+        } else if (hasRejected) {
+          if (existingReq.status !== 'rejected') {
+            existingReq.status = 'rejected';
+            reqModified = true;
+          }
+          if (profile.verificationStatus !== 'rejected') {
+            profile.verificationStatus = 'rejected';
+            profileModified = true;
+          }
+        } else if (allDocsVerified) {
           if (existingReq.status !== 'verified') {
             existingReq.status = 'verified';
-            reqChanged = true;
+            reqModified = true;
           }
-          if (Array.isArray(existingReq.documents) && existingReq.documents.length > 0) {
-            existingReq.documents.forEach((d) => {
-              if (d.status !== 'verified') {
-                d.status = 'verified';
-                reqChanged = true;
-              }
-            });
+          if (profile.verificationStatus !== 'verified') {
+            profile.verificationStatus = 'verified';
+            profileModified = true;
           }
-          if (reqChanged) await existingReq.save();
         }
+
+        if (reqModified) await existingReq.save();
+        if (profileModified) await profile.save();
       }
     }
   } catch (err) {

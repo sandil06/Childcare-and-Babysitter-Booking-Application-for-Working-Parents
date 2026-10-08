@@ -43,6 +43,81 @@ async function getMe(req, res, next) {
   }
 }
 
+async function syncVerificationForSitter(userId, profile) {
+  if (!userId || !profile) return;
+  const docs = Array.isArray(profile.documents) ? profile.documents : [];
+  const quals = Array.isArray(profile.qualifications) ? profile.qualifications : [];
+
+  const hasPending =
+    docs.some((d) => ['pending', 'under_review'].includes(d.status)) ||
+    quals.some((q) => typeof q === 'object' && ['pending', 'under_review'].includes(q.status));
+
+  if (isDbConnected() && mongoose.Types.ObjectId.isValid(userId)) {
+    try {
+      let vReq = await VerificationRequest.findOne({ babysitter: userId });
+      if (vReq) {
+        vReq.documents = docs;
+        vReq.qualifications = quals;
+        if (hasPending) {
+          vReq.status = 'pending';
+        }
+        await vReq.save();
+      } else {
+        await VerificationRequest.create({
+          babysitter: userId,
+          babysitterProfile: profile._id || profile.id,
+          status: hasPending ? 'pending' : (profile.verificationStatus || 'pending'),
+          documents: docs,
+          qualifications: quals,
+          submittedAt: new Date(),
+        });
+      }
+    } catch (_) {}
+  }
+
+  // Memory fallback
+  const memKey = userId.toString();
+  let memReq = Array.from(memoryVerifications.values()).find(
+    (v) => (v.babysitter?._id || v.babysitter?.id || v.babysitter) === memKey
+  );
+  if (memReq) {
+    memReq.documents = docs;
+    memReq.qualifications = quals;
+    if (hasPending) {
+      memReq.status = 'pending';
+    }
+    if (memReq.babysitterProfile) {
+      memReq.babysitterProfile.documents = docs;
+      memReq.babysitterProfile.qualifications = quals;
+      if (hasPending) {
+        memReq.babysitterProfile.verificationStatus = 'under_review';
+      }
+    }
+    memoryVerifications.set(memReq.id || memReq._id, memReq);
+  } else {
+    const newMemReq = {
+      _id: `ver-${Date.now()}`,
+      id: `ver-${Date.now()}`,
+      babysitter: profile.user || {
+        _id: memKey,
+        id: memKey,
+        name: profile.name || 'Caregiver',
+        email: profile.email || '',
+        phone: profile.phone || '',
+        avatar: profile.avatar || profile.profileImage || '',
+      },
+      babysitterProfile: profile,
+      status: hasPending ? 'pending' : (profile.verificationStatus || 'pending'),
+      documents: docs,
+      qualifications: quals,
+      reviewNotes: '',
+      submittedAt: new Date(),
+      createdAt: new Date(),
+    };
+    memoryVerifications.set(newMemReq._id, newMemReq);
+  }
+}
+
 async function updateMe(req, res, next) {
   try {
     const userId = getUserId(req);
@@ -57,22 +132,56 @@ async function updateMe(req, res, next) {
     if (req.body.reviewedBy !== undefined || req.body.reviewedAt !== undefined || req.body.reviewNotes !== undefined) {
       return next(new ApiError(403, 'Babysitters are not authorized to modify administrative review fields.'));
     }
+
+    const existingProfile = await babysitterService.getProfileByUserId(userId);
+    const existingDocs = Array.isArray(existingProfile?.documents) ? existingProfile.documents : [];
+    const existingQuals = Array.isArray(existingProfile?.qualifications) ? existingProfile.qualifications : [];
+
     if (Array.isArray(req.body.documents)) {
       for (const d of req.body.documents) {
         if (d && (d.status === 'verified' || d.verificationStatus === 'verified')) {
-          return next(new ApiError(403, 'Babysitters cannot mark documents as verified.'));
+          const wasAlreadyVerified = existingDocs.some(
+            (ed) =>
+              (ed._id?.toString() === d._id?.toString() || ed.name === d.name) &&
+              ed.status === 'verified' &&
+              (ed.url === d.url || ed.fileUrl === d.fileUrl || (!d.url && !d.fileUrl))
+          );
+          if (!wasAlreadyVerified) {
+            return next(new ApiError(403, 'Babysitters cannot mark documents as verified.'));
+          }
+        } else if (d && typeof d === 'object') {
+          d.status = 'pending';
+          d.reviewNotes = null;
+          d.reviewedBy = null;
+          d.reviewedAt = null;
         }
       }
     }
     if (Array.isArray(req.body.qualifications)) {
       for (const q of req.body.qualifications) {
         if (q && typeof q === 'object' && (q.status === 'verified' || q.verificationStatus === 'verified')) {
-          return next(new ApiError(403, 'Babysitters cannot mark qualifications as verified.'));
+          const wasAlreadyVerified = existingQuals.some(
+            (eq) =>
+              typeof eq === 'object' &&
+              (eq._id?.toString() === q._id?.toString() || eq.title === q.title) &&
+              eq.status === 'verified'
+          );
+          if (!wasAlreadyVerified) {
+            return next(new ApiError(403, 'Babysitters cannot mark qualifications as verified.'));
+          }
+        } else if (q && typeof q === 'object') {
+          q.status = 'pending';
+          q.reviewNotes = null;
+          q.reviewedBy = null;
+          q.reviewedAt = null;
         }
       }
     }
 
     const updated = await babysitterService.updateProfileByUserId(userId, req.body);
+    if (Array.isArray(req.body.documents) || Array.isArray(req.body.qualifications)) {
+      await syncVerificationForSitter(userId, updated);
+    }
     return ApiResponse.success(res, updated, 'Profile updated successfully');
   } catch (err) {
     next(err);
@@ -199,18 +308,7 @@ async function addDocument(req, res, next) {
     const docs = Array.isArray(profile.documents) ? [...profile.documents, newDoc] : [newDoc];
 
     const updated = await babysitterService.updateProfileByUserId(userId, { documents: docs });
-
-    // Also sync to active VerificationRequest if exists
-    if (isDbConnected()) {
-      try {
-        const vReq = await VerificationRequest.findOne({ babysitter: userId, status: { $ne: 'verified' } });
-        if (vReq) {
-          vReq.documents.push(newDoc);
-          vReq.status = 'pending';
-          await vReq.save();
-        }
-      } catch (_) {}
-    }
+    await syncVerificationForSitter(userId, updated);
 
     return ApiResponse.success(res, { profile: updated, document: newDoc }, 'Document uploaded successfully', 201);
   } catch (err) {
@@ -323,6 +421,7 @@ async function updateDocument(req, res, next) {
         }
       }
     }
+    await syncVerificationForSitter(userId, updated);
 
     return ApiResponse.success(
       res,
@@ -358,6 +457,7 @@ async function deleteDocument(req, res, next) {
     }
 
     const updated = await babysitterService.updateProfileByUserId(userId, payload);
+    await syncVerificationForSitter(userId, updated);
     return ApiResponse.success(res, updated, 'Document removed successfully');
   } catch (err) {
     next(err);
@@ -396,6 +496,7 @@ async function addQualification(req, res, next) {
     const quals = Array.isArray(profile.qualifications) ? [...profile.qualifications, newQual] : [newQual];
 
     const updated = await babysitterService.updateProfileByUserId(userId, { qualifications: quals });
+    await syncVerificationForSitter(userId, updated);
     return ApiResponse.success(res, { profile: updated, qualification: newQual }, 'Qualification added successfully', 201);
   } catch (err) {
     next(err);
@@ -487,6 +588,8 @@ async function updateQualification(req, res, next) {
       }
     }
 
+    await syncVerificationForSitter(userId, updated);
+
     return ApiResponse.success(
       res,
       { ...updatedQual, profile: updated, qualification: updatedQual },
@@ -515,6 +618,7 @@ async function deleteQualification(req, res, next) {
     });
 
     const updated = await babysitterService.updateProfileByUserId(userId, { qualifications: filtered });
+    await syncVerificationForSitter(userId, updated);
     return ApiResponse.success(res, updated, 'Qualification removed successfully');
   } catch (err) {
     next(err);

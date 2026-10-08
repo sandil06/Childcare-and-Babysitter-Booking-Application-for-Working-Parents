@@ -166,7 +166,24 @@ async function list(req, res, next) {
       await verificationService.syncVerificationRequests();
       const filter = {};
       if (status && status !== 'all') {
-        filter.status = status;
+        const s = status.toLowerCase();
+        if (s === 'pending' || s === 'under_review') {
+          filter.$or = [
+            { status: { $in: ['pending', 'under_review'] } },
+            { 'documents.status': { $in: ['pending', 'under_review'] } },
+            { 'qualifications.status': { $in: ['pending', 'under_review'] } },
+          ];
+        } else if (s === 'verified') {
+          filter.status = 'verified';
+          filter['documents.status'] = { $nin: ['pending', 'under_review', 'changes_requested'] };
+        } else if (s === 'rejected') {
+          filter.$or = [
+            { status: 'rejected' },
+            { 'documents.status': 'rejected' },
+          ];
+        } else {
+          filter.status = status;
+        }
       }
 
       let requests = await VerificationRequest.find(filter)
@@ -198,10 +215,83 @@ async function list(req, res, next) {
 
     // Memory Fallback
     initSampleVerifications();
+    try {
+      const { memoryBabysitters } = require('../services/babysitterService');
+      if (memoryBabysitters && memoryBabysitters.size > 0) {
+        for (const [sId, p] of memoryBabysitters.entries()) {
+          const docs = Array.isArray(p.documents) ? p.documents : [];
+          const quals = Array.isArray(p.qualifications) ? p.qualifications : [];
+          const hasPending =
+            docs.some((d) => ['pending', 'under_review'].includes(d.status)) ||
+            quals.some((q) => typeof q === 'object' && ['pending', 'under_review'].includes(q.status));
+          let existing = Array.from(memoryVerifications.values()).find(
+            (v) => (v.babysitter?._id || v.babysitter?.id || v.babysitter) === sId
+          );
+          if (existing) {
+            existing.documents = docs.length > 0 ? docs : existing.documents;
+            existing.qualifications = quals.length > 0 ? quals : existing.qualifications;
+            if (hasPending) existing.status = 'pending';
+          } else if (docs.length > 0 || quals.length > 0) {
+            const newMem = {
+              _id: `ver-${sId}`,
+              id: `ver-${sId}`,
+              babysitter: p.user || {
+                _id: sId,
+                id: sId,
+                name: p.name || 'Caregiver',
+                email: p.email || '',
+                phone: p.phone || '',
+                avatar: p.avatar || p.profileImage || '',
+              },
+              babysitterProfile: p,
+              status: hasPending ? 'pending' : (p.verificationStatus || 'pending'),
+              documents: docs,
+              qualifications: quals,
+              reviewNotes: '',
+              submittedAt: new Date(),
+              createdAt: new Date(),
+            };
+            memoryVerifications.set(newMem._id, newMem);
+          }
+        }
+      }
+    } catch (_) {}
+
     let list = Array.from(memoryVerifications.values());
 
     if (status && status !== 'all') {
-      list = list.filter((r) => r.status.toLowerCase() === status.toLowerCase());
+      const s = status.toLowerCase();
+      if (s === 'pending' || s === 'under_review') {
+        list = list.filter((r) => {
+          const reqStatus = (r.status || '').toLowerCase();
+          if (['pending', 'under_review'].includes(reqStatus)) return true;
+          const hasPendingDoc =
+            Array.isArray(r.documents) &&
+            r.documents.some((d) => ['pending', 'under_review'].includes((d.status || '').toLowerCase()));
+          const hasPendingQual =
+            Array.isArray(r.qualifications) &&
+            r.qualifications.some((q) => typeof q === 'object' && ['pending', 'under_review'].includes((q.status || '').toLowerCase()));
+          return hasPendingDoc || hasPendingQual;
+        });
+      } else if (s === 'verified') {
+        list = list.filter((r) => {
+          const reqStatus = (r.status || '').toLowerCase();
+          const hasPendingDoc =
+            Array.isArray(r.documents) &&
+            r.documents.some((d) => ['pending', 'under_review', 'changes_requested'].includes((d.status || '').toLowerCase()));
+          return reqStatus === 'verified' && !hasPendingDoc;
+        });
+      } else if (s === 'rejected') {
+        list = list.filter((r) => {
+          const reqStatus = (r.status || '').toLowerCase();
+          const hasRejDoc =
+            Array.isArray(r.documents) &&
+            r.documents.some((d) => (d.status || '').toLowerCase() === 'rejected');
+          return reqStatus === 'rejected' || hasRejDoc;
+        });
+      } else {
+        list = list.filter((r) => (r.status || '').toLowerCase() === s);
+      }
     }
 
     if (search && search.trim()) {
@@ -740,8 +830,6 @@ async function approveDocument(req, res, next) {
     }
 
     if (request.save) {
-      await request.save();
-
       const profile = await findProfileForVerification(request);
       if (profile && Array.isArray(profile.documents)) {
         const pDoc = findDoc(profile.documents, documentId) || profile.documents.find((d) => d.name === doc.name);
@@ -750,9 +838,18 @@ async function approveDocument(req, res, next) {
           pDoc.reviewNotes = null;
           pDoc.reviewedAt = now;
           pDoc.reviewedBy = adminUser?._id && mongoose.Types.ObjectId.isValid(adminUser._id) ? adminUser._id : null;
-          await profile.save();
         }
       }
+
+      const allDocsVer = Array.isArray(request.documents) && request.documents.every((d) => d.status === 'verified');
+      const allQualsVer = !Array.isArray(request.qualifications) || request.qualifications.every((q) => typeof q === 'string' || q.status === 'verified');
+      if (allDocsVer && allQualsVer && request.documents.length > 0) {
+        request.status = 'verified';
+        if (profile) profile.verificationStatus = 'verified';
+      }
+
+      await request.save();
+      if (profile) await profile.save();
 
       try {
         await Notification.create({
@@ -1002,7 +1099,14 @@ async function approveQualification(req, res, next) {
     }
 
     if (request.save) {
+      const allDocsVer = Array.isArray(request.documents) && request.documents.every((d) => d.status === 'verified');
+      const allQualsVer = !Array.isArray(request.qualifications) || request.qualifications.every((q) => typeof q === 'string' || q.status === 'verified');
+      if (allDocsVer && allQualsVer && request.documents.length > 0) {
+        request.status = 'verified';
+        if (profile) profile.verificationStatus = 'verified';
+      }
       await request.save();
+      if (profile) await profile.save();
       try {
         await Notification.create({
           user: request.babysitter,

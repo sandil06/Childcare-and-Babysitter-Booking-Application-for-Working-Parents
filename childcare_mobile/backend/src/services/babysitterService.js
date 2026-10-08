@@ -54,18 +54,6 @@ async function getProfileByUserId(userId) {
         if (profile.totalReviews === 0) {
           profile.averageRating = 0.0;
         }
-        if (profile.verificationStatus === 'verified' && Array.isArray(profile.documents) && profile.documents.length > 0) {
-          let docUpdated = false;
-          profile.documents.forEach((d) => {
-            if (d.status !== 'verified') {
-              d.status = 'verified';
-              docUpdated = true;
-            }
-          });
-          if (docUpdated) {
-            await profile.save();
-          }
-        }
         return profile;
       }
     } catch (_) {}
@@ -118,7 +106,18 @@ async function updateProfileByUserId(userId, updateData, isSystemOrAdmin = false
   // Prevent manual overriding of system-controlled fields unless admin/system
   const safeUpdate = { ...updateData };
   if (!isSystemOrAdmin) {
-    delete safeUpdate.verificationStatus;
+    const hasPendingDocs =
+      Array.isArray(safeUpdate.documents) &&
+      safeUpdate.documents.some((d) => ['pending', 'under_review'].includes(d.status));
+    const hasPendingQuals =
+      Array.isArray(safeUpdate.qualifications) &&
+      safeUpdate.qualifications.some((q) => typeof q === 'object' && ['pending', 'under_review'].includes(q.status));
+
+    if (hasPendingDocs || hasPendingQuals) {
+      safeUpdate.verificationStatus = 'under_review';
+    } else {
+      delete safeUpdate.verificationStatus;
+    }
     delete safeUpdate.averageRating;
     delete safeUpdate.totalReviews;
     delete safeUpdate.totalCompletedBookings;

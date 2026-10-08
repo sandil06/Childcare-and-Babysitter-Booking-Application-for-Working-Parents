@@ -175,4 +175,68 @@ test('Babysitter Verification Security & Fine-Grained Document Reviews', async (
     assert.equal(overallApprove.status, 200);
     assert.equal(overallApprove.body.data.status, 'verified');
   });
+
+  await t.test('4. Sitter adding new pending document/qualification must show up in admin pending and under_review lists', async () => {
+    // 4.1 Sitter adds a new pending document "Welfare Certificate"
+    const addDocRes = await request(app)
+      .post('/api/v1/babysitters/me/verification-documents')
+      .set('Authorization', `Bearer ${sitterToken}`)
+      .send({
+        type: 'certificate',
+        name: 'Welfare Certificate',
+        url: 'https://example.com/welfare.pdf',
+      });
+    assert.equal(addDocRes.status, 201);
+    assert.equal(addDocRes.body.data.document.status, 'pending');
+
+    // 4.2 Sitter adds a new qualification "NVQ 10"
+    const addQualRes = await request(app)
+      .post('/api/v1/babysitters/me/qualifications')
+      .set('Authorization', `Bearer ${sitterToken}`)
+      .send({
+        title: 'NVQ 10',
+        institution: 'National Vocational Authority',
+      });
+    assert.equal(addQualRes.status, 201);
+    assert.equal(addQualRes.body.data.qualification.status, 'pending');
+
+    // 4.3 Agency Admin queries under_review requests -> must include sitter's request
+    const underReviewList = await request(app)
+      .get('/api/v1/agency/verifications?status=under_review')
+      .set('Authorization', `Bearer ${agencyToken}`);
+    assert.equal(underReviewList.status, 200);
+    assert.equal(underReviewList.body.success, true);
+    const foundInReview = underReviewList.body.data.find(
+      (r) => (r.babysitter?._id || r.babysitter?.id || r.babysitter) === sitterUser._id
+    );
+    assert.ok(foundInReview, 'Verification request with pending documents must appear in under_review list');
+    assert.ok(
+      foundInReview.documents.some((d) => d.name === 'Welfare Certificate' && d.status === 'pending'),
+      'Welfare Certificate must be in the request with status pending'
+    );
+    assert.ok(
+      foundInReview.qualifications.some((q) => (q.title || q) === 'NVQ 10'),
+      'NVQ 10 must be in the request qualifications'
+    );
+
+    // 4.4 Agency Admin queries pending requests -> must also include sitter's request
+    const pendingList = await request(app)
+      .get('/api/v1/agency/verifications?status=pending')
+      .set('Authorization', `Bearer ${agencyToken}`);
+    assert.equal(pendingList.status, 200);
+    const foundInPending = pendingList.body.data.find(
+      (r) => (r.babysitter?._id || r.babysitter?.id || r.babysitter) === sitterUser._id
+    );
+    assert.ok(foundInPending, 'Verification request with pending documents must appear in pending list');
+
+    // 4.5 Agency Admin queries all requests -> must include sitter's request
+    const allList = await request(app)
+      .get('/api/v1/agency/verifications?status=all')
+      .set('Authorization', `Bearer ${agencyToken}`);
+    assert.equal(allList.status, 200);
+    const foundInAll = allList.body.data.find(
+      (r) => (r.babysitter?._id || r.babysitter?.id || r.babysitter) === sitterUser._id
+    );
+    assert.ok(foundInAll, 'Verification request must appear in all list');
+  });
 });
