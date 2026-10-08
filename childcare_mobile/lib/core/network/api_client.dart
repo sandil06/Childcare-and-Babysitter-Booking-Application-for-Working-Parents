@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -20,7 +21,7 @@ class ApiClient {
   static String? authToken;
 
   final http.Client _httpClient = http.Client();
-  static const _responseTimeout = Duration(seconds: 5);
+  static const _responseTimeout = Duration(seconds: 15);
 
   Map<String, String> get _headers => {
     'Content-Type': 'application/json',
@@ -60,6 +61,9 @@ class ApiClient {
       return await _handleResponse(response);
     } catch (e) {
       if (e is ApiException) rethrow;
+      if (e is TimeoutException) {
+        throw const ApiException('Connection timed out. Please check your internet connection.');
+      }
       throw ApiException('Network error: ${e.toString()}');
     }
   }
@@ -78,6 +82,9 @@ class ApiClient {
       return await _handleResponse(response);
     } catch (e) {
       if (e is ApiException) rethrow;
+      if (e is TimeoutException) {
+        throw const ApiException('Connection timed out. Please check your internet connection.');
+      }
       throw ApiException('Network error: ${e.toString()}');
     }
   }
@@ -96,6 +103,9 @@ class ApiClient {
       return await _handleResponse(response);
     } catch (e) {
       if (e is ApiException) rethrow;
+      if (e is TimeoutException) {
+        throw const ApiException('Connection timed out. Please check your internet connection.');
+      }
       throw ApiException('Network error: ${e.toString()}');
     }
   }
@@ -110,6 +120,9 @@ class ApiClient {
       return await _handleResponse(response);
     } catch (e) {
       if (e is ApiException) rethrow;
+      if (e is TimeoutException) {
+        throw const ApiException('Connection timed out. Please check your internet connection.');
+      }
       throw ApiException('Network error: ${e.toString()}');
     }
   }
