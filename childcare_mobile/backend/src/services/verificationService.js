@@ -206,23 +206,43 @@ async function submitVerification(userId, documents) {
  * Agency / Admin approves a verification request
  */
 async function approveVerification(id, adminUser, notes = '') {
-  if (!isDbConnected() || !mongoose.Types.ObjectId.isValid(id)) {
-    throw new ApiError(400, 'Invalid verification request ID');
+  if (!isDbConnected()) {
+    throw new ApiError(400, 'Database not connected');
   }
 
-  const request = await VerificationRequest.findById(id);
+  let request = null;
+  const cleanId = id ? id.toString().trim() : '';
+  if (mongoose.Types.ObjectId.isValid(cleanId)) {
+    request = await VerificationRequest.findById(cleanId);
+    if (!request) {
+      request = await VerificationRequest.findOne({
+        $or: [{ babysitter: cleanId }, { babysitterProfile: cleanId }],
+      });
+    }
+  }
+
+  if (!request) {
+    const profile = await BabysitterProfile.findOne({
+      $or: [{ _id: cleanId }, { user: cleanId }],
+    });
+    if (profile) {
+      await syncVerificationRequests();
+      request = await VerificationRequest.findOne({
+        $or: [{ babysitter: profile.user }, { babysitterProfile: profile._id }],
+      });
+    }
+  }
+
   if (!request) throw new ApiError(404, 'Verification request not found');
-
-  if (request.status === 'verified') {
-    throw new ApiError(400, 'Verification request is already approved');
-  }
 
   const approvalNote = notes || request.reviewNotes || 'Approved by agency';
   const now = new Date();
 
   request.status = 'verified';
   request.reviewNotes = approvalNote;
-  request.reviewedBy = adminUser?._id;
+  if (adminUser?._id && mongoose.Types.ObjectId.isValid(adminUser._id)) {
+    request.reviewedBy = adminUser._id;
+  }
   request.reviewedAt = now;
   if (Array.isArray(request.documents)) {
     request.documents.forEach((d) => {
@@ -238,7 +258,10 @@ async function approveVerification(id, adminUser, notes = '') {
   if (profile) {
     profile.verificationStatus = 'verified';
     profile.verificationReviewedAt = now;
-    profile.verificationReviewedBy = adminUser?._id;
+    profile.verificationReviewedBy =
+      adminUser?._id && mongoose.Types.ObjectId.isValid(adminUser._id)
+        ? adminUser._id
+        : null;
     profile.verificationNotes = approvalNote;
     if (Array.isArray(profile.documents)) {
       profile.documents.forEach((d) => {

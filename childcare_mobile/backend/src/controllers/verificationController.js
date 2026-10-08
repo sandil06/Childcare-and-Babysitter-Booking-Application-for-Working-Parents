@@ -226,6 +226,59 @@ async function list(req, res, next) {
   }
 }
 
+async function findVerificationFlexible(id) {
+  if (!id) return null;
+  const cleanId = id.toString().trim();
+
+  if (isDbConnected()) {
+    if (mongoose.Types.ObjectId.isValid(cleanId)) {
+      let r = await VerificationRequest.findById(cleanId);
+      if (r) return r;
+
+      r = await VerificationRequest.findOne({
+        $or: [{ babysitter: cleanId }, { babysitterProfile: cleanId }],
+      });
+      if (r) return r;
+
+      try {
+        const bp = await BabysitterProfile.findOne({
+          $or: [{ _id: cleanId }, { user: cleanId }],
+        });
+        if (bp) {
+          await verificationService.syncVerificationRequests();
+          const synced = await VerificationRequest.findOne({
+            $or: [{ babysitter: bp.user }, { babysitterProfile: bp._id }],
+          });
+          if (synced) return synced;
+        }
+      } catch (_) {}
+    }
+
+    try {
+      const r = await VerificationRequest.findOne({
+        $or: [{ id: cleanId }, { _id: cleanId }],
+      });
+      if (r) return r;
+    } catch (_) {}
+  }
+
+  initSampleVerifications();
+  let mem = memoryVerifications.get(cleanId);
+  if (!mem) {
+    const lower = cleanId.toLowerCase();
+    mem = Array.from(memoryVerifications.values()).find(
+      (v) =>
+        v._id === cleanId ||
+        v.id === cleanId ||
+        v.babysitter?._id === cleanId ||
+        v.babysitter?.id === cleanId ||
+        v.babysitter?.email?.toLowerCase() === lower ||
+        v.babysitter?.phone === cleanId
+    );
+  }
+  return mem || null;
+}
+
 /**
  * GET /api/v1/agency/verifications/:id
  * Retrieve details of a specific verification request
@@ -233,22 +286,12 @@ async function list(req, res, next) {
 async function getById(req, res, next) {
   try {
     const { id } = req.params;
-
-    if (isDbConnected() && mongoose.Types.ObjectId.isValid(id)) {
-      const request = await VerificationRequest.findById(id)
-        .populate('babysitter', 'name email phone avatar')
-        .populate('babysitterProfile')
-        .populate('reviewedBy', 'name email role')
-        .lean();
-
-      if (!request) return next(new ApiError(404, 'Verification request not found'));
-      return ApiResponse.success(res, request, 'Verification details retrieved');
-    }
-
-    initSampleVerifications();
-    const request = memoryVerifications.get(id);
+    const request = await findVerificationFlexible(id);
     if (!request) return next(new ApiError(404, 'Verification request not found'));
 
+    if (request.toObject) {
+      return ApiResponse.success(res, request.toObject(), 'Verification details retrieved');
+    }
     return ApiResponse.success(res, request, 'Verification details retrieved');
   } catch (err) {
     next(err);
@@ -265,18 +308,19 @@ async function approve(req, res, next) {
     const { notes } = req.body;
     const adminUser = req.user;
 
-    if (isDbConnected() && mongoose.Types.ObjectId.isValid(id)) {
-      const request = await VerificationRequest.findById(id);
-      if (!request) return next(new ApiError(404, 'Verification request not found'));
+    const request = await findVerificationFlexible(id);
+    if (!request) return next(new ApiError(404, 'Verification request not found'));
 
-      if (request.status === 'verified') {
-        return next(new ApiError(400, 'Verification request is already approved'));
-      }
+    const approvalNote = notes || request.reviewNotes || 'Approved by agency';
+    const now = new Date();
 
-      const approvalNote = notes || request.reviewNotes || 'Approved by agency';
-      const now = new Date();
-
+    if (request.save) {
       request.status = 'verified';
+      request.reviewNotes = approvalNote;
+      request.reviewedAt = now;
+      if (adminUser?._id && mongoose.Types.ObjectId.isValid(adminUser._id)) {
+        request.reviewedBy = adminUser._id;
+      }
       if (Array.isArray(request.documents)) {
         request.documents.forEach((d) => {
           d.status = 'verified';
@@ -291,7 +335,10 @@ async function approve(req, res, next) {
       if (profile) {
         profile.verificationStatus = 'verified';
         profile.verificationReviewedAt = now;
-        profile.verificationReviewedBy = adminUser?._id;
+        profile.verificationReviewedBy =
+          adminUser?._id && mongoose.Types.ObjectId.isValid(adminUser._id)
+            ? adminUser._id
+            : null;
         profile.verificationNotes = approvalNote;
         if (Array.isArray(profile.documents)) {
           profile.documents.forEach((d) => {
@@ -304,16 +351,19 @@ async function approve(req, res, next) {
       // Create AuditLog
       try {
         await AuditLog.create({
-          actor: adminUser?._id,
+          actor:
+            adminUser?._id && mongoose.Types.ObjectId.isValid(adminUser._id)
+              ? adminUser._id
+              : null,
+          adminName: adminUser?.name || 'Agency Administrator',
+          adminEmail: adminUser?.email || '',
           action: 'approve_verification',
           targetType: 'VerificationRequest',
-          targetId: id,
+          targetId: request._id ? request._id.toString() : id,
           notes: approvalNote,
           metadata: { babysitterId: request.babysitter },
         });
-      } catch (logErr) {
-        // continue
-      }
+      } catch (logErr) {}
 
       // Notify Babysitter
       try {
@@ -322,33 +372,28 @@ async function approve(req, res, next) {
           title: 'Profile Approved & Verified',
           message: 'Your babysitter profile has been approved! Parents can now find and book you in the catalog.',
           type: 'verification_approved',
-          data: { verificationId: id },
+          data: { verificationId: request._id ? request._id.toString() : id },
         });
-      } catch (notifErr) {
-        // continue
-      }
+      } catch (notifErr) {}
 
       return ApiResponse.success(res, request, 'Verification request approved successfully');
     }
 
-    // Memory Fallback
-    initSampleVerifications();
-    const request = memoryVerifications.get(id);
-    if (!request) return next(new ApiError(404, 'Verification request not found'));
-
-    if (request.status === 'verified') {
-      return next(new ApiError(400, 'Verification request is already approved'));
-    }
-
+    // In-memory fallback
     request.status = 'verified';
-    request.reviewNotes = notes || 'Approved by agency';
-    request.reviewedAt = new Date();
+    request.reviewNotes = approvalNote;
+    request.reviewedAt = now;
     request.reviewedBy = adminUser?.name || 'Agency Admin';
+    if (Array.isArray(request.documents)) {
+      request.documents.forEach((d) => {
+        d.status = 'verified';
+      });
+    }
     if (request.babysitterProfile) {
       request.babysitterProfile.verificationStatus = 'verified';
       request.babysitterProfile.verificationNotes = request.reviewNotes;
     }
-    memoryVerifications.set(id, request);
+    memoryVerifications.set(request.id || request._id || id, request);
 
     return ApiResponse.success(res, request, 'Verification request approved successfully');
   } catch (err) {
@@ -370,19 +415,18 @@ async function reject(req, res, next) {
       return next(new ApiError(400, 'Rejection reason is required'));
     }
 
-    if (isDbConnected() && mongoose.Types.ObjectId.isValid(id)) {
-      const request = await VerificationRequest.findById(id);
-      if (!request) return next(new ApiError(404, 'Verification request not found'));
+    const request = await findVerificationFlexible(id);
+    if (!request) return next(new ApiError(404, 'Verification request not found'));
 
-      if (request.status === 'rejected') {
-        return next(new ApiError(400, 'Verification request is already rejected'));
-      }
+    const now = new Date();
 
-      const now = new Date();
+    if (request.save) {
       request.status = 'rejected';
       request.reviewNotes = reason;
-      request.reviewedBy = adminUser?._id;
       request.reviewedAt = now;
+      if (adminUser?._id && mongoose.Types.ObjectId.isValid(adminUser._id)) {
+        request.reviewedBy = adminUser._id;
+      }
       if (Array.isArray(request.documents)) {
         request.documents.forEach((d) => {
           d.status = 'rejected';
@@ -396,7 +440,10 @@ async function reject(req, res, next) {
       if (profile) {
         profile.verificationStatus = 'rejected';
         profile.verificationReviewedAt = now;
-        profile.verificationReviewedBy = adminUser?._id;
+        profile.verificationReviewedBy =
+          adminUser?._id && mongoose.Types.ObjectId.isValid(adminUser._id)
+            ? adminUser._id
+            : null;
         profile.verificationNotes = reason;
         if (Array.isArray(profile.documents)) {
           profile.documents.forEach((d) => {
@@ -408,16 +455,19 @@ async function reject(req, res, next) {
 
       try {
         await AuditLog.create({
-          actor: adminUser?._id,
+          actor:
+            adminUser?._id && mongoose.Types.ObjectId.isValid(adminUser._id)
+              ? adminUser._id
+              : null,
+          adminName: adminUser?.name || 'Agency Administrator',
+          adminEmail: adminUser?.email || '',
           action: 'reject_verification',
           targetType: 'VerificationRequest',
-          targetId: id,
+          targetId: request._id ? request._id.toString() : id,
           notes: reason,
           metadata: { babysitterId: request.babysitter },
         });
-      } catch (logErr) {
-        // continue
-      }
+      } catch (logErr) {}
 
       try {
         await Notification.create({
@@ -425,27 +475,17 @@ async function reject(req, res, next) {
           title: 'Verification Request Rejected',
           message: `Your verification request was rejected. Reason: ${reason}`,
           type: 'verification_rejected',
-          data: { verificationId: id, reason },
+          data: { verificationId: request._id ? request._id.toString() : id, reason },
         });
-      } catch (notifErr) {
-        // continue
-      }
+      } catch (notifErr) {}
 
       return ApiResponse.success(res, request, 'Verification request rejected');
     }
 
-    // Memory Fallback
-    initSampleVerifications();
-    const request = memoryVerifications.get(id);
-    if (!request) return next(new ApiError(404, 'Verification request not found'));
-
-    if (request.status === 'rejected') {
-      return next(new ApiError(400, 'Verification request is already rejected'));
-    }
-
+    // In-memory fallback
     request.status = 'rejected';
     request.reviewNotes = reason;
-    request.reviewedAt = new Date();
+    request.reviewedAt = now;
     request.reviewedBy = adminUser?.name || 'Agency Admin';
     if (Array.isArray(request.documents)) {
       request.documents.forEach((d) => { d.status = 'rejected'; });
@@ -457,7 +497,7 @@ async function reject(req, res, next) {
         request.babysitterProfile.documents.forEach((d) => { d.status = 'rejected'; });
       }
     }
-    memoryVerifications.set(id, request);
+    memoryVerifications.set(request.id || request._id || id, request);
 
     return ApiResponse.success(res, request, 'Verification request rejected');
   } catch (err) {
@@ -479,15 +519,18 @@ async function requestChanges(req, res, next) {
       return next(new ApiError(400, 'Instructions / notes for required changes are required'));
     }
 
-    if (isDbConnected() && mongoose.Types.ObjectId.isValid(id)) {
-      const request = await VerificationRequest.findById(id);
-      if (!request) return next(new ApiError(404, 'Verification request not found'));
+    const request = await findVerificationFlexible(id);
+    if (!request) return next(new ApiError(404, 'Verification request not found'));
 
-      const now = new Date();
+    const now = new Date();
+
+    if (request.save) {
       request.status = 'changes_requested';
       request.reviewNotes = notes;
-      request.reviewedBy = adminUser?._id;
       request.reviewedAt = now;
+      if (adminUser?._id && mongoose.Types.ObjectId.isValid(adminUser._id)) {
+        request.reviewedBy = adminUser._id;
+      }
       if (Array.isArray(request.documents)) {
         request.documents.forEach((d) => {
           d.status = 'changes_requested';
@@ -501,7 +544,10 @@ async function requestChanges(req, res, next) {
       if (profile) {
         profile.verificationStatus = 'changes_requested';
         profile.verificationReviewedAt = now;
-        profile.verificationReviewedBy = adminUser?._id;
+        profile.verificationReviewedBy =
+          adminUser?._id && mongoose.Types.ObjectId.isValid(adminUser._id)
+            ? adminUser._id
+            : null;
         profile.verificationNotes = notes;
         if (Array.isArray(profile.documents)) {
           profile.documents.forEach((d) => {
@@ -513,16 +559,19 @@ async function requestChanges(req, res, next) {
 
       try {
         await AuditLog.create({
-          actor: adminUser?._id,
+          actor:
+            adminUser?._id && mongoose.Types.ObjectId.isValid(adminUser._id)
+              ? adminUser._id
+              : null,
+          adminName: adminUser?.name || 'Agency Administrator',
+          adminEmail: adminUser?.email || '',
           action: 'request_changes_verification',
           targetType: 'VerificationRequest',
-          targetId: id,
+          targetId: request._id ? request._id.toString() : id,
           notes,
           metadata: { babysitterId: request.babysitter },
         });
-      } catch (logErr) {
-        // continue
-      }
+      } catch (logErr) {}
 
       try {
         await Notification.create({
@@ -530,23 +579,17 @@ async function requestChanges(req, res, next) {
           title: 'Verification Changes Requested',
           message: `The agency has requested additional information or updated documents: ${notes}`,
           type: 'verification_changes_requested',
-          data: { verificationId: id, notes },
+          data: { verificationId: request._id ? request._id.toString() : id, notes },
         });
-      } catch (notifErr) {
-        // continue
-      }
+      } catch (notifErr) {}
 
       return ApiResponse.success(res, request, 'Changes requested successfully');
     }
 
-    // Memory Fallback
-    initSampleVerifications();
-    const request = memoryVerifications.get(id);
-    if (!request) return next(new ApiError(404, 'Verification request not found'));
-
+    // In-memory fallback
     request.status = 'changes_requested';
     request.reviewNotes = notes;
-    request.reviewedAt = new Date();
+    request.reviewedAt = now;
     request.reviewedBy = adminUser?.name || 'Agency Admin';
     if (Array.isArray(request.documents)) {
       request.documents.forEach((d) => { d.status = 'changes_requested'; });
@@ -558,7 +601,7 @@ async function requestChanges(req, res, next) {
         request.babysitterProfile.documents.forEach((d) => { d.status = 'changes_requested'; });
       }
     }
-    memoryVerifications.set(id, request);
+    memoryVerifications.set(request.id || request._id || id, request);
 
     return ApiResponse.success(res, request, 'Changes requested successfully');
   } catch (err) {

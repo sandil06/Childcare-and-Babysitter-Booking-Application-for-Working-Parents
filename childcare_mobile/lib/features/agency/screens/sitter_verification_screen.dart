@@ -76,7 +76,10 @@ class _SitterVerificationScreenState extends State<SitterVerificationScreen>
 
     if (notes == null) return; // User cancelled
 
-    final success = await _provider.approveVerification(req.id, notes: notes);
+    final targetId = (req.id.isNotEmpty && !req.id.startsWith('req-'))
+        ? req.id
+        : (req.babysitterId.isNotEmpty ? req.babysitterId : req.id);
+    final success = await _provider.approveVerification(targetId, notes: notes);
     if (!mounted) return;
 
     if (success) {
@@ -118,7 +121,10 @@ class _SitterVerificationScreenState extends State<SitterVerificationScreen>
 
     if (notes == null || notes.isEmpty) return;
 
-    final success = await _provider.requestChangesVerification(req.id, notes: notes);
+    final targetId = (req.id.isNotEmpty && !req.id.startsWith('req-'))
+        ? req.id
+        : (req.babysitterId.isNotEmpty ? req.babysitterId : req.id);
+    final success = await _provider.requestChangesVerification(targetId, notes: notes);
     if (!mounted) return;
 
     if (success) {
@@ -160,7 +166,10 @@ class _SitterVerificationScreenState extends State<SitterVerificationScreen>
 
     if (reason == null || reason.isEmpty) return;
 
-    final success = await _provider.rejectVerification(req.id, reason: reason);
+    final targetId = (req.id.isNotEmpty && !req.id.startsWith('req-'))
+        ? req.id
+        : (req.babysitterId.isNotEmpty ? req.babysitterId : req.id);
+    final success = await _provider.rejectVerification(targetId, reason: reason);
     if (!mounted) return;
 
     if (success) {

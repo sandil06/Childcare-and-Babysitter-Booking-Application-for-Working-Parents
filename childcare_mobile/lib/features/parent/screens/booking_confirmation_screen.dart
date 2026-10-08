@@ -281,10 +281,9 @@ class BookingConfirmationScreen extends StatelessWidget {
                   height: 52,
                   child: OutlinedButton(
                     onPressed: () {
-                      Navigator.pushNamedAndRemoveUntil(
+                      Navigator.pushNamed(
                         context,
                         AppRoutes.parentUpcomingBookings,
-                        (route) => false,
                       );
                     },
                     style: OutlinedButton.styleFrom(
@@ -295,6 +294,27 @@ class BookingConfirmationScreen extends StatelessWidget {
                     child: const Text(
                       'Go to My Bookings',
                       style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // Return to Parent Dashboard CTA
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: TextButton.icon(
+                    onPressed: () {
+                      Navigator.pushNamedAndRemoveUntil(
+                        context,
+                        AppRoutes.home,
+                        (route) => false,
+                      );
+                    },
+                    icon: const Icon(Icons.home_rounded, color: AppColors.teal),
+                    label: const Text(
+                      'Return to Parent Dashboard',
+                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.teal),
                     ),
                   ),
                 ),

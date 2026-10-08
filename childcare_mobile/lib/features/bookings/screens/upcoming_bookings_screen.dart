@@ -132,12 +132,35 @@ class _UpcomingBookingsScreenState extends State<UpcomingBookingsScreen> {
             fontSize: 20,
           ),
         ),
-        leading: Navigator.canPop(context)
-            ? IconButton(
-                icon: const Icon(Icons.arrow_back_rounded, color: AppColors.ink),
-                onPressed: () => Navigator.pop(context),
-              )
-            : null,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded, color: AppColors.ink),
+          tooltip: 'Back',
+          onPressed: () {
+            if (Navigator.canPop(context)) {
+              Navigator.pop(context);
+            } else {
+              Navigator.pushNamedAndRemoveUntil(
+                context,
+                AppRoutes.home,
+                (route) => false,
+              );
+            }
+          },
+        ),
+        actions: [
+          IconButton(
+            tooltip: 'Parent Dashboard',
+            icon: const Icon(Icons.home_rounded, color: AppColors.teal),
+            onPressed: () {
+              Navigator.pushNamedAndRemoveUntil(
+                context,
+                AppRoutes.home,
+                (route) => false,
+              );
+            },
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
       body: SafeArea(
         child: Column(
@@ -298,6 +321,27 @@ class _UpcomingBookingsScreenState extends State<UpcomingBookingsScreen> {
                   label: const Text('Find a Babysitter'),
                   style: FilledButton.styleFrom(
                     backgroundColor: const Color(0xFF005B60),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                OutlinedButton.icon(
+                  onPressed: () {
+                    Navigator.pushNamedAndRemoveUntil(
+                      context,
+                      AppRoutes.home,
+                      (route) => false,
+                    );
+                  },
+                  icon: const Icon(Icons.home_rounded, size: 18, color: AppColors.teal),
+                  label: const Text(
+                    'Return to Parent Dashboard',
+                    style: TextStyle(color: AppColors.teal, fontWeight: FontWeight.w700),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: AppColors.teal),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
                     ),
