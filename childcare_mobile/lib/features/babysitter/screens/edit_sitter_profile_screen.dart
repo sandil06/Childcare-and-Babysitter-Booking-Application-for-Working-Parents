@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_sizes.dart';
@@ -289,10 +290,23 @@ class _EditSitterProfileScreenState extends State<EditSitterProfileScreen> {
               _buildInput(
                 controller: _phoneController,
                 label: 'Phone Number',
-                hint: '+94 77 123 4567',
-                keyboardType: TextInputType.phone,
+                hint: '0771234567',
+                keyboardType: TextInputType.number,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(10),
+                ],
                 prefixIcon: const Icon(Icons.phone_outlined,
                     color: AppColors.teal, size: 20),
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) {
+                    return 'Phone number is required';
+                  }
+                  if (v.trim().length != 10) {
+                    return 'Phone number must be exactly 10 digits';
+                  }
+                  return null;
+                },
               ),
               const SizedBox(height: 16),
               _buildInput(
@@ -807,6 +821,7 @@ class _EditSitterProfileScreenState extends State<EditSitterProfileScreen> {
     required String label,
     String? hint,
     TextInputType? keyboardType,
+    List<TextInputFormatter>? inputFormatters,
     int maxLines = 1,
     Widget? prefixIcon,
     String? Function(String?)? validator,
@@ -814,6 +829,7 @@ class _EditSitterProfileScreenState extends State<EditSitterProfileScreen> {
     return TextFormField(
       controller: controller,
       keyboardType: keyboardType,
+      inputFormatters: inputFormatters,
       maxLines: maxLines,
       validator: validator,
       style: const TextStyle(fontSize: 15, color: AppColors.ink),

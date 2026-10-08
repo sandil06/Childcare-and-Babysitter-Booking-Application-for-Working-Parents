@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../../config/routes.dart';
 import '../../../core/constants/app_colors.dart';
@@ -576,7 +577,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
           // Sri Lankan Phone Number
           const Text(
-            'Sri Lankan Mobile Number',
+            'Mobile Number',
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w700,
@@ -586,36 +587,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
           const SizedBox(height: 8),
           TextFormField(
             controller: _phoneController,
-            keyboardType: TextInputType.phone,
+            keyboardType: TextInputType.number,
+            inputFormatters: [
+              FilteringTextInputFormatter.digitsOnly,
+              LengthLimitingTextInputFormatter(10),
+            ],
             decoration: InputDecoration(
               filled: true,
               fillColor: Colors.white,
-              hintText: '77 123 4567',
+              hintText: '0771234567',
               hintStyle: const TextStyle(
                 color: Color(0xFF9EABA7),
                 fontSize: 14,
               ),
-              prefixIcon: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                margin: const EdgeInsets.only(right: 8),
-                decoration: const BoxDecoration(
-                  border: Border(right: BorderSide(color: Color(0xFFE2E8F0))),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: const [
-                    Text('🇱🇰', style: TextStyle(fontSize: 16)),
-                    SizedBox(width: 6),
-                    Text(
-                      '+94',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 13.5,
-                        color: AppColors.ink,
-                      ),
-                    ),
-                  ],
-                ),
+              prefixIcon: const Icon(
+                Icons.phone_outlined,
+                color: AppColors.teal,
+                size: 20,
               ),
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 16,
@@ -640,6 +628,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
             validator: (val) {
               if (val == null || val.trim().isEmpty) {
                 return 'Please enter your phone number';
+              }
+              final clean = val.trim();
+              if (clean.length != 10) {
+                return 'Phone number must be exactly 10 digits';
               }
               return null;
             },

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../../config/routes.dart';
 import '../../../core/constants/app_colors.dart';
@@ -2204,10 +2205,14 @@ class _SitterProfileScreenState extends State<SitterProfileScreen> {
                   const SizedBox(height: 16),
                   TextField(
                     controller: phoneCtrl,
-                    keyboardType: TextInputType.phone,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                      LengthLimitingTextInputFormatter(10),
+                    ],
                     decoration: InputDecoration(
                       labelText: 'Phone Number',
-                      hintText: '+94 77 123 4567',
+                      hintText: '0771234567',
                       filled: true,
                       fillColor: AppColors.cream,
                       prefixIcon: const Icon(Icons.phone_outlined, color: AppColors.teal, size: 20),
@@ -2239,9 +2244,19 @@ class _SitterProfileScreenState extends State<SitterProfileScreen> {
                       onPressed: saving
                           ? null
                           : () async {
+                              final p = phoneCtrl.text.trim();
+                              if (p.isNotEmpty && p.length != 10) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Phone number must be exactly 10 digits'),
+                                    backgroundColor: AppColors.coral,
+                                  ),
+                                );
+                                return;
+                              }
                               setModalState(() => saving = true);
                               final ok = await _provider.updateProfile({
-                                'phone': phoneCtrl.text.trim(),
+                                'phone': p,
                                 'address': addressCtrl.text.trim(),
                               });
                               if (ctx.mounted) Navigator.pop(ctx);

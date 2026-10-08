@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../../config/routes.dart';
 import '../../../core/constants/app_colors.dart';
@@ -317,12 +318,25 @@ class _ParentProfileScreenState extends State<ParentProfileScreen> {
                   const SizedBox(height: 14),
                   TextFormField(
                     controller: phoneCtrl,
-                    keyboardType: TextInputType.phone,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                      LengthLimitingTextInputFormatter(10),
+                    ],
                     decoration: const InputDecoration(
                       labelText: 'Phone Number',
                       prefixIcon: Icon(Icons.phone_outlined),
-                      hintText: '+94 77 123 4567',
+                      hintText: '0771234567',
                     ),
+                    validator: (v) {
+                      if (v == null || v.trim().isEmpty) {
+                        return 'Please enter your phone number';
+                      }
+                      if (v.trim().length != 10) {
+                        return 'Phone number must be exactly 10 digits';
+                      }
+                      return null;
+                    },
                   ),
                   const SizedBox(height: 14),
                   TextFormField(
@@ -336,12 +350,22 @@ class _ParentProfileScreenState extends State<ParentProfileScreen> {
                   const SizedBox(height: 14),
                   TextFormField(
                     controller: emergencyCtrl,
-                    keyboardType: TextInputType.phone,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                      LengthLimitingTextInputFormatter(10),
+                    ],
                     decoration: const InputDecoration(
                       labelText: 'Emergency Contact Phone',
                       prefixIcon: Icon(Icons.contact_phone_outlined),
-                      hintText: '+94 71 234 5678',
+                      hintText: '0712345678',
                     ),
+                    validator: (v) {
+                      if (v != null && v.trim().isNotEmpty && v.trim().length != 10) {
+                        return 'Emergency contact must be 10 digits';
+                      }
+                      return null;
+                    },
                   ),
                   const SizedBox(height: 24),
                   SizedBox(

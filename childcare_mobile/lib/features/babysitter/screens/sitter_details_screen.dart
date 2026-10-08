@@ -18,7 +18,7 @@ class SitterDetailsScreen extends StatelessWidget {
           userId: 'u-1',
           name: 'Kavindi Perera',
           email: 'kavindi.perera@example.com',
-          phone: '+94 77 019 2834',
+          phone: '0770192834',
           address: 'Colombo, Sri Lanka',
           bio:
               'Certified early childhood educator with over 4 years of experience specializing in infant care and toddler development across Colombo. Passionate about fun, creative learning and child safety.',

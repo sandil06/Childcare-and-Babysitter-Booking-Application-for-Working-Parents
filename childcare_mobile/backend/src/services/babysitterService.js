@@ -133,7 +133,15 @@ async function updateProfileByUserId(userId, updateData, isSystemOrAdmin = false
 
   if (isDbConnected() && isValidObjectId(userId)) {
     try {
-      if (safeUpdate.phone !== undefined) {
+      if (safeUpdate.phone !== undefined && safeUpdate.phone !== null && safeUpdate.phone.toString().trim() !== '') {
+        let digits = safeUpdate.phone.toString().trim().replace(/\D/g, '');
+        if (digits.startsWith('94') && digits.length === 11) {
+          digits = digits.slice(2);
+        }
+        if (digits.length !== 10 && digits.length !== 9) {
+          throw new ApiError(400, 'Phone number must be exactly 10 digits');
+        }
+        safeUpdate.phone = safeUpdate.phone.toString().trim();
         await User.findByIdAndUpdate(userId, { phone: safeUpdate.phone });
       }
       if (safeUpdate.name !== undefined) {

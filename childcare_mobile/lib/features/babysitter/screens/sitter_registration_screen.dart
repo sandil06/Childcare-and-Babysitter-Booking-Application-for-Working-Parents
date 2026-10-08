@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../../config/routes.dart';
 import '../../../core/constants/app_colors.dart';
@@ -112,7 +113,7 @@ class _SitterRegistrationScreenState extends State<SitterRegistrationScreen> {
       _firstNameController.text = 'Kavindi';
       _lastNameController.text = 'Perera';
       _emailController.text = 'kavindi.perera$timestamp@example.com';
-      _phoneController.text = '+94 77 234 8901';
+      _phoneController.text = '0772348901';
       _passwordController.text = 'Password123!';
       _confirmPasswordController.text = 'Password123!';
       _addressController.text = 'No. 142, Galle Road, Colombo 03';
@@ -666,10 +667,23 @@ class _SitterRegistrationScreenState extends State<SitterRegistrationScreen> {
           _buildTextField(
             controller: _phoneController,
             label: 'Phone Number',
-            hint: '+94 77 123 4567',
-            keyboardType: TextInputType.phone,
-            validator: (v) =>
-                v == null || v.trim().isEmpty ? 'Phone number is required' : null,
+            hint: '0771234567',
+            keyboardType: TextInputType.number,
+            inputFormatters: [
+              FilteringTextInputFormatter.digitsOnly,
+              LengthLimitingTextInputFormatter(10),
+            ],
+            prefixIcon: const Icon(Icons.phone_outlined,
+                color: AppColors.teal, size: 20),
+            validator: (v) {
+              if (v == null || v.trim().isEmpty) {
+                return 'Phone number is required';
+              }
+              if (v.trim().length != 10) {
+                return 'Phone number must be exactly 10 digits';
+              }
+              return null;
+            },
           ),
           const SizedBox(height: 16),
 
@@ -1144,11 +1158,13 @@ class _SitterRegistrationScreenState extends State<SitterRegistrationScreen> {
     bool obscureText = false,
     Widget? prefixIcon,
     Widget? suffixIcon,
+    List<TextInputFormatter>? inputFormatters,
     String? Function(String?)? validator,
   }) {
     return TextFormField(
       controller: controller,
       keyboardType: keyboardType,
+      inputFormatters: inputFormatters,
       textInputAction: textInputAction,
       maxLines: maxLines,
       obscureText: obscureText,

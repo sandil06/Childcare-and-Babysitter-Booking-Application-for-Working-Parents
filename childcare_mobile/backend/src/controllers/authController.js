@@ -141,7 +141,16 @@ async function register(req, res, next) {
   try {
     const { name, email, phone, password, role = ROLES.PARENT, verificationCode, code } = req.body;
     const cleanEmail = (email || '').trim().toLowerCase();
-    const cleanPhone = (phone || '').trim();
+    let cleanPhone = (phone || '').trim();
+    if (cleanPhone) {
+      let digits = cleanPhone.replace(/\D/g, '');
+      if (digits.startsWith('94') && digits.length === 11) {
+        digits = digits.slice(2);
+      }
+      if (digits.length !== 10 && digits.length !== 9) {
+        return next(new ApiError(400, 'Phone number must be exactly 10 digits'));
+      }
+    }
     const otp = (verificationCode || code || '').toString().trim();
 
     // Verify OTP if supplied or check if already verified

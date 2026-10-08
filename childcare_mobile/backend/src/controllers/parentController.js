@@ -81,20 +81,44 @@ async function updateProfile(req, res, next) {
     const { name, phone, address, emergencyContact, children, avatar, profileImage } = req.body;
     const img = avatar || profileImage;
 
+    let cleanPhone = phone;
+    if (phone !== undefined && phone !== null && phone.toString().trim() !== '') {
+      let digits = phone.toString().trim().replace(/\D/g, '');
+      if (digits.startsWith('94') && digits.length === 11) {
+        digits = digits.slice(2);
+      }
+      if (digits.length !== 10 && digits.length !== 9) {
+        return next(new ApiError(400, 'Phone number must be exactly 10 digits'));
+      }
+      cleanPhone = phone.toString().trim();
+    }
+
+    let cleanEmergency = emergencyContact;
+    if (emergencyContact !== undefined && emergencyContact !== null && emergencyContact.toString().trim() !== '') {
+      let digits = emergencyContact.toString().trim().replace(/\D/g, '');
+      if (digits.startsWith('94') && digits.length === 11) {
+        digits = digits.slice(2);
+      }
+      if (digits.length !== 10 && digits.length !== 9) {
+        return next(new ApiError(400, 'Emergency contact phone number must be exactly 10 digits'));
+      }
+      cleanEmergency = emergencyContact.toString().trim();
+    }
+
     if (isDbConnected()) {
       if (name) {
         await User.findByIdAndUpdate(userId, { name });
       }
-      if (phone !== undefined) {
-        await User.findByIdAndUpdate(userId, { phone });
+      if (cleanPhone !== undefined) {
+        await User.findByIdAndUpdate(userId, { phone: cleanPhone });
       }
       if (img) {
         await User.findByIdAndUpdate(userId, { avatar: img, profileImage: img });
       }
       const updateData = {};
-      if (phone !== undefined) updateData.phone = phone;
+      if (cleanPhone !== undefined) updateData.phone = cleanPhone;
       if (address !== undefined) updateData.address = address;
-      if (emergencyContact !== undefined) updateData.emergencyContact = emergencyContact;
+      if (cleanEmergency !== undefined) updateData.emergencyContact = cleanEmergency;
       if (children !== undefined) updateData.children = children;
       if (img) {
         updateData.avatar = img;
