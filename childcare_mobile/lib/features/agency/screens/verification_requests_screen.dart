@@ -71,7 +71,9 @@ class _VerificationRequestsScreenState extends State<VerificationRequestsScreen>
       context,
       AppRoutes.agencySitterVerification,
       arguments: request,
-    );
+    ).then((_) {
+      _provider.loadVerificationRequests(refresh: true);
+    });
   }
 
   @override

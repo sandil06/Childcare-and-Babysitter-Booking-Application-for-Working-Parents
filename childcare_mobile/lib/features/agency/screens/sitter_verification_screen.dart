@@ -32,20 +32,45 @@ class _SitterVerificationScreenState extends State<SitterVerificationScreen>
   void initState() {
     super.initState();
     _provider = AgencyProvider.instance;
-    _tabController = TabController(length: 4, vsync: this);
     _currentRequest = widget.request ?? _provider.selectedVerification;
 
-    if (_currentRequest == null && widget.verificationId != null) {
-      _loadDetails(widget.verificationId!);
+    int initialTab = 0;
+    if (_currentRequest != null && _currentRequest!.hasPendingItems) {
+      if (_currentRequest!.pendingDocs.isNotEmpty) {
+        initialTab = 2;
+      } else if (_currentRequest!.pendingQualifications.isNotEmpty) {
+        initialTab = 1;
+      }
+    }
+    _tabController = TabController(length: 4, vsync: this, initialIndex: initialTab);
+
+    final targetId = widget.verificationId ??
+        ((_currentRequest?.id.isNotEmpty == true && !_currentRequest!.id.startsWith('req-'))
+            ? _currentRequest!.id
+            : (_currentRequest?.babysitterId.isNotEmpty == true ? _currentRequest!.babysitterId : null));
+
+    if (targetId != null && targetId.isNotEmpty) {
+      _loadDetails(targetId);
     }
   }
 
   Future<void> _loadDetails(String id) async {
-    setState(() => _isLoading = true);
+    if (_currentRequest == null) {
+      setState(() => _isLoading = true);
+    }
     final detail = await _provider.loadVerificationDetails(id);
     if (mounted) {
       setState(() {
-        _currentRequest = detail;
+        if (detail != null) {
+          _currentRequest = detail;
+          if (_tabController.index == 0 && detail.hasPendingItems) {
+            if (detail.pendingDocs.isNotEmpty) {
+              _tabController.animateTo(2);
+            } else if (detail.pendingQualifications.isNotEmpty) {
+              _tabController.animateTo(1);
+            }
+          }
+        }
         _isLoading = false;
       });
     }
@@ -194,8 +219,8 @@ class _SitterVerificationScreenState extends State<SitterVerificationScreen>
 
   Future<void> _handleApproveDocument(VerificationDocItem doc) async {
     final req = _currentRequest;
-    final docId = doc.id;
-    if (req == null || docId == null || docId.isEmpty) return;
+    final docId = doc.effectiveId;
+    if (req == null || docId.isEmpty) return;
 
     final targetId = (req.id.isNotEmpty && !req.id.startsWith('req-'))
         ? req.id
@@ -226,8 +251,8 @@ class _SitterVerificationScreenState extends State<SitterVerificationScreen>
 
   Future<void> _handleRejectDocument(VerificationDocItem doc) async {
     final req = _currentRequest;
-    final docId = doc.id;
-    if (req == null || docId == null || docId.isEmpty) return;
+    final docId = doc.effectiveId;
+    if (req == null || docId.isEmpty) return;
 
     final reason = await AdminActionDialog.show(
       context,
@@ -271,8 +296,8 @@ class _SitterVerificationScreenState extends State<SitterVerificationScreen>
 
   Future<void> _handleRequestChangesDocument(VerificationDocItem doc) async {
     final req = _currentRequest;
-    final docId = doc.id;
-    if (req == null || docId == null || docId.isEmpty) return;
+    final docId = doc.effectiveId;
+    if (req == null || docId.isEmpty) return;
 
     final notes = await AdminActionDialog.show(
       context,
@@ -316,13 +341,14 @@ class _SitterVerificationScreenState extends State<SitterVerificationScreen>
 
   Future<void> _handleApproveQualification(VerificationQualificationItem qual) async {
     final req = _currentRequest;
-    if (req == null || qual.id.isEmpty) return;
+    final qualId = qual.effectiveId;
+    if (req == null || qualId.isEmpty) return;
 
     final targetId = (req.id.isNotEmpty && !req.id.startsWith('req-'))
         ? req.id
         : (req.babysitterId.isNotEmpty ? req.babysitterId : req.id);
 
-    final ok = await _provider.approveQualification(targetId, qual.id);
+    final ok = await _provider.approveQualification(targetId, qualId);
     if (!mounted) return;
     if (ok) {
       await _loadDetails(targetId);
@@ -347,7 +373,8 @@ class _SitterVerificationScreenState extends State<SitterVerificationScreen>
 
   Future<void> _handleRejectQualification(VerificationQualificationItem qual) async {
     final req = _currentRequest;
-    if (req == null || qual.id.isEmpty) return;
+    final qualId = qual.effectiveId;
+    if (req == null || qualId.isEmpty) return;
 
     final reason = await AdminActionDialog.show(
       context,
@@ -366,7 +393,7 @@ class _SitterVerificationScreenState extends State<SitterVerificationScreen>
         ? req.id
         : (req.babysitterId.isNotEmpty ? req.babysitterId : req.id);
 
-    final ok = await _provider.rejectQualification(targetId, qual.id, reason: reason);
+    final ok = await _provider.rejectQualification(targetId, qualId, reason: reason);
     if (!mounted) return;
     if (ok) {
       await _loadDetails(targetId);
@@ -391,7 +418,8 @@ class _SitterVerificationScreenState extends State<SitterVerificationScreen>
 
   Future<void> _handleRequestChangesQualification(VerificationQualificationItem qual) async {
     final req = _currentRequest;
-    if (req == null || qual.id.isEmpty) return;
+    final qualId = qual.effectiveId;
+    if (req == null || qualId.isEmpty) return;
 
     final notes = await AdminActionDialog.show(
       context,
@@ -410,7 +438,7 @@ class _SitterVerificationScreenState extends State<SitterVerificationScreen>
         ? req.id
         : (req.babysitterId.isNotEmpty ? req.babysitterId : req.id);
 
-    final ok = await _provider.requestChangesQualification(targetId, qual.id, notes: notes);
+    final ok = await _provider.requestChangesQualification(targetId, qualId, notes: notes);
     if (!mounted) return;
     if (ok) {
       await _loadDetails(targetId);
@@ -475,11 +503,53 @@ class _SitterVerificationScreenState extends State<SitterVerificationScreen>
               indicatorWeight: 3,
               labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
               unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
-              tabs: const [
-                Tab(text: 'Personal'),
-                Tab(text: 'Professional'),
-                Tab(text: 'Documents'),
-                Tab(text: 'Audit'),
+              tabs: [
+                const Tab(text: 'Personal'),
+                Tab(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text('Professional'),
+                      if (req != null && req.pendingQualifications.isNotEmpty) ...[
+                        const SizedBox(width: 4),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFD97706),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            '${req.pendingQualifications.length}',
+                            style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                Tab(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text('Documents'),
+                      if (req != null && req.pendingDocs.isNotEmpty) ...[
+                        const SizedBox(width: 4),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFD97706),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            '${req.pendingDocs.length}',
+                            style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const Tab(text: 'Audit'),
               ],
             ),
           ),
@@ -880,7 +950,7 @@ class _SitterVerificationScreenState extends State<SitterVerificationScreen>
               ),
             ),
           ],
-          if (!qual.isVerified && qual.id.isNotEmpty) ...[
+          if (!qual.isVerified) ...[
             const SizedBox(height: 10),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
@@ -1112,7 +1182,7 @@ class _SitterVerificationScreenState extends State<SitterVerificationScreen>
                 ),
               ),
               const Spacer(),
-              if (!doc.isVerified && doc.id != null && doc.id!.isNotEmpty) ...[
+              if (!doc.isVerified) ...[
                 OutlinedButton(
                   onPressed: () => _handleRejectDocument(doc),
                   style: OutlinedButton.styleFrom(
@@ -1225,8 +1295,9 @@ class _SitterVerificationScreenState extends State<SitterVerificationScreen>
   }
 
   Widget _buildBottomActionBar(VerificationRequestModel req) {
-    final isAlreadyVerified = req.status.toLowerCase() == 'verified';
-    final isAlreadyRejected = req.status.toLowerCase() == 'rejected';
+    final hasPendingItems = req.hasPendingItems;
+    final isAlreadyVerified = req.status.toLowerCase() == 'verified' && !hasPendingItems;
+    final isAlreadyRejected = req.status.toLowerCase() == 'rejected' && !hasPendingItems;
 
     if (isAlreadyVerified) {
       return Container(

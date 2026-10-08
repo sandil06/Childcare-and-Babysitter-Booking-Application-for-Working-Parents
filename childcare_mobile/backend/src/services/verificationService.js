@@ -112,7 +112,7 @@ async function syncVerificationRequests() {
             (d) =>
               (d._id && pDoc._id && d._id.toString() === pDoc._id.toString()) ||
               d.name === pDoc.name ||
-              (d.type === pDoc.type && d.type === 'id')
+              (pDoc.documentNumber && d.documentNumber && d.documentNumber === pDoc.documentNumber)
           );
           if (matchIndex === -1) {
             reqDocs.push({
@@ -121,8 +121,8 @@ async function syncVerificationRequests() {
               name: pDoc.name || 'Document',
               label: pDoc.label || pDoc.name,
               documentNumber: pDoc.documentNumber || '',
-              url: pDoc.url || pDoc.fileUrl || '',
-              fileUrl: pDoc.fileUrl || pDoc.url || '',
+              url: pDoc.url || pDoc.fileUrl || DEFAULT_DOCUMENTS[0].url,
+              fileUrl: pDoc.fileUrl || pDoc.url || DEFAULT_DOCUMENTS[0].url,
               status: pDoc.status || 'pending',
               reviewNotes: pDoc.reviewNotes || null,
               reviewedBy: pDoc.reviewedBy || null,
@@ -142,8 +142,8 @@ async function syncVerificationRequests() {
             } else if (pDoc.status === 'pending' && rDoc.status !== 'pending') {
               // Sitter re-uploaded / replaced as pending
               rDoc.status = 'pending';
-              rDoc.url = pDoc.url || pDoc.fileUrl || rDoc.url;
-              rDoc.fileUrl = pDoc.fileUrl || pDoc.url || rDoc.fileUrl;
+              rDoc.url = pDoc.url || pDoc.fileUrl || rDoc.url || DEFAULT_DOCUMENTS[0].url;
+              rDoc.fileUrl = pDoc.fileUrl || pDoc.url || rDoc.fileUrl || DEFAULT_DOCUMENTS[0].url;
               rDoc.reviewNotes = null;
               rDoc.reviewedBy = null;
               rDoc.reviewedAt = null;
@@ -179,9 +179,14 @@ async function syncVerificationRequests() {
 
         // 3. Compute overall status accurately
         const hasPendingItems =
-          existingReq.documents.some((d) => ['pending', 'under_review'].includes(d.status)) ||
+          existingReq.documents.some((d) => d.status === 'pending') ||
           (Array.isArray(existingReq.qualifications) &&
-            existingReq.qualifications.some((q) => typeof q === 'object' && ['pending', 'under_review'].includes(q.status)));
+            existingReq.qualifications.some((q) => typeof q === 'object' && q.status === 'pending'));
+
+        const hasUnderReviewItems =
+          existingReq.documents.some((d) => d.status === 'under_review') ||
+          (Array.isArray(existingReq.qualifications) &&
+            existingReq.qualifications.some((q) => typeof q === 'object' && q.status === 'under_review'));
 
         const hasChangesRequested =
           existingReq.documents.some((d) => d.status === 'changes_requested') ||
@@ -195,17 +200,25 @@ async function syncVerificationRequests() {
 
         const allDocsVerified =
           existingReq.documents.length > 0 &&
-          existingReq.documents.every((d) => d.status === 'verified');
+          existingReq.documents.every((d) => d.status === 'verified') &&
+          (!Array.isArray(existingReq.qualifications) ||
+            existingReq.qualifications.every((q) => typeof q === 'string' || q.status === 'verified'));
 
         if (hasPendingItems) {
-          if (existingReq.status === 'verified') {
-            existingReq.status = 'under_review';
+          if (existingReq.status !== 'pending') {
+            existingReq.status = 'pending';
             reqModified = true;
-          } else if (!['pending', 'under_review'].includes(existingReq.status)) {
+          }
+          if (profile.verificationStatus !== 'pending') {
+            profile.verificationStatus = 'pending';
+            profileModified = true;
+          }
+        } else if (hasUnderReviewItems) {
+          if (existingReq.status !== 'under_review') {
             existingReq.status = 'under_review';
             reqModified = true;
           }
-          if (profile.verificationStatus === 'verified') {
+          if (profile.verificationStatus !== 'under_review') {
             profile.verificationStatus = 'under_review';
             profileModified = true;
           }

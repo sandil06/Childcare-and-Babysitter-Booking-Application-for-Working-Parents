@@ -31,6 +31,7 @@ class VerificationDocItem {
 
   String get displayName => (label != null && label!.trim().isNotEmpty) ? label! : (name.isNotEmpty ? name : 'Document');
   String get effectiveUrl => (fileUrl != null && fileUrl!.trim().isNotEmpty) ? fileUrl! : url;
+  String get effectiveId => (id != null && id!.isNotEmpty) ? id! : (name.isNotEmpty ? name : 'doc_${uploadedAt?.millisecondsSinceEpoch ?? 0}');
   bool get isVerified => status.toLowerCase() == 'verified';
   bool get isPending => status.toLowerCase() == 'pending';
   bool get isUnderReview => status.toLowerCase() == 'under_review';
@@ -44,7 +45,7 @@ class VerificationDocItem {
     final name = json['name']?.toString() ?? label ?? 'Document';
 
     return VerificationDocItem(
-      id: json['_id']?.toString() ?? json['id']?.toString(),
+      id: json['_id']?.toString() ?? json['id']?.toString() ?? json['name']?.toString() ?? '',
       type: json['type']?.toString() ?? 'other',
       name: name,
       label: label,
@@ -138,6 +139,8 @@ class VerificationQualificationItem {
   bool get isUnderReview => status.toLowerCase() == 'under_review';
   bool get isRejected => status.toLowerCase() == 'rejected';
   bool get isChangesRequested => status.toLowerCase() == 'changes_requested';
+
+  String get effectiveId => id.isNotEmpty ? id : (title.isNotEmpty ? title : 'qual');
 
   factory VerificationQualificationItem.fromJson(dynamic data) {
     if (data is String) {
@@ -262,6 +265,48 @@ class VerificationRequestModel {
             .toList()
         : <VerificationDocItem>[];
 
+    // Reconcile documents from profile to ensure none are dropped
+    if (profile?['documents'] is List) {
+      for (final p in (profile!['documents'] as List)) {
+        if (p is Map) {
+          final pItem = VerificationDocItem.fromJson(Map<String, dynamic>.from(p));
+          final alreadyPresent = docList.any((d) =>
+              (d.id != null && d.id!.isNotEmpty && d.id == pItem.id) ||
+              d.name.toLowerCase() == pItem.name.toLowerCase() ||
+              (d.documentNumber != null &&
+                  d.documentNumber!.isNotEmpty &&
+                  d.documentNumber == pItem.documentNumber));
+          if (!alreadyPresent) {
+            docList.add(pItem);
+          }
+        }
+      }
+    }
+
+    final rawQuals = ((json['qualifications'] as List?) ?? (profile?['qualifications'] as List?));
+    final qualItemList = rawQuals != null
+        ? rawQuals.map((e) => VerificationQualificationItem.fromJson(e)).toList()
+        : <VerificationQualificationItem>[];
+
+    if (profile?['qualifications'] is List) {
+      for (final p in (profile!['qualifications'] as List)) {
+        final pItem = VerificationQualificationItem.fromJson(p);
+        final alreadyPresent = qualItemList.any((q) =>
+            (q.id.isNotEmpty && q.id == pItem.id) ||
+            q.title.toLowerCase() == pItem.title.toLowerCase());
+        if (!alreadyPresent) {
+          qualItemList.add(pItem);
+        }
+      }
+    }
+
+    final rawStatus = json['status']?.toString() ?? 'pending';
+    final hasPendingItems =
+        docList.any((d) => d.isPending) || qualItemList.any((q) => q.isPending);
+    final effectiveStatus = (rawStatus == 'under_review' && hasPendingItems)
+        ? 'pending'
+        : rawStatus;
+
     return VerificationRequestModel(
       id: json['_id']?.toString() ?? json['id']?.toString() ?? 'req-${DateTime.now().millisecondsSinceEpoch}',
       babysitterId: sId,
@@ -287,19 +332,13 @@ class VerificationRequestModel {
       languages: (profile?['languages'] as List?)?.map((e) => e.toString()).toList() ??
           (json['languages'] as List?)?.map((e) => e.toString()).toList() ??
           const ['English', 'Sinhala'],
-      qualifications: ((profile?['qualifications'] as List?) ?? (json['qualifications'] as List?))
-              ?.map((e) => e is Map ? (e['title']?.toString() ?? e['name']?.toString() ?? 'Qualification') : e.toString())
-              .toList() ??
-          const [],
-      qualificationItems: ((profile?['qualifications'] as List?) ?? (json['qualifications'] as List?))
-              ?.map((e) => VerificationQualificationItem.fromJson(e))
-              .toList() ??
-          const [],
+      qualifications: qualItemList.map((q) => q.title).toList(),
+      qualificationItems: qualItemList,
       ageGroups: (profile?['ageGroups'] as List?)?.map((e) => e.toString()).toList() ??
           (json['ageGroups'] as List?)?.map((e) => e.toString()).toList() ??
           const ['Toddlers (1-3 yrs)', 'Children (4-6 yrs)'],
       documents: docList,
-      status: json['status']?.toString() ?? 'pending',
+      status: effectiveStatus,
       reviewNotes: json['reviewNotes']?.toString() ?? '',
       reviewedBy: json['reviewedBy']?.toString(),
       reviewedAt: json['reviewedAt'] != null
@@ -318,4 +357,14 @@ class VerificationRequestModel {
   bool get isVerified => status.toLowerCase() == 'verified';
   bool get isRejected => status.toLowerCase() == 'rejected';
   bool get isChangesRequested => status.toLowerCase() == 'changes_requested';
+
+  bool get hasPendingItems =>
+      documents.any((d) => d.isPending || d.isUnderReview) ||
+      qualificationItems.any((q) => q.isPending || q.isUnderReview);
+
+  List<VerificationDocItem> get pendingDocs =>
+      documents.where((d) => d.isPending || d.isUnderReview).toList();
+
+  List<VerificationQualificationItem> get pendingQualifications =>
+      qualificationItems.where((q) => q.isPending || q.isUnderReview).toList();
 }

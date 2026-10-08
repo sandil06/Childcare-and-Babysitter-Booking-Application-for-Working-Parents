@@ -167,6 +167,11 @@ class AgencyProvider extends ChangeNotifier {
       final detail = await _service.getVerificationDetails(id);
       if (detail != null) {
         _selectedVerification = detail;
+        final idx = _verificationRequests.indexWhere(
+            (v) => v.id == detail.id || (detail.babysitterId.isNotEmpty && v.babysitterId == detail.babysitterId));
+        if (idx != -1) {
+          _verificationRequests[idx] = detail;
+        }
       }
       return detail;
     } catch (e) {

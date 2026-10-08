@@ -10,8 +10,8 @@ const verificationDocumentSchema = new mongoose.Schema(
     name: { type: String, required: true },
     label: { type: String },
     documentNumber: { type: String, default: '' },
-    url: { type: String, required: true },
-    fileUrl: { type: String },
+    url: { type: String, default: '' },
+    fileUrl: { type: String, default: '' },
     status: {
       type: String,
       enum: ['pending', 'under_review', 'verified', 'rejected', 'changes_requested'],

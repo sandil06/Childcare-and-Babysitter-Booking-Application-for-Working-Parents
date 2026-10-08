@@ -322,13 +322,19 @@ async function findVerificationFlexible(id) {
   const cleanId = id.toString().trim();
 
   if (isDbConnected()) {
+    const popQuery = (q) =>
+      q.populate('babysitter', 'name email phone avatar')
+       .populate('babysitterProfile', 'experienceYears hourlyRate verificationStatus address skills languages qualifications documents bio dateOfBirth gender');
+
     if (mongoose.Types.ObjectId.isValid(cleanId)) {
-      let r = await VerificationRequest.findById(cleanId);
+      let r = await popQuery(VerificationRequest.findById(cleanId));
       if (r) return r;
 
-      r = await VerificationRequest.findOne({
-        $or: [{ babysitter: cleanId }, { babysitterProfile: cleanId }],
-      });
+      r = await popQuery(
+        VerificationRequest.findOne({
+          $or: [{ babysitter: cleanId }, { babysitterProfile: cleanId }],
+        })
+      );
       if (r) return r;
 
       try {
@@ -337,18 +343,22 @@ async function findVerificationFlexible(id) {
         });
         if (bp) {
           await verificationService.syncVerificationRequests();
-          const synced = await VerificationRequest.findOne({
-            $or: [{ babysitter: bp.user }, { babysitterProfile: bp._id }],
-          });
+          const synced = await popQuery(
+            VerificationRequest.findOne({
+              $or: [{ babysitter: bp.user }, { babysitterProfile: bp._id }],
+            })
+          );
           if (synced) return synced;
         }
       } catch (_) {}
     }
 
     try {
-      const r = await VerificationRequest.findOne({
-        $or: [{ id: cleanId }, { _id: cleanId }],
-      });
+      const r = await popQuery(
+        VerificationRequest.findOne({
+          $or: [{ id: cleanId }, { _id: cleanId }],
+        })
+      );
       if (r) return r;
     } catch (_) {}
   }
@@ -396,8 +406,41 @@ async function findProfileForVerification(request) {
 async function getById(req, res, next) {
   try {
     const { id } = req.params;
-    const request = await findVerificationFlexible(id);
+    let request = await findVerificationFlexible(id);
     if (!request) return next(new ApiError(404, 'Verification request not found'));
+
+    // Reconcile documents from profile if any missing in request
+    const profile = await findProfileForVerification(request);
+    if (profile && Array.isArray(profile.documents)) {
+      const reqDocs = Array.isArray(request.documents) ? request.documents : [];
+      let updated = false;
+      for (const pDoc of profile.documents) {
+        const found = reqDocs.find(
+          (d) =>
+            (d._id && pDoc._id && d._id.toString() === pDoc._id.toString()) ||
+            d.name === pDoc.name ||
+            (pDoc.documentNumber && d.documentNumber && d.documentNumber === pDoc.documentNumber)
+        );
+        if (!found) {
+          reqDocs.push({
+            _id: pDoc._id || new mongoose.Types.ObjectId(),
+            type: pDoc.type || 'other',
+            name: pDoc.name || 'Document',
+            label: pDoc.label || pDoc.name,
+            documentNumber: pDoc.documentNumber || '',
+            url: pDoc.url || pDoc.fileUrl || 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=800',
+            fileUrl: pDoc.fileUrl || pDoc.url || 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=800',
+            status: pDoc.status || 'pending',
+            uploadedAt: pDoc.uploadedAt || new Date(),
+          });
+          updated = true;
+        }
+      }
+      if (updated && request.save) {
+        request.documents = reqDocs;
+        await request.save();
+      }
+    }
 
     if (request.toObject) {
       return ApiResponse.success(res, request.toObject(), 'Verification details retrieved');

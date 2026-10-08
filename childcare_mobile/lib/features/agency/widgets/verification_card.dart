@@ -97,6 +97,47 @@ class VerificationCard extends StatelessWidget {
                 ),
               ],
             ),
+            if (request.hasPendingItems) ...[
+              const SizedBox(height: 10),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFEF3C7),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFFFCD34D)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.pending_actions_rounded, size: 15, color: Color(0xFFB45309)),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        request.pendingDocs.isNotEmpty
+                            ? 'Pending document: ${request.pendingDocs.map((d) => d.displayName).join(', ')}'
+                            : 'Pending qualification: ${request.pendingQualifications.map((q) => q.title).join(', ')}',
+                        style: const TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF92400E),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    const Text(
+                      'Review & Verify →',
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.teal,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             const SizedBox(height: 14),
 
             const Divider(height: 1, color: Color(0xFFF1F5F9)),

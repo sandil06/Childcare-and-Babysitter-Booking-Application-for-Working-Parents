@@ -49,30 +49,51 @@ async function syncVerificationForSitter(userId, profile) {
   const quals = Array.isArray(profile.qualifications) ? profile.qualifications : [];
 
   const hasPending =
-    docs.some((d) => ['pending', 'under_review'].includes(d.status)) ||
-    quals.some((q) => typeof q === 'object' && ['pending', 'under_review'].includes(q.status));
+    docs.some((d) => (d.status || '').toLowerCase() === 'pending') ||
+    quals.some((q) => typeof q === 'object' && (q.status || '').toLowerCase() === 'pending');
+
+  const hasUnderReview =
+    docs.some((d) => (d.status || '').toLowerCase() === 'under_review') ||
+    quals.some((q) => typeof q === 'object' && (q.status || '').toLowerCase() === 'under_review');
+
+  const overallStatus = hasPending
+    ? 'pending'
+    : (hasUnderReview ? 'under_review' : (profile.verificationStatus || 'pending'));
+
+  const preparedDocs = docs.map((d) => ({
+    ...d,
+    _id: d._id || new mongoose.Types.ObjectId(),
+    type: d.type || 'other',
+    name: d.name || d.label || 'Document',
+    label: d.label || d.name || 'Document',
+    documentNumber: d.documentNumber || '',
+    url: d.url || d.fileUrl || 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=800',
+    fileUrl: d.fileUrl || d.url || 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=800',
+    status: d.status || 'pending',
+    uploadedAt: d.uploadedAt || new Date(),
+  }));
 
   if (isDbConnected() && mongoose.Types.ObjectId.isValid(userId)) {
     try {
       let vReq = await VerificationRequest.findOne({ babysitter: userId });
       if (vReq) {
-        vReq.documents = docs;
+        vReq.documents = preparedDocs;
         vReq.qualifications = quals;
-        if (hasPending) {
-          vReq.status = 'pending';
-        }
+        vReq.status = overallStatus;
         await vReq.save();
       } else {
         await VerificationRequest.create({
           babysitter: userId,
           babysitterProfile: profile._id || profile.id,
-          status: hasPending ? 'pending' : (profile.verificationStatus || 'pending'),
-          documents: docs,
+          status: overallStatus,
+          documents: preparedDocs,
           qualifications: quals,
           submittedAt: new Date(),
         });
       }
-    } catch (_) {}
+    } catch (err) {
+      console.error('[BabysitterController] syncVerificationForSitter error:', err.message);
+    }
   }
 
   // Memory fallback
@@ -81,17 +102,13 @@ async function syncVerificationForSitter(userId, profile) {
     (v) => (v.babysitter?._id || v.babysitter?.id || v.babysitter) === memKey
   );
   if (memReq) {
-    memReq.documents = docs;
+    memReq.documents = preparedDocs;
     memReq.qualifications = quals;
-    if (hasPending) {
-      memReq.status = 'pending';
-    }
+    memReq.status = overallStatus;
     if (memReq.babysitterProfile) {
-      memReq.babysitterProfile.documents = docs;
+      memReq.babysitterProfile.documents = preparedDocs;
       memReq.babysitterProfile.qualifications = quals;
-      if (hasPending) {
-        memReq.babysitterProfile.verificationStatus = 'under_review';
-      }
+      memReq.babysitterProfile.verificationStatus = overallStatus;
     }
     memoryVerifications.set(memReq.id || memReq._id, memReq);
   } else {
@@ -107,8 +124,8 @@ async function syncVerificationForSitter(userId, profile) {
         avatar: profile.avatar || profile.profileImage || '',
       },
       babysitterProfile: profile,
-      status: hasPending ? 'pending' : (profile.verificationStatus || 'pending'),
-      documents: docs,
+      status: overallStatus,
+      documents: preparedDocs,
       qualifications: quals,
       reviewNotes: '',
       submittedAt: new Date(),
