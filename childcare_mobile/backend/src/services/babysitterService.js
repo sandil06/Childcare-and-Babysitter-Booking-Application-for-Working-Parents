@@ -48,6 +48,12 @@ async function getProfileByUserId(userId) {
         }
       }
       if (profile) {
+        if (profile.user && profile.user.role && profile.user.role !== ROLES.BABYSITTER) {
+          try {
+            await User.findByIdAndUpdate(profile.user._id, { role: ROLES.BABYSITTER });
+            profile.user.role = ROLES.BABYSITTER;
+          } catch (_) {}
+        }
         if (!profile.phone && profile.user?.phone) {
           profile.phone = profile.user.phone;
         }
@@ -285,6 +291,35 @@ async function registerBabysitter(data) {
     email,
     role: ROLES.BABYSITTER,
   };
+  const mockDocs = [
+    {
+      _id: `doc-${Date.now()}-1`,
+      id: `doc-${Date.now()}-1`,
+      type: 'id',
+      name: 'National Identity Card (NIC)',
+      url: 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=800',
+      status: 'pending',
+      uploadedAt: new Date(),
+    },
+    {
+      _id: `doc-${Date.now()}-2`,
+      id: `doc-${Date.now()}-2`,
+      type: 'police_check',
+      name: 'Police Clearance Certificate',
+      url: 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=800',
+      status: 'pending',
+      uploadedAt: new Date(),
+    },
+    {
+      _id: `doc-${Date.now()}-3`,
+      id: `doc-${Date.now()}-3`,
+      type: 'certificate',
+      name: 'First Aid & CPR Certificate',
+      url: 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=800',
+      status: 'pending',
+      uploadedAt: new Date(),
+    },
+  ];
   const mockProfile = {
     id: `profile-${Date.now()}`,
     user: mockUser,
@@ -296,6 +331,7 @@ async function registerBabysitter(data) {
     skills: skills || [],
     languages: languages || ['Sinhala', 'English'],
     qualifications: qualifications || [],
+    documents: mockDocs,
     ageGroups: ageGroups || [],
     verificationStatus: 'pending',
     averageRating: 0.0,
@@ -304,6 +340,23 @@ async function registerBabysitter(data) {
     isAvailable: true,
   };
   memoryBabysitters.set(mockUserId, mockProfile);
+  try {
+    const { memoryVerifications } = require('../controllers/verificationController');
+    if (memoryVerifications) {
+      memoryVerifications.set(`ver-${mockUserId}`, {
+        _id: `ver-${mockUserId}`,
+        id: `ver-${mockUserId}`,
+        babysitter: mockUser,
+        babysitterProfile: mockProfile,
+        status: 'pending',
+        documents: mockDocs,
+        qualifications: qualifications || [],
+        reviewNotes: '',
+        submittedAt: new Date(),
+        createdAt: new Date(),
+      });
+    }
+  } catch (_) {}
   return { user: mockUser, profile: mockProfile };
 }
 
