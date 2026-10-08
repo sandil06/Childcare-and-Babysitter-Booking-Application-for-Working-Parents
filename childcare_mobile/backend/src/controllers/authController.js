@@ -311,29 +311,8 @@ async function login(req, res, next) {
         } catch (_) {}
       }
 
-      if (!user) {
-        const lowerKey = loginKey.toLowerCase();
-        if (lowerKey === 'agency@littlehands.lk' || lowerKey === 'admin@littlehands.lk' || lowerKey === 'compliance@littlehands.lk') {
-          const role = lowerKey.includes('agency') ? 'agency' : 'admin';
-          const defaultHash = await bcrypt.hash('AgencySecure123!', 12);
-          user = await User.create({
-            name: role === 'agency' ? 'Little Hands Agency' : 'Operations Admin',
-            email: lowerKey,
-            role,
-            passwordHash: defaultHash,
-            isEmailVerified: true,
-            phone: '+94 11 234 5678',
-          });
-        }
-      }
-
       if (!user) return next(new ApiError(401, 'Invalid mobile number/email or password'));
-      let valid = await bcrypt.compare(password, user.passwordHash);
-      if (!valid && (user.role === 'agency' || user.role === 'admin')) {
-        if (password === 'AgencySecure123!' || password === 'AdminSecure123!') {
-          valid = true;
-        }
-      }
+      const valid = await bcrypt.compare(password, user.passwordHash);
       if (!valid) return next(new ApiError(401, 'Invalid mobile number/email or password'));
 
       if (user.isActive === false || user.accountStatus === 'suspended') {
@@ -348,6 +327,7 @@ async function login(req, res, next) {
       }
 
       const token = generateToken({
+        id: user._id.toString(),
         sub: user._id.toString(),
         role: user.role,
         name: user.name,
@@ -374,13 +354,11 @@ async function login(req, res, next) {
       );
     }
 
-    let userRole = req.body.role;
-    if (!userRole) {
-      if (loginKey.toLowerCase().includes('agency')) userRole = ROLES.AGENCY;
-      else if (loginKey.toLowerCase().includes('admin')) userRole = ROLES.ADMIN;
-      else if (loginKey.toLowerCase().includes('sitter')) userRole = ROLES.BABYSITTER;
-      else userRole = ROLES.PARENT;
-    }
+    // Fallback when MongoDB is disconnected: ignore client role to prevent spoofing
+    let userRole = ROLES.PARENT;
+    if (loginKey.toLowerCase().includes('agency')) userRole = ROLES.AGENCY;
+    else if (loginKey.toLowerCase().includes('admin')) userRole = ROLES.ADMIN;
+    else if (loginKey.toLowerCase().includes('sitter')) userRole = ROLES.BABYSITTER;
 
     const user = {
       id: `local-${userRole}-1`,
@@ -405,6 +383,7 @@ async function login(req, res, next) {
           isActive: user.isActive,
         },
         token: generateToken({
+          id: user.id,
           sub: user.id,
           role: user.role,
           email: user.email,
@@ -419,8 +398,40 @@ async function login(req, res, next) {
   }
 }
 
-function me(req, res) {
-  return ApiResponse.success(res, { user: req.user });
+async function me(req, res, next) {
+  try {
+    const userId = req.user?.id || req.user?._id || req.user?.sub;
+    if (mongoose.connection.readyState === 1 && userId) {
+      const liveUser = await User.findById(userId).select('-passwordHash');
+      if (liveUser) {
+        if (liveUser.isActive === false || liveUser.accountStatus === 'suspended') {
+          return next(
+            new ApiError(
+              403,
+              liveUser.suspensionReason
+                ? `Account suspended: ${liveUser.suspensionReason}`
+                : 'Your account has been suspended by administration.'
+            )
+          );
+        }
+        return ApiResponse.success(res, {
+          user: {
+            id: liveUser._id.toString(),
+            name: liveUser.name,
+            email: liveUser.email,
+            phone: liveUser.phone || '',
+            role: liveUser.role,
+            accountStatus: liveUser.accountStatus || 'active',
+            isActive: liveUser.isActive !== false,
+            isEmailVerified: liveUser.isEmailVerified,
+          },
+        });
+      }
+    }
+    return ApiResponse.success(res, { user: req.user });
+  } catch (err) {
+    next(err);
+  }
 }
 
 module.exports = {

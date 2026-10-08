@@ -6,7 +6,6 @@ const DEFAULT_AGENCY_ACCOUNTS = [
   {
     name: 'Little Hands Agency',
     email: 'agency@littlehands.lk',
-    password: 'AgencySecure123!',
     role: 'agency',
     phone: '+94 11 234 5670',
     isEmailVerified: true,
@@ -14,7 +13,6 @@ const DEFAULT_AGENCY_ACCOUNTS = [
   {
     name: 'Chaminda Silva (Operations Admin)',
     email: 'admin@littlehands.lk',
-    password: 'AdminSecure123!',
     role: 'admin',
     phone: '+94 11 234 5678',
     isEmailVerified: true,
@@ -22,7 +20,6 @@ const DEFAULT_AGENCY_ACCOUNTS = [
   {
     name: 'Chief Compliance Officer',
     email: 'compliance@littlehands.lk',
-    password: 'AgencySecure123!',
     role: 'admin',
     phone: '+94 11 234 5679',
     isEmailVerified: true,
@@ -37,8 +34,8 @@ async function seedAgencyUsers() {
   try {
     for (const acc of DEFAULT_AGENCY_ACCOUNTS) {
       const existing = await User.findOne({ email: acc.email.toLowerCase() });
-      if (!existing) {
-        const passwordHash = await bcrypt.hash(acc.password, 12);
+      if (!existing && process.env.INITIAL_AGENCY_PASSWORD) {
+        const passwordHash = await bcrypt.hash(process.env.INITIAL_AGENCY_PASSWORD, 12);
         await User.create({
           name: acc.name,
           email: acc.email.toLowerCase(),
@@ -51,7 +48,7 @@ async function seedAgencyUsers() {
       }
     }
   } catch (error) {
-    console.error('[Seed] Error seeding administrative users:', error.message);
+    console.error('[Seed] Error checking administrative users:', error.message);
   }
 }
 

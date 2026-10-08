@@ -17,6 +17,7 @@ async function authMiddleware(req, res, next) {
 
   try {
     const decoded = jwt.verify(token, env.jwtSecret);
+    decoded.id = decoded.id || decoded._id || decoded.sub;
 
     // Check if decoded token flags suspended user
     if (decoded.accountStatus === 'suspended' || decoded.isActive === false) {
@@ -24,15 +25,16 @@ async function authMiddleware(req, res, next) {
     }
 
     // Check live database user if connected
-    if (mongoose.connection.readyState === 1 && (decoded.id || decoded._id)) {
+    if (mongoose.connection.readyState === 1 && decoded.id) {
       try {
-        const userId = decoded.id || decoded._id;
-        const liveUser = await User.findById(userId).select('accountStatus isActive role email name isVerified');
+        const liveUser = await User.findById(decoded.id).select('accountStatus isActive role email name isVerified');
         if (liveUser) {
           if (liveUser.accountStatus === 'suspended' || liveUser.isActive === false) {
             return next(new ApiError(403, 'Your account has been suspended by administration'));
           }
           decoded.role = liveUser.role || decoded.role;
+          decoded.name = liveUser.name || decoded.name;
+          decoded.email = liveUser.email || decoded.email;
           decoded.accountStatus = liveUser.accountStatus || 'active';
         }
       } catch (dbErr) {
