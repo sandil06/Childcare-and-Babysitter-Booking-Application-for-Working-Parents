@@ -319,6 +319,98 @@ class AgencyService {
     }
   }
 
+  // Document-level reviews
+  Future<bool> approveDocument(String verificationId, String documentId) async {
+    await _ensureAuthToken();
+    try {
+      final res = await _client.patch(
+        'agency/verifications/$verificationId/documents/$documentId/approve',
+        body: {},
+      );
+      return _isSuccessResponse(res);
+    } catch (e) {
+      lastError = (e is ApiException) ? e.message : e.toString();
+      debugPrint('[AgencyService] approveDocument error: $e');
+      return false;
+    }
+  }
+
+  Future<bool> rejectDocument(String verificationId, String documentId, {required String reason}) async {
+    await _ensureAuthToken();
+    try {
+      final res = await _client.patch(
+        'agency/verifications/$verificationId/documents/$documentId/reject',
+        body: {'reason': reason},
+      );
+      return _isSuccessResponse(res);
+    } catch (e) {
+      lastError = (e is ApiException) ? e.message : e.toString();
+      debugPrint('[AgencyService] rejectDocument error: $e');
+      return false;
+    }
+  }
+
+  Future<bool> requestChangesDocument(String verificationId, String documentId, {required String notes}) async {
+    await _ensureAuthToken();
+    try {
+      final res = await _client.patch(
+        'agency/verifications/$verificationId/documents/$documentId/request-changes',
+        body: {'notes': notes},
+      );
+      return _isSuccessResponse(res);
+    } catch (e) {
+      lastError = (e is ApiException) ? e.message : e.toString();
+      debugPrint('[AgencyService] requestChangesDocument error: $e');
+      return false;
+    }
+  }
+
+  // Qualification-level reviews
+  Future<bool> approveQualification(String verificationId, String qualificationId) async {
+    await _ensureAuthToken();
+    try {
+      final res = await _client.patch(
+        'agency/verifications/$verificationId/qualifications/$qualificationId/approve',
+        body: {},
+      );
+      return _isSuccessResponse(res);
+    } catch (e) {
+      lastError = (e is ApiException) ? e.message : e.toString();
+      debugPrint('[AgencyService] approveQualification error: $e');
+      return false;
+    }
+  }
+
+  Future<bool> rejectQualification(String verificationId, String qualificationId, {required String reason}) async {
+    await _ensureAuthToken();
+    try {
+      final res = await _client.patch(
+        'agency/verifications/$verificationId/qualifications/$qualificationId/reject',
+        body: {'reason': reason},
+      );
+      return _isSuccessResponse(res);
+    } catch (e) {
+      lastError = (e is ApiException) ? e.message : e.toString();
+      debugPrint('[AgencyService] rejectQualification error: $e');
+      return false;
+    }
+  }
+
+  Future<bool> requestChangesQualification(String verificationId, String qualificationId, {required String notes}) async {
+    await _ensureAuthToken();
+    try {
+      final res = await _client.patch(
+        'agency/verifications/$verificationId/qualifications/$qualificationId/request-changes',
+        body: {'notes': notes},
+      );
+      return _isSuccessResponse(res);
+    } catch (e) {
+      lastError = (e is ApiException) ? e.message : e.toString();
+      debugPrint('[AgencyService] requestChangesQualification error: $e');
+      return false;
+    }
+  }
+
   // ==========================================
   // 4. USER MANAGEMENT (Parents & Sitters)
   // ==========================================

@@ -44,6 +44,16 @@ router.patch('/verifications/:id/approve', auth, requireAgency, verificationCont
 router.patch('/verifications/:id/reject', auth, requireAgency, verificationController.reject);
 router.patch('/verifications/:id/request-changes', auth, requireAgency, verificationController.requestChanges);
 
+// Document-level review endpoints
+router.patch('/verifications/:verificationId/documents/:documentId/approve', auth, requireAgency, verificationController.approveDocument);
+router.patch('/verifications/:verificationId/documents/:documentId/reject', auth, requireAgency, verificationController.rejectDocument);
+router.patch('/verifications/:verificationId/documents/:documentId/request-changes', auth, requireAgency, verificationController.requestChangesDocument);
+
+// Qualification-level review endpoints
+router.patch('/verifications/:verificationId/qualifications/:qualificationId/approve', auth, requireAgency, verificationController.approveQualification);
+router.patch('/verifications/:verificationId/qualifications/:qualificationId/reject', auth, requireAgency, verificationController.rejectQualification);
+router.patch('/verifications/:verificationId/qualifications/:qualificationId/request-changes', auth, requireAgency, verificationController.requestChangesQualification);
+
 // User Management
 router.get('/users', auth, requireAgency, getUsers);
 router.get('/users/:id', auth, requireAgency, getUserById);

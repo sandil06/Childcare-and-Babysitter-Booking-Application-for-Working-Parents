@@ -17,4 +17,14 @@ router.patch('/:id/approve', auth, requireAgency, verificationController.approve
 router.patch('/:id/reject', auth, requireAgency, verificationController.reject);
 router.patch('/:id/request-changes', auth, requireAgency, verificationController.requestChanges);
 
+// Document-level review endpoints
+router.patch('/:verificationId/documents/:documentId/approve', auth, requireAgency, verificationController.approveDocument);
+router.patch('/:verificationId/documents/:documentId/reject', auth, requireAgency, verificationController.rejectDocument);
+router.patch('/:verificationId/documents/:documentId/request-changes', auth, requireAgency, verificationController.requestChangesDocument);
+
+// Qualification-level review endpoints
+router.patch('/:verificationId/qualifications/:qualificationId/approve', auth, requireAgency, verificationController.approveQualification);
+router.patch('/:verificationId/qualifications/:qualificationId/reject', auth, requireAgency, verificationController.rejectQualification);
+router.patch('/:verificationId/qualifications/:qualificationId/request-changes', auth, requireAgency, verificationController.requestChangesQualification);
+
 module.exports = router;

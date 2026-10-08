@@ -114,15 +114,17 @@ async function getProfileByUserId(userId) {
   return mem;
 }
 
-async function updateProfileByUserId(userId, updateData) {
-  // Prevent manual overriding of system-controlled fields
+async function updateProfileByUserId(userId, updateData, isSystemOrAdmin = false) {
+  // Prevent manual overriding of system-controlled fields unless admin/system
   const safeUpdate = { ...updateData };
-  delete safeUpdate.verificationStatus;
-  delete safeUpdate.averageRating;
-  delete safeUpdate.totalReviews;
-  delete safeUpdate.totalCompletedBookings;
-  delete safeUpdate.user;
-  delete safeUpdate._id;
+  if (!isSystemOrAdmin) {
+    delete safeUpdate.verificationStatus;
+    delete safeUpdate.averageRating;
+    delete safeUpdate.totalReviews;
+    delete safeUpdate.totalCompletedBookings;
+    delete safeUpdate.user;
+    delete safeUpdate._id;
+  }
 
   if (isDbConnected() && isValidObjectId(userId)) {
     try {
@@ -388,4 +390,5 @@ module.exports = {
   registerBabysitter,
   listBabysitters,
   getProfileById,
+  memoryBabysitters,
 };

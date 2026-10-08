@@ -13,6 +13,7 @@ class AdminUserModel {
   final int totalBookings;
   final int openReports;
   final double averageRating;
+  final String verificationStatus;
 
   const AdminUserModel({
     required this.id,
@@ -29,6 +30,7 @@ class AdminUserModel {
     this.totalBookings = 0,
     this.openReports = 0,
     this.averageRating = 5.0,
+    this.verificationStatus = 'pending',
   });
 
   factory AdminUserModel.fromJson(Map<String, dynamic> json) {
@@ -52,10 +54,16 @@ class AdminUserModel {
       totalBookings: int.tryParse(json['totalBookings']?.toString() ?? '0') ?? 0,
       openReports: int.tryParse(json['openReports']?.toString() ?? '0') ?? 0,
       averageRating: double.tryParse(json['averageRating']?.toString() ?? '5.0') ?? 5.0,
+      verificationStatus: json['verificationStatus']?.toString() ??
+          (json['babysitterProfile'] is Map
+              ? json['babysitterProfile']['verificationStatus']?.toString()
+              : (json['isVerified'] == true ? 'verified' : 'pending')) ??
+          'pending',
     );
   }
 
   bool get isSuspended => accountStatus == 'suspended' || !isActive;
+  bool get isVerified => verificationStatus == 'verified';
   bool get isParent => role.toLowerCase() == 'parent';
   bool get isBabysitter => role.toLowerCase() == 'babysitter';
   bool get isAgency => role.toLowerCase() == 'agency' || role.toLowerCase() == 'admin';

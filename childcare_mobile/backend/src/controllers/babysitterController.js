@@ -1,17 +1,21 @@
 const mongoose = require('mongoose');
 const Booking = require('../models/Booking');
 const Notification = require('../models/Notification');
+const BabysitterProfile = require('../models/BabysitterProfile');
+const VerificationRequest = require('../models/VerificationRequest');
 const ApiResponse = require('../utils/ApiResponse');
+const ApiError = require('../utils/ApiError');
 const generateToken = require('../utils/generateToken');
 const babysitterService = require('../services/babysitterService');
 const ROLES = require('../constants/roles');
+const { memoryVerifications } = require('./verificationController');
 
 function isDbConnected() {
   return mongoose.connection.readyState === 1;
 }
 
 function getUserId(req) {
-  return req.user?.sub || req.user?.id;
+  return req.user?.id || req.user?._id || req.user?.sub;
 }
 
 async function register(req, res, next) {
@@ -42,6 +46,32 @@ async function getMe(req, res, next) {
 async function updateMe(req, res, next) {
   try {
     const userId = getUserId(req);
+
+    // Rule 3: Babysitters cannot directly manipulate verification state
+    if (req.body.verificationStatus !== undefined) {
+      return next(new ApiError(403, 'Babysitters are not authorized to modify verificationStatus directly.'));
+    }
+    if (req.body.status !== undefined && typeof req.body.status === 'string') {
+      return next(new ApiError(403, 'Babysitters are not authorized to modify status directly.'));
+    }
+    if (req.body.reviewedBy !== undefined || req.body.reviewedAt !== undefined || req.body.reviewNotes !== undefined) {
+      return next(new ApiError(403, 'Babysitters are not authorized to modify administrative review fields.'));
+    }
+    if (Array.isArray(req.body.documents)) {
+      for (const d of req.body.documents) {
+        if (d && (d.status === 'verified' || d.verificationStatus === 'verified')) {
+          return next(new ApiError(403, 'Babysitters cannot mark documents as verified.'));
+        }
+      }
+    }
+    if (Array.isArray(req.body.qualifications)) {
+      for (const q of req.body.qualifications) {
+        if (q && typeof q === 'object' && (q.status === 'verified' || q.verificationStatus === 'verified')) {
+          return next(new ApiError(403, 'Babysitters cannot mark qualifications as verified.'));
+        }
+      }
+    }
+
     const updated = await babysitterService.updateProfileByUserId(userId, req.body);
     return ApiResponse.success(res, updated, 'Profile updated successfully');
   } catch (err) {
@@ -129,6 +159,368 @@ async function getById(req, res, next) {
   }
 }
 
+/**
+ * POST /api/v1/babysitters/me/verification-documents
+ * Babysitter uploads a verification document
+ */
+async function addDocument(req, res, next) {
+  try {
+    const userId = getUserId(req);
+
+    // Security: Babysitter cannot set status or review fields
+    if (req.body.status !== undefined || req.body.verificationStatus !== undefined) {
+      return next(new ApiError(403, 'Babysitters cannot specify document verification status.'));
+    }
+    if (req.body.reviewedBy !== undefined || req.body.reviewedAt !== undefined || req.body.reviewNotes !== undefined) {
+      return next(new ApiError(403, 'Babysitters cannot specify administrative review fields.'));
+    }
+
+    const { type, name, label, documentNumber, url, fileUrl } = req.body;
+    if (!name || (!url && !fileUrl)) {
+      return next(new ApiError(400, 'Document name and file URL are required.'));
+    }
+
+    const newDoc = {
+      _id: new mongoose.Types.ObjectId(),
+      type: type || 'id',
+      name: name.trim(),
+      label: label ? label.trim() : name.trim(),
+      documentNumber: documentNumber ? documentNumber.trim() : '',
+      url: url || fileUrl,
+      fileUrl: fileUrl || url,
+      status: 'pending',
+      reviewNotes: null,
+      reviewedBy: null,
+      reviewedAt: null,
+      uploadedAt: new Date(),
+    };
+
+    let profile = await babysitterService.getProfileByUserId(userId);
+    const docs = Array.isArray(profile.documents) ? [...profile.documents, newDoc] : [newDoc];
+
+    const updated = await babysitterService.updateProfileByUserId(userId, { documents: docs });
+
+    // Also sync to active VerificationRequest if exists
+    if (isDbConnected()) {
+      try {
+        const vReq = await VerificationRequest.findOne({ babysitter: userId, status: { $ne: 'verified' } });
+        if (vReq) {
+          vReq.documents.push(newDoc);
+          vReq.status = 'pending';
+          await vReq.save();
+        }
+      } catch (_) {}
+    }
+
+    return ApiResponse.success(res, { profile: updated, document: newDoc }, 'Document uploaded successfully', 201);
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * PATCH /api/v1/babysitters/me/verification-documents/:id
+ * Babysitter edits/replaces a document
+ */
+async function updateDocument(req, res, next) {
+  try {
+    const userId = getUserId(req);
+    const { id } = req.params;
+
+    // Security: Babysitter cannot set status or review fields
+    if (req.body.status !== undefined || req.body.verificationStatus !== undefined) {
+      return next(new ApiError(403, 'Babysitters cannot modify document status directly.'));
+    }
+    if (req.body.reviewedBy !== undefined || req.body.reviewedAt !== undefined || req.body.reviewNotes !== undefined) {
+      return next(new ApiError(403, 'Babysitters cannot modify administrative review fields.'));
+    }
+
+    const profile = await babysitterService.getProfileByUserId(userId);
+    let docs = Array.isArray(profile.documents) ? [...profile.documents] : [];
+
+    let docIndex = docs.findIndex(
+      (d) => d._id?.toString() === id || d.id?.toString() === id || d.name === id
+    );
+
+    // If not found in profile.documents, check active VerificationRequest or memory store
+    let activeVReq = null;
+    if (isDbConnected()) {
+      try {
+        activeVReq = await VerificationRequest.findOne({ babysitter: userId });
+      } catch (_) {}
+    } else {
+      activeVReq = Array.from(memoryVerifications.values()).find(
+        (v) => (v.babysitter?._id || v.babysitter?.id) === userId
+      );
+    }
+
+    if (docIndex === -1 && activeVReq && Array.isArray(activeVReq.documents)) {
+      const vDocIndex = activeVReq.documents.findIndex(
+        (d) => d._id?.toString() === id || d.id?.toString() === id || d.name === id
+      );
+      if (vDocIndex !== -1) {
+        docs.push(activeVReq.documents[vDocIndex]);
+        docIndex = docs.length - 1;
+      }
+    }
+
+    if (docIndex === -1) {
+      return next(new ApiError(404, 'Document not found.'));
+    }
+
+    const existingDoc = docs[docIndex];
+    const wasVerified = existingDoc.status === 'verified';
+    const wasRequired = ['id', 'national_id', 'police_check'].includes(existingDoc.type);
+
+    const updatedDoc = {
+      ...existingDoc,
+      _id: existingDoc._id || id,
+      id: existingDoc.id || id,
+      name: req.body.name !== undefined ? req.body.name.trim() : existingDoc.name,
+      label: req.body.label !== undefined ? req.body.label.trim() : (existingDoc.label || existingDoc.name),
+      documentNumber: req.body.documentNumber !== undefined ? req.body.documentNumber.trim() : (existingDoc.documentNumber || ''),
+      url: req.body.url || req.body.fileUrl || existingDoc.url,
+      fileUrl: req.body.fileUrl || req.body.url || existingDoc.fileUrl,
+      // Resubmission always resets to pending
+      status: 'pending',
+      reviewNotes: null,
+      reviewedBy: null,
+      reviewedAt: null,
+      updatedAt: new Date(),
+    };
+
+    docs[docIndex] = updatedDoc;
+
+    const payload = { documents: docs };
+    if (wasVerified && wasRequired) {
+      payload.verificationStatus = 'under_review';
+    }
+
+    const updated = await babysitterService.updateProfileByUserId(userId, payload);
+
+    // Sync with active VerificationRequest
+    if (activeVReq) {
+      if (activeVReq.save) {
+        const vIndex = activeVReq.documents.findIndex(
+          (d) => d._id?.toString() === id || d.id?.toString() === id || d.name === existingDoc.name
+        );
+        if (vIndex !== -1) {
+          activeVReq.documents[vIndex] = updatedDoc;
+          activeVReq.status = 'pending';
+          await activeVReq.save();
+        }
+      } else {
+        // In-memory fallback
+        if (Array.isArray(activeVReq.documents)) {
+          const vIndex = activeVReq.documents.findIndex(
+            (d) => d._id?.toString() === id || d.id?.toString() === id || d.name === existingDoc.name
+          );
+          if (vIndex !== -1) {
+            activeVReq.documents[vIndex] = updatedDoc;
+            activeVReq.status = 'pending';
+            memoryVerifications.set(activeVReq.id || activeVReq._id, activeVReq);
+          }
+        }
+      }
+    }
+
+    return ApiResponse.success(
+      res,
+      { ...updatedDoc, profile: updated, document: updatedDoc },
+      'Document updated and queued for review'
+    );
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * DELETE /api/v1/babysitters/me/verification-documents/:id
+ * Babysitter removes a document
+ */
+async function deleteDocument(req, res, next) {
+  try {
+    const userId = getUserId(req);
+    const { id } = req.params;
+
+    const profile = await babysitterService.getProfileByUserId(userId);
+    const docs = Array.isArray(profile.documents) ? [...profile.documents] : [];
+
+    const doc = docs.find((d) => d._id?.toString() === id || d.id?.toString() === id || d.name === id);
+    if (!doc) {
+      return next(new ApiError(404, 'Document not found.'));
+    }
+
+    const filtered = docs.filter((d) => d._id?.toString() !== id && d.id?.toString() !== id && d.name !== id);
+    const payload = { documents: filtered };
+    if (doc.status === 'verified' && ['id', 'national_id', 'police_check'].includes(doc.type)) {
+      payload.verificationStatus = 'under_review';
+    }
+
+    const updated = await babysitterService.updateProfileByUserId(userId, payload);
+    return ApiResponse.success(res, updated, 'Document removed successfully');
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * POST /api/v1/babysitters/me/qualifications
+ * Babysitter adds a qualification
+ */
+async function addQualification(req, res, next) {
+  try {
+    const userId = getUserId(req);
+
+    if (req.body.status !== undefined || req.body.verificationStatus !== undefined) {
+      return next(new ApiError(403, 'Babysitters cannot specify qualification verification status.'));
+    }
+
+    const { title, institution, certificateUrl } = req.body;
+    if (!title || !title.trim()) {
+      return next(new ApiError(400, 'Qualification title is required.'));
+    }
+
+    const newQual = {
+      _id: new mongoose.Types.ObjectId(),
+      title: title.trim(),
+      institution: institution ? institution.trim() : '',
+      certificateUrl: certificateUrl || null,
+      status: 'pending',
+      reviewNotes: null,
+      reviewedBy: null,
+      reviewedAt: null,
+    };
+
+    const profile = await babysitterService.getProfileByUserId(userId);
+    const quals = Array.isArray(profile.qualifications) ? [...profile.qualifications, newQual] : [newQual];
+
+    const updated = await babysitterService.updateProfileByUserId(userId, { qualifications: quals });
+    return ApiResponse.success(res, { profile: updated, qualification: newQual }, 'Qualification added successfully', 201);
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * PATCH /api/v1/babysitters/me/qualifications/:id
+ * Babysitter updates a qualification
+ */
+async function updateQualification(req, res, next) {
+  try {
+    const userId = getUserId(req);
+    const { id } = req.params;
+
+    if (req.body.status !== undefined || req.body.verificationStatus !== undefined) {
+      return next(new ApiError(403, 'Babysitters cannot modify qualification status directly.'));
+    }
+
+    const profile = await babysitterService.getProfileByUserId(userId);
+    const quals = Array.isArray(profile.qualifications) ? [...profile.qualifications] : [];
+
+    let qualIndex = quals.findIndex((q) => {
+      if (typeof q === 'string') return q === id;
+      return q._id?.toString() === id || q.id?.toString() === id || q.title === id;
+    });
+
+    let activeVReq = null;
+    if (isDbConnected()) {
+      try {
+        activeVReq = await VerificationRequest.findOne({ babysitter: userId });
+      } catch (_) {}
+    } else {
+      activeVReq = Array.from(memoryVerifications.values()).find(
+        (v) => (v.babysitter?._id || v.babysitter?.id) === userId
+      );
+    }
+
+    if (qualIndex === -1 && activeVReq && Array.isArray(activeVReq.qualifications)) {
+      const vQualIndex = activeVReq.qualifications.findIndex((q) => {
+        if (typeof q === 'string') return q === id;
+        return q._id?.toString() === id || q.id?.toString() === id || q.title === id;
+      });
+      if (vQualIndex !== -1) {
+        quals.push(activeVReq.qualifications[vQualIndex]);
+        qualIndex = quals.length - 1;
+      }
+    }
+
+    if (qualIndex === -1) {
+      return next(new ApiError(404, 'Qualification not found.'));
+    }
+
+    const existing = quals[qualIndex];
+    const updatedQual = {
+      _id: typeof existing === 'object' && existing._id ? existing._id : id,
+      id: typeof existing === 'object' && (existing.id || existing._id) ? (existing.id || existing._id) : id,
+      title: req.body.title !== undefined ? req.body.title.trim() : (typeof existing === 'string' ? existing : existing.title),
+      institution: req.body.institution !== undefined ? req.body.institution.trim() : (typeof existing === 'object' ? (existing.institution || '') : ''),
+      certificateUrl: req.body.certificateUrl !== undefined ? req.body.certificateUrl : (typeof existing === 'object' ? existing.certificateUrl : null),
+      status: 'pending',
+      reviewNotes: null,
+      reviewedBy: null,
+      reviewedAt: null,
+    };
+
+    quals[qualIndex] = updatedQual;
+    const updated = await babysitterService.updateProfileByUserId(userId, { qualifications: quals });
+
+    if (activeVReq) {
+      if (activeVReq.save) {
+        const vIndex = activeVReq.qualifications.findIndex((q) => {
+          if (typeof q === 'string') return q === id;
+          return q._id?.toString() === id || q.id?.toString() === id || q.title === updatedQual.title;
+        });
+        if (vIndex !== -1) {
+          activeVReq.qualifications[vIndex] = updatedQual;
+          await activeVReq.save();
+        }
+      } else if (Array.isArray(activeVReq.qualifications)) {
+        const vIndex = activeVReq.qualifications.findIndex((q) => {
+          if (typeof q === 'string') return q === id;
+          return q._id?.toString() === id || q.id?.toString() === id || q.title === updatedQual.title;
+        });
+        if (vIndex !== -1) {
+          activeVReq.qualifications[vIndex] = updatedQual;
+          memoryVerifications.set(activeVReq.id || activeVReq._id, activeVReq);
+        }
+      }
+    }
+
+    return ApiResponse.success(
+      res,
+      { ...updatedQual, profile: updated, qualification: updatedQual },
+      'Qualification updated and queued for review'
+    );
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * DELETE /api/v1/babysitters/me/qualifications/:id
+ * Babysitter removes a qualification
+ */
+async function deleteQualification(req, res, next) {
+  try {
+    const userId = getUserId(req);
+    const { id } = req.params;
+
+    const profile = await babysitterService.getProfileByUserId(userId);
+    const quals = Array.isArray(profile.qualifications) ? [...profile.qualifications] : [];
+
+    const filtered = quals.filter((q) => {
+      if (typeof q === 'string') return q !== id;
+      return q._id?.toString() !== id && q.id?.toString() !== id && q.title !== id;
+    });
+
+    const updated = await babysitterService.updateProfileByUserId(userId, { qualifications: filtered });
+    return ApiResponse.success(res, updated, 'Qualification removed successfully');
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   register,
   getMe,
@@ -136,4 +528,10 @@ module.exports = {
   getDashboard,
   list,
   getById,
+  addDocument,
+  updateDocument,
+  deleteDocument,
+  addQualification,
+  updateQualification,
+  deleteQualification,
 };

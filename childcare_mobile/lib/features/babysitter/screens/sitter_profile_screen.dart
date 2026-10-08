@@ -425,66 +425,49 @@ class _SitterProfileScreenState extends State<SitterProfileScreen> {
               title: 'Qualifications & Certificates',
               icon: Icons.school_outlined,
               onEdit: () => _editQualifications(profile),
-              child: profile.qualifications.isNotEmpty
+              child: profile.qualificationItems.isNotEmpty
                   ? Column(
-                      children: profile.qualifications.map((q) {
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 10),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Icon(
-                                Icons.check_circle_rounded,
-                                color: AppColors.teal,
-                                size: 18,
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text(
-                                  q,
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.ink,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
+                      children: profile.qualificationItems.map((q) {
+                        return _buildQualificationStatusRow(q);
                       }).toList(),
                     )
-                  : InkWell(
-                      onTap: () => _editQualifications(profile),
-                      borderRadius: BorderRadius.circular(12),
-                      child: Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: AppColors.cream,
+                  : profile.qualifications.isNotEmpty
+                      ? Column(
+                          children: profile.qualifications.map((q) {
+                            return _buildQualificationSimpleRow(q);
+                          }).toList(),
+                        )
+                      : InkWell(
+                          onTap: () => _editQualifications(profile),
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: AppColors.sand),
-                        ),
-                        child: const Row(
-                          children: [
-                            Icon(
-                              Icons.add_circle_outline_rounded,
-                              color: AppColors.teal,
-                              size: 18,
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: AppColors.cream,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: AppColors.sand),
                             ),
-                            SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                'No qualifications listed. Tap to add certificates.',
-                                style: TextStyle(
-                                  color: AppColors.muted,
-                                  fontSize: 13,
+                            child: const Row(
+                              children: [
+                                Icon(
+                                  Icons.add_circle_outline_rounded,
+                                  color: AppColors.teal,
+                                  size: 18,
                                 ),
-                              ),
+                                SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'No qualifications listed. Tap to add certificates.',
+                                    style: TextStyle(
+                                      color: AppColors.muted,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
-                          ],
+                          ),
                         ),
-                      ),
-                    ),
             ),
             const SizedBox(height: 16),
 
@@ -497,10 +480,9 @@ class _SitterProfileScreenState extends State<SitterProfileScreen> {
                   ? Column(
                       children: profile.documents
                           .map((doc) => _buildDocStatusRow(
-                                doc.name,
-                                (profile.isVerified || profile.verificationStatus == 'verified')
-                                    ? 'verified'
-                                    : doc.status,
+                                doc.displayName,
+                                doc.status,
+                                reviewNotes: doc.reviewNotes,
                               ))
                           .toList(),
                     )
@@ -913,7 +895,7 @@ class _SitterProfileScreenState extends State<SitterProfileScreen> {
     );
   }
 
-  Widget _buildDocStatusRow(String docName, String status) {
+  Widget _buildDocStatusRow(String docName, String status, {String? reviewNotes}) {
     final s = status.toLowerCase();
     final isVer = s == 'verified';
     final isRejected = s == 'rejected';
@@ -937,47 +919,229 @@ class _SitterProfileScreenState extends State<SitterProfileScreen> {
     } else {
       badgeBg = const Color(0xFFE8EEF5);
       badgeFg = const Color(0xFF336699);
-      badgeLabel = 'Pending';
+      badgeLabel = 'Pending Review';
     }
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            isVer
-                ? Icons.verified_user_rounded
-                : isRejected
-                    ? Icons.cancel_outlined
-                    : isChangesReq
-                        ? Icons.edit_note_rounded
-                        : Icons.file_present_rounded,
-            color: isVer
-                ? AppColors.teal
-                : isRejected
-                    ? AppColors.coral
-                    : isChangesReq
-                        ? const Color(0xFFD97706)
-                        : AppColors.muted,
+          Row(
+            children: [
+              Icon(
+                isVer
+                    ? Icons.verified_user_rounded
+                    : isRejected
+                        ? Icons.cancel_outlined
+                        : isChangesReq
+                            ? Icons.edit_note_rounded
+                            : Icons.file_present_rounded,
+                color: isVer
+                    ? AppColors.teal
+                    : isRejected
+                        ? AppColors.coral
+                        : isChangesReq
+                            ? const Color(0xFFD97706)
+                            : AppColors.muted,
+                size: 18,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  docName,
+                  style: const TextStyle(fontSize: 13, color: AppColors.ink, fontWeight: FontWeight.w600),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: badgeBg,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  badgeLabel,
+                  style: TextStyle(
+                    color: badgeFg,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (reviewNotes != null && reviewNotes.trim().isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Container(
+              margin: const EdgeInsets.only(left: 28),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: isRejected ? const Color(0xFFFDF2F2) : const Color(0xFFFFFBEB),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: isRejected ? const Color(0xFFFCA5A5) : const Color(0xFFFDE68A),
+                ),
+              ),
+              child: Text(
+                'Agency Note: $reviewNotes',
+                style: TextStyle(
+                  fontSize: 11.5,
+                  color: isRejected ? AppColors.coral : const Color(0xFF92400E),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQualificationStatusRow(QualificationItemModel q) {
+    Color badgeBg;
+    Color badgeFg;
+    String badgeLabel;
+
+    if (q.isVerified) {
+      badgeBg = AppColors.mint;
+      badgeFg = AppColors.teal;
+      badgeLabel = 'Verified';
+    } else if (q.isRejected) {
+      badgeBg = const Color(0xFFFDE8E8);
+      badgeFg = AppColors.coral;
+      badgeLabel = 'Rejected';
+    } else if (q.hasChangesRequested) {
+      badgeBg = const Color(0xFFFEF3C7);
+      badgeFg = const Color(0xFFD97706);
+      badgeLabel = 'Action Required';
+    } else {
+      badgeBg = const Color(0xFFE8EEF5);
+      badgeFg = const Color(0xFF336699);
+      badgeLabel = 'Pending Review';
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Icon(
+                q.isVerified
+                    ? Icons.verified_user_rounded
+                    : q.isRejected
+                        ? Icons.cancel_outlined
+                        : q.hasChangesRequested
+                            ? Icons.edit_note_rounded
+                            : Icons.school_outlined,
+                color: q.isVerified
+                    ? AppColors.teal
+                    : q.isRejected
+                        ? AppColors.coral
+                        : q.hasChangesRequested
+                            ? const Color(0xFFD97706)
+                            : AppColors.muted,
+                size: 18,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      q.title,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.ink,
+                      ),
+                    ),
+                    if (q.institution != null && q.institution!.trim().isNotEmpty)
+                      Text(
+                        q.institution!,
+                        style: const TextStyle(fontSize: 11.5, color: AppColors.muted),
+                      ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: badgeBg,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  badgeLabel,
+                  style: TextStyle(
+                    color: badgeFg,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (q.reviewNotes != null && q.reviewNotes!.trim().isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Container(
+              margin: const EdgeInsets.only(left: 28),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: q.isRejected ? const Color(0xFFFDF2F2) : const Color(0xFFFFFBEB),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: q.isRejected ? const Color(0xFFFCA5A5) : const Color(0xFFFDE68A),
+                ),
+              ),
+              child: Text(
+                'Agency Note: ${q.reviewNotes}',
+                style: TextStyle(
+                  fontSize: 11.5,
+                  color: q.isRejected ? AppColors.coral : const Color(0xFF92400E),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQualificationSimpleRow(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          const Icon(
+            Icons.school_outlined,
+            color: AppColors.teal,
             size: 18,
           ),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              docName,
-              style: const TextStyle(fontSize: 13, color: AppColors.ink),
+              title,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppColors.ink,
+              ),
             ),
           ),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(
-              color: badgeBg,
+              color: const Color(0xFFE8EEF5),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Text(
-              badgeLabel,
+            child: const Text(
+              'Pending Review',
               style: TextStyle(
-                color: badgeFg,
+                color: Color(0xFF336699),
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
               ),

@@ -1,26 +1,62 @@
 import 'package:flutter/material.dart';
 
 class VerificationDocItem {
+  final String? id;
   final String type;
   final String name;
+  final String? label;
+  final String? documentNumber;
   final String url;
+  final String? fileUrl;
   final String status;
+  final String? reviewNotes;
+  final String? reviewedBy;
+  final DateTime? reviewedAt;
   final DateTime? uploadedAt;
 
   const VerificationDocItem({
+    this.id,
     required this.type,
     required this.name,
+    this.label,
+    this.documentNumber,
     required this.url,
+    this.fileUrl,
     this.status = 'pending',
+    this.reviewNotes,
+    this.reviewedBy,
+    this.reviewedAt,
     this.uploadedAt,
   });
 
+  String get displayName => (label != null && label!.trim().isNotEmpty) ? label! : (name.isNotEmpty ? name : 'Document');
+  String get effectiveUrl => (fileUrl != null && fileUrl!.trim().isNotEmpty) ? fileUrl! : url;
+  bool get isVerified => status.toLowerCase() == 'verified';
+  bool get isPending => status.toLowerCase() == 'pending';
+  bool get isUnderReview => status.toLowerCase() == 'under_review';
+  bool get isRejected => status.toLowerCase() == 'rejected';
+  bool get isChangesRequested => status.toLowerCase() == 'changes_requested';
+
   factory VerificationDocItem.fromJson(Map<String, dynamic> json) {
+    final fileUrl = json['fileUrl']?.toString();
+    final url = json['url']?.toString() ?? fileUrl ?? '';
+    final label = json['label']?.toString();
+    final name = json['name']?.toString() ?? label ?? 'Document';
+
     return VerificationDocItem(
+      id: json['_id']?.toString() ?? json['id']?.toString(),
       type: json['type']?.toString() ?? 'other',
-      name: json['name']?.toString() ?? 'Document',
-      url: json['url']?.toString() ?? '',
+      name: name,
+      label: label,
+      documentNumber: json['documentNumber']?.toString(),
+      url: url,
+      fileUrl: fileUrl,
       status: json['status']?.toString() ?? 'pending',
+      reviewNotes: json['reviewNotes']?.toString() ?? json['rejectionReason']?.toString(),
+      reviewedBy: json['reviewedBy']?.toString(),
+      reviewedAt: json['reviewedAt'] != null
+          ? DateTime.tryParse(json['reviewedAt'].toString())
+          : null,
       uploadedAt: json['uploadedAt'] != null
           ? DateTime.tryParse(json['uploadedAt'].toString())
           : null,
@@ -28,10 +64,17 @@ class VerificationDocItem {
   }
 
   Map<String, dynamic> toJson() => {
+        if (id != null) '_id': id,
         'type': type,
         'name': name,
-        'url': url,
+        if (label != null) 'label': label,
+        if (documentNumber != null) 'documentNumber': documentNumber,
+        'url': effectiveUrl,
+        if (fileUrl != null) 'fileUrl': fileUrl,
         'status': status,
+        if (reviewNotes != null) 'reviewNotes': reviewNotes,
+        if (reviewedBy != null) 'reviewedBy': reviewedBy,
+        if (reviewedAt != null) 'reviewedAt': reviewedAt!.toIso8601String(),
         if (uploadedAt != null) 'uploadedAt': uploadedAt!.toIso8601String(),
       };
 
@@ -69,6 +112,66 @@ class VerificationDocItem {
   }
 }
 
+class VerificationQualificationItem {
+  final String id;
+  final String title;
+  final String? institution;
+  final String? certificateUrl;
+  final String status;
+  final String? reviewNotes;
+  final String? reviewedBy;
+  final DateTime? reviewedAt;
+
+  const VerificationQualificationItem({
+    required this.id,
+    required this.title,
+    this.institution,
+    this.certificateUrl,
+    this.status = 'pending',
+    this.reviewNotes,
+    this.reviewedBy,
+    this.reviewedAt,
+  });
+
+  bool get isVerified => status.toLowerCase() == 'verified';
+  bool get isPending => status.toLowerCase() == 'pending';
+  bool get isUnderReview => status.toLowerCase() == 'under_review';
+  bool get isRejected => status.toLowerCase() == 'rejected';
+  bool get isChangesRequested => status.toLowerCase() == 'changes_requested';
+
+  factory VerificationQualificationItem.fromJson(dynamic data) {
+    if (data is String) {
+      return VerificationQualificationItem(id: data, title: data);
+    }
+    if (data is Map) {
+      return VerificationQualificationItem(
+        id: data['_id']?.toString() ?? data['id']?.toString() ?? data['title']?.toString() ?? '',
+        title: data['title']?.toString() ?? data['name']?.toString() ?? '',
+        institution: data['institution']?.toString(),
+        certificateUrl: data['certificateUrl']?.toString() ?? data['url']?.toString(),
+        status: data['status']?.toString() ?? 'pending',
+        reviewNotes: data['reviewNotes']?.toString() ?? data['rejectionReason']?.toString(),
+        reviewedBy: data['reviewedBy']?.toString(),
+        reviewedAt: data['reviewedAt'] != null
+            ? DateTime.tryParse(data['reviewedAt'].toString())
+            : null,
+      );
+    }
+    return VerificationQualificationItem(id: '', title: data.toString());
+  }
+
+  Map<String, dynamic> toJson() => {
+        if (id.isNotEmpty) '_id': id,
+        'title': title,
+        if (institution != null) 'institution': institution,
+        if (certificateUrl != null) 'certificateUrl': certificateUrl,
+        'status': status,
+        if (reviewNotes != null) 'reviewNotes': reviewNotes,
+        if (reviewedBy != null) 'reviewedBy': reviewedBy,
+        if (reviewedAt != null) 'reviewedAt': reviewedAt!.toIso8601String(),
+      };
+}
+
 class VerificationRequestModel {
   final String id;
   final String babysitterId;
@@ -85,6 +188,7 @@ class VerificationRequestModel {
   final List<String> skills;
   final List<String> languages;
   final List<String> qualifications;
+  final List<VerificationQualificationItem> qualificationItems;
   final List<String> ageGroups;
   final List<VerificationDocItem> documents;
   final String status;
@@ -109,6 +213,7 @@ class VerificationRequestModel {
     this.skills = const [],
     this.languages = const ['English', 'Sinhala'],
     this.qualifications = const [],
+    this.qualificationItems = const [],
     this.ageGroups = const ['Infants', 'Toddlers'],
     this.documents = const [],
     this.status = 'pending',
@@ -182,8 +287,13 @@ class VerificationRequestModel {
       languages: (profile?['languages'] as List?)?.map((e) => e.toString()).toList() ??
           (json['languages'] as List?)?.map((e) => e.toString()).toList() ??
           const ['English', 'Sinhala'],
-      qualifications: (profile?['qualifications'] as List?)?.map((e) => e.toString()).toList() ??
-          (json['qualifications'] as List?)?.map((e) => e.toString()).toList() ??
+      qualifications: ((profile?['qualifications'] as List?) ?? (json['qualifications'] as List?))
+              ?.map((e) => e is Map ? (e['title']?.toString() ?? e['name']?.toString() ?? 'Qualification') : e.toString())
+              .toList() ??
+          const [],
+      qualificationItems: ((profile?['qualifications'] as List?) ?? (json['qualifications'] as List?))
+              ?.map((e) => VerificationQualificationItem.fromJson(e))
+              .toList() ??
           const [],
       ageGroups: (profile?['ageGroups'] as List?)?.map((e) => e.toString()).toList() ??
           (json['ageGroups'] as List?)?.map((e) => e.toString()).toList() ??

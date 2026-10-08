@@ -192,6 +192,247 @@ class _SitterVerificationScreenState extends State<SitterVerificationScreen>
     }
   }
 
+  Future<void> _handleApproveDocument(VerificationDocItem doc) async {
+    final req = _currentRequest;
+    final docId = doc.id;
+    if (req == null || docId == null || docId.isEmpty) return;
+
+    final targetId = (req.id.isNotEmpty && !req.id.startsWith('req-'))
+        ? req.id
+        : (req.babysitterId.isNotEmpty ? req.babysitterId : req.id);
+
+    final ok = await _provider.approveDocument(targetId, docId);
+    if (!mounted) return;
+    if (ok) {
+      await _loadDetails(targetId);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${doc.displayName} marked as Verified!'),
+          backgroundColor: AppColors.teal,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_provider.errorMessage ?? 'Failed to approve document.'),
+          backgroundColor: Colors.red.shade700,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  Future<void> _handleRejectDocument(VerificationDocItem doc) async {
+    final req = _currentRequest;
+    final docId = doc.id;
+    if (req == null || docId == null || docId.isEmpty) return;
+
+    final reason = await AdminActionDialog.show(
+      context,
+      title: 'Reject Document',
+      message: 'Provide the reason for rejecting "${doc.displayName}". The sitter will be notified.',
+      confirmText: 'Reject Document',
+      confirmColor: const Color(0xFFDC2626),
+      icon: Icons.cancel_outlined,
+      requireReason: true,
+      reasonLabel: 'Rejection Reason *',
+      reasonHint: 'e.g. Expired document or blurry photo.',
+    );
+    if (reason == null || reason.trim().isEmpty) return;
+
+    final targetId = (req.id.isNotEmpty && !req.id.startsWith('req-'))
+        ? req.id
+        : (req.babysitterId.isNotEmpty ? req.babysitterId : req.id);
+
+    final ok = await _provider.rejectDocument(targetId, docId, reason: reason);
+    if (!mounted) return;
+    if (ok) {
+      await _loadDetails(targetId);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${doc.displayName} has been rejected.'),
+          backgroundColor: Colors.red.shade700,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_provider.errorMessage ?? 'Failed to reject document.'),
+          backgroundColor: Colors.red.shade700,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  Future<void> _handleRequestChangesDocument(VerificationDocItem doc) async {
+    final req = _currentRequest;
+    final docId = doc.id;
+    if (req == null || docId == null || docId.isEmpty) return;
+
+    final notes = await AdminActionDialog.show(
+      context,
+      title: 'Request Changes for Document',
+      message: 'Specify what ${req.name} needs to rectify for "${doc.displayName}".',
+      confirmText: 'Send Request',
+      confirmColor: const Color(0xFFD97706),
+      icon: Icons.edit_note_rounded,
+      requireReason: true,
+      reasonLabel: 'Instructions *',
+      reasonHint: 'e.g. Please upload both the front and back of your National ID.',
+    );
+    if (notes == null || notes.trim().isEmpty) return;
+
+    final targetId = (req.id.isNotEmpty && !req.id.startsWith('req-'))
+        ? req.id
+        : (req.babysitterId.isNotEmpty ? req.babysitterId : req.id);
+
+    final ok = await _provider.requestChangesDocument(targetId, docId, notes: notes);
+    if (!mounted) return;
+    if (ok) {
+      await _loadDetails(targetId);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Requested changes on ${doc.displayName}.'),
+          backgroundColor: const Color(0xFFD97706),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_provider.errorMessage ?? 'Failed to request changes on document.'),
+          backgroundColor: Colors.red.shade700,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  Future<void> _handleApproveQualification(VerificationQualificationItem qual) async {
+    final req = _currentRequest;
+    if (req == null || qual.id.isEmpty) return;
+
+    final targetId = (req.id.isNotEmpty && !req.id.startsWith('req-'))
+        ? req.id
+        : (req.babysitterId.isNotEmpty ? req.babysitterId : req.id);
+
+    final ok = await _provider.approveQualification(targetId, qual.id);
+    if (!mounted) return;
+    if (ok) {
+      await _loadDetails(targetId);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Qualification "${qual.title}" approved!'),
+          backgroundColor: AppColors.teal,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_provider.errorMessage ?? 'Failed to approve qualification.'),
+          backgroundColor: Colors.red.shade700,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  Future<void> _handleRejectQualification(VerificationQualificationItem qual) async {
+    final req = _currentRequest;
+    if (req == null || qual.id.isEmpty) return;
+
+    final reason = await AdminActionDialog.show(
+      context,
+      title: 'Reject Qualification',
+      message: 'Provide the reason for rejecting qualification "${qual.title}".',
+      confirmText: 'Reject Qualification',
+      confirmColor: const Color(0xFFDC2626),
+      icon: Icons.cancel_outlined,
+      requireReason: true,
+      reasonLabel: 'Rejection Reason *',
+      reasonHint: 'e.g. Unrecognized certifying institution or expired certificate.',
+    );
+    if (reason == null || reason.trim().isEmpty) return;
+
+    final targetId = (req.id.isNotEmpty && !req.id.startsWith('req-'))
+        ? req.id
+        : (req.babysitterId.isNotEmpty ? req.babysitterId : req.id);
+
+    final ok = await _provider.rejectQualification(targetId, qual.id, reason: reason);
+    if (!mounted) return;
+    if (ok) {
+      await _loadDetails(targetId);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Qualification "${qual.title}" rejected.'),
+          backgroundColor: Colors.red.shade700,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_provider.errorMessage ?? 'Failed to reject qualification.'),
+          backgroundColor: Colors.red.shade700,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  Future<void> _handleRequestChangesQualification(VerificationQualificationItem qual) async {
+    final req = _currentRequest;
+    if (req == null || qual.id.isEmpty) return;
+
+    final notes = await AdminActionDialog.show(
+      context,
+      title: 'Request Changes for Qualification',
+      message: 'Specify what ${req.name} needs to rectify for "${qual.title}".',
+      confirmText: 'Send Request',
+      confirmColor: const Color(0xFFD97706),
+      icon: Icons.edit_note_rounded,
+      requireReason: true,
+      reasonLabel: 'Instructions *',
+      reasonHint: 'e.g. Please provide a clear scanned copy of the full diploma certificate.',
+    );
+    if (notes == null || notes.trim().isEmpty) return;
+
+    final targetId = (req.id.isNotEmpty && !req.id.startsWith('req-'))
+        ? req.id
+        : (req.babysitterId.isNotEmpty ? req.babysitterId : req.id);
+
+    final ok = await _provider.requestChangesQualification(targetId, qual.id, notes: notes);
+    if (!mounted) return;
+    if (ok) {
+      await _loadDetails(targetId);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Requested changes on "${qual.title}".'),
+          backgroundColor: const Color(0xFFD97706),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_provider.errorMessage ?? 'Failed to request changes on qualification.'),
+          backgroundColor: Colors.red.shade700,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final req = _currentRequest;
@@ -526,11 +767,13 @@ class _SitterVerificationScreenState extends State<SitterVerificationScreen>
           title: 'Qualifications & Certifications',
           icon: Icons.school_outlined,
           children: [
-            if (req.qualifications.isEmpty)
+            if (req.qualificationItems.isEmpty && req.qualifications.isEmpty)
               const Text(
                 'No formal qualifications listed.',
                 style: TextStyle(fontSize: 13, color: AppColors.muted),
               )
+            else if (req.qualificationItems.isNotEmpty)
+              ...req.qualificationItems.map((q) => _buildQualificationCard(q))
             else
               ...req.qualifications.map(
                 (q) => Padding(
@@ -567,6 +810,131 @@ class _SitterVerificationScreenState extends State<SitterVerificationScreen>
     );
   }
 
+  Widget _buildQualificationCard(VerificationQualificationItem qual) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: AppColors.mint,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.school, size: 16, color: AppColors.teal),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      qual.title,
+                      style: const TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.ink,
+                      ),
+                    ),
+                    if (qual.institution != null && qual.institution!.isNotEmpty)
+                      Text(
+                        qual.institution!,
+                        style: const TextStyle(fontSize: 11.5, color: AppColors.muted),
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              VerificationStatusChip(status: qual.status),
+            ],
+          ),
+          if (qual.reviewNotes != null && qual.reviewNotes!.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: qual.isRejected ? const Color(0xFFFDE8E8) : const Color(0xFFFEF3C7),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(
+                  color: qual.isRejected ? const Color(0xFFFCA5A5) : const Color(0xFFFCD34D),
+                ),
+              ),
+              child: Text(
+                'Note: ${qual.reviewNotes}',
+                style: TextStyle(
+                  fontSize: 11.5,
+                  color: qual.isRejected ? AppColors.coral : const Color(0xFF92400E),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+          if (!qual.isVerified && qual.id.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                OutlinedButton(
+                  onPressed: () => _handleRejectQualification(qual),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.coral,
+                    side: const BorderSide(color: AppColors.coral),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 11.5),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                  ),
+                  child: const Text('Reject'),
+                ),
+                const SizedBox(width: 6),
+                OutlinedButton(
+                  onPressed: () => _handleRequestChangesQualification(qual),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFFD97706),
+                    side: const BorderSide(color: Color(0xFFD97706)),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 11.5),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                  ),
+                  child: const Text('Changes'),
+                ),
+                const SizedBox(width: 6),
+                ElevatedButton(
+                  onPressed: () => _handleApproveQualification(qual),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.teal,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 11.5),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                  ),
+                  child: const Text('Approve'),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   Widget _buildDocumentsTab(VerificationRequestModel req) {
     final docs = req.documents;
 
@@ -586,7 +954,7 @@ class _SitterVerificationScreenState extends State<SitterVerificationScreen>
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  '${docs.length} Verification documents submitted. Tap any document to inspect full preview and zoom.',
+                  '${docs.length} Verification documents submitted. Review and verify each document individually.',
                   style: const TextStyle(
                     fontSize: 12.5,
                     color: Color(0xFF1E40AF),
@@ -630,67 +998,159 @@ class _SitterVerificationScreenState extends State<SitterVerificationScreen>
           ),
         ],
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: AppColors.mint,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(doc.iconData, color: AppColors.teal, size: 24),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: AppColors.mint,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(doc.iconData, color: AppColors.teal, size: 24),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      doc.displayName,
+                      style: const TextStyle(
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.ink,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      doc.displayType,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.muted,
+                      ),
+                    ),
+                    if (doc.documentNumber != null && doc.documentNumber!.isNotEmpty)
+                      Text(
+                        'Document #: ${doc.documentNumber}',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: Color(0xFF64748B),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    const SizedBox(height: 4),
+                    Text(
+                      doc.uploadedAt != null
+                          ? 'Uploaded ${doc.uploadedAt!.day}/${doc.uploadedAt!.month}/${doc.uploadedAt!.year}'
+                          : 'Uploaded recently',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Color(0xFF94A3B8),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              VerificationStatusChip(status: doc.status),
+            ],
           ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  doc.name,
-                  style: const TextStyle(
-                    fontSize: 14.5,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.ink,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  doc.displayType,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AppColors.muted,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  doc.uploadedAt != null
-                      ? 'Uploaded ${doc.uploadedAt!.day}/${doc.uploadedAt!.month}/${doc.uploadedAt!.year}'
-                      : 'Uploaded recently',
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: Color(0xFF94A3B8),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 10),
-          ElevatedButton.icon(
-            onPressed: () => DocumentPreviewDialog.show(context, doc),
-            icon: const Icon(Icons.visibility_outlined, size: 16),
-            label: const Text('View'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.teal,
-              foregroundColor: Colors.white,
-              elevation: 0,
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5),
-              shape: RoundedRectangleBorder(
+          if (doc.reviewNotes != null && doc.reviewNotes!.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: doc.isRejected ? const Color(0xFFFDE8E8) : const Color(0xFFFEF3C7),
                 borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: doc.isRejected ? const Color(0xFFFCA5A5) : const Color(0xFFFCD34D),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    doc.isRejected ? Icons.error_outline_rounded : Icons.info_outline_rounded,
+                    size: 16,
+                    color: doc.isRejected ? AppColors.coral : const Color(0xFFB45309),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Admin Review: ${doc.reviewNotes}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: doc.isRejected ? AppColors.coral : const Color(0xFF92400E),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
+          ],
+          const SizedBox(height: 12),
+          const Divider(height: 1, color: Color(0xFFF1F5F9)),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              OutlinedButton.icon(
+                onPressed: () => DocumentPreviewDialog.show(context, doc),
+                icon: const Icon(Icons.visibility_outlined, size: 16),
+                label: const Text('View Document'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.teal,
+                  side: const BorderSide(color: AppColors.teal),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+              ),
+              const Spacer(),
+              if (!doc.isVerified && doc.id != null && doc.id!.isNotEmpty) ...[
+                OutlinedButton(
+                  onPressed: () => _handleRejectDocument(doc),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.coral,
+                    side: const BorderSide(color: AppColors.coral),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  child: const Text('Reject'),
+                ),
+                const SizedBox(width: 6),
+                OutlinedButton(
+                  onPressed: () => _handleRequestChangesDocument(doc),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFFD97706),
+                    side: const BorderSide(color: Color(0xFFD97706)),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  child: const Text('Changes'),
+                ),
+                const SizedBox(width: 6),
+                ElevatedButton(
+                  onPressed: () => _handleApproveDocument(doc),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.teal,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  child: const Text('Approve'),
+                ),
+              ],
+            ],
           ),
         ],
       ),

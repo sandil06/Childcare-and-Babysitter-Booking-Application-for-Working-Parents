@@ -530,6 +530,9 @@ class _EditSitterProfileScreenState extends State<EditSitterProfileScreen> {
                 ),
               ..._documents.asMap().entries.map((entry) {
                 final doc = entry.value;
+                final isVer = doc.status == 'verified';
+                final isRejected = doc.status == 'rejected';
+                final isChangesReq = doc.status == 'changes_requested';
                 return Container(
                   margin: const EdgeInsets.only(bottom: 8),
                   padding:
@@ -539,60 +542,116 @@ class _EditSitterProfileScreenState extends State<EditSitterProfileScreen> {
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(color: AppColors.sand),
                   ),
-                  child: Row(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(Icons.description_outlined,
-                          size: 20, color: AppColors.teal),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              doc.name,
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.ink,
-                              ),
-                            ),
-                            Text(
-                              _docTypeLabels[doc.type] ?? doc.type,
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: AppColors.muted,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 3),
-                        margin: const EdgeInsets.only(right: 4),
-                        decoration: BoxDecoration(
-                          color: doc.status == 'verified'
-                              ? AppColors.mint
-                              : AppColors.sand.withValues(alpha: 0.5),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          doc.status == 'verified' ? 'Verified' : 'Pending',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color: doc.status == 'verified'
+                      Row(
+                        children: [
+                          Icon(
+                            isVer
+                                ? Icons.verified_user_rounded
+                                : isRejected
+                                    ? Icons.cancel_outlined
+                                    : isChangesReq
+                                        ? Icons.edit_note_rounded
+                                        : Icons.description_outlined,
+                            size: 20,
+                            color: isVer
                                 ? AppColors.teal
-                                : AppColors.ink,
+                                : isRejected
+                                    ? AppColors.coral
+                                    : isChangesReq
+                                        ? const Color(0xFFD97706)
+                                        : AppColors.teal,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  doc.displayName,
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.ink,
+                                  ),
+                                ),
+                                Text(
+                                  _docTypeLabels[doc.type] ?? doc.type,
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.muted,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 3),
+                            margin: const EdgeInsets.only(right: 4),
+                            decoration: BoxDecoration(
+                              color: isVer
+                                  ? AppColors.mint
+                                  : isRejected
+                                      ? const Color(0xFFFDE8E8)
+                                      : isChangesReq
+                                          ? const Color(0xFFFEF3C7)
+                                          : AppColors.sand.withValues(alpha: 0.5),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              isVer
+                                  ? 'Verified'
+                                  : isRejected
+                                      ? 'Rejected'
+                                      : isChangesReq
+                                          ? 'Action Req.'
+                                          : 'Pending',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: isVer
+                                    ? AppColors.teal
+                                    : isRejected
+                                        ? AppColors.coral
+                                        : isChangesReq
+                                            ? const Color(0xFFD97706)
+                                            : AppColors.ink,
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.close_rounded,
+                                size: 18, color: AppColors.muted),
+                            onPressed: () =>
+                                setState(() => _documents.removeAt(entry.key)),
+                          ),
+                        ],
+                      ),
+                      if (doc.reviewNotes != null && doc.reviewNotes!.trim().isNotEmpty) ...[
+                        const SizedBox(height: 6),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: isRejected ? const Color(0xFFFDF2F2) : const Color(0xFFFFFBEB),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: isRejected ? const Color(0xFFFCA5A5) : const Color(0xFFFDE68A),
+                            ),
+                          ),
+                          child: Text(
+                            'Agency Note: ${doc.reviewNotes}',
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              color: isRejected ? AppColors.coral : const Color(0xFF92400E),
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                         ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close_rounded,
-                            size: 18, color: AppColors.muted),
-                        onPressed: () =>
-                            setState(() => _documents.removeAt(entry.key)),
-                      ),
+                      ],
                     ],
                   ),
                 );

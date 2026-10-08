@@ -4,19 +4,30 @@ const verificationDocumentSchema = new mongoose.Schema(
   {
     type: {
       type: String,
-      enum: ['id', 'police_check', 'qualification', 'photo', 'certificate', 'other'],
+      enum: ['id', 'national_id', 'passport', 'police_check', 'qualification', 'photo', 'certificate', 'other'],
       required: true,
     },
     name: { type: String, required: true },
+    label: { type: String },
+    documentNumber: { type: String, default: '' },
     url: { type: String, required: true },
+    fileUrl: { type: String },
     status: {
       type: String,
-      enum: ['pending', 'under_review', 'verified', 'rejected'],
+      enum: ['pending', 'under_review', 'verified', 'rejected', 'changes_requested'],
       default: 'pending',
     },
+    reviewNotes: { type: String, default: null },
+    reviewedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
+    reviewedAt: { type: Date, default: null },
     uploadedAt: { type: Date, default: Date.now },
+    updatedAt: { type: Date, default: Date.now },
   },
-  { _id: false }
+  { _id: true }
 );
 
 const verificationRequestSchema = new mongoose.Schema(
@@ -37,6 +48,10 @@ const verificationRequestSchema = new mongoose.Schema(
     },
     documents: {
       type: [verificationDocumentSchema],
+      default: [],
+    },
+    qualifications: {
+      type: [mongoose.Schema.Types.Mixed],
       default: [],
     },
     status: {

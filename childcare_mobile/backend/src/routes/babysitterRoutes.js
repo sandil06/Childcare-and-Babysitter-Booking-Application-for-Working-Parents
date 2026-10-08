@@ -18,6 +18,16 @@ router.get('/me', authMiddleware, roleMiddleware(ROLES.BABYSITTER), babysitterCo
 router.patch('/me', authMiddleware, roleMiddleware(ROLES.BABYSITTER), validateUpdate, babysitterController.updateMe);
 router.get('/me/dashboard', authMiddleware, roleMiddleware(ROLES.BABYSITTER), babysitterController.getDashboard);
 
+// Document management endpoints
+router.post('/me/verification-documents', authMiddleware, roleMiddleware(ROLES.BABYSITTER), babysitterController.addDocument);
+router.patch('/me/verification-documents/:id', authMiddleware, roleMiddleware(ROLES.BABYSITTER), babysitterController.updateDocument);
+router.delete('/me/verification-documents/:id', authMiddleware, roleMiddleware(ROLES.BABYSITTER), babysitterController.deleteDocument);
+
+// Qualification management endpoints
+router.post('/me/qualifications', authMiddleware, roleMiddleware(ROLES.BABYSITTER), babysitterController.addQualification);
+router.patch('/me/qualifications/:id', authMiddleware, roleMiddleware(ROLES.BABYSITTER), babysitterController.updateQualification);
+router.delete('/me/qualifications/:id', authMiddleware, roleMiddleware(ROLES.BABYSITTER), babysitterController.deleteQualification);
+
 // Availability endpoints
 router.get('/me/availability', authMiddleware, roleMiddleware(ROLES.BABYSITTER), availabilityController.getMeAvailability);
 router.post('/me/availability', authMiddleware, roleMiddleware(ROLES.BABYSITTER), validateCreateAvailability, availabilityController.createMeAvailability);

@@ -222,22 +222,23 @@ class _BabysitterProfileViewState extends State<_BabysitterProfileView>
                       : _avatarInitials(initials),
                 ),
               ),
-              Positioned(
-                right: -3,
-                bottom: 2,
-                child: Container(
-                  padding: const EdgeInsets.all(7),
-                  decoration: const BoxDecoration(
-                    color: AppColors.teal,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.verified_rounded,
-                    color: Colors.white,
-                    size: 18,
+              if (sitter.isVerified)
+                Positioned(
+                  right: -3,
+                  bottom: 2,
+                  child: Container(
+                    padding: const EdgeInsets.all(7),
+                    decoration: const BoxDecoration(
+                      color: AppColors.teal,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.verified_rounded,
+                      color: Colors.white,
+                      size: 18,
+                    ),
                   ),
                 ),
-              ),
             ],
           ),
           const SizedBox(height: 15),
@@ -717,33 +718,105 @@ class _BabysitterProfileViewState extends State<_BabysitterProfileView>
             ],
           ),
           const SizedBox(height: 13),
-          ...sitter.qualifications.map(
-            (qualification) => Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Icon(
-                    Icons.check_circle_rounded,
-                    color: AppColors.teal,
-                    size: 19,
-                  ),
-                  const SizedBox(width: 9),
-                  Expanded(
-                    child: Text(
-                      qualification,
-                      style: const TextStyle(
-                        color: AppColors.ink,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        height: 1.35,
+          if (sitter.qualificationItems.isNotEmpty)
+            ...sitter.qualificationItems.map(
+              (q) => Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      q.isVerified
+                          ? Icons.check_circle_rounded
+                          : Icons.school_outlined,
+                      color: q.isVerified ? AppColors.teal : AppColors.muted,
+                      size: 19,
+                    ),
+                    const SizedBox(width: 9),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  q.title,
+                                  style: const TextStyle(
+                                    color: AppColors.ink,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    height: 1.35,
+                                  ),
+                                ),
+                              ),
+                              if (q.isVerified)
+                                Container(
+                                  margin: const EdgeInsets.only(left: 6),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFEAF8F5),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: const Text(
+                                    'Verified',
+                                    style: TextStyle(
+                                      color: AppColors.teal,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                          if (q.institution != null &&
+                              q.institution!.trim().isNotEmpty)
+                            Text(
+                              q.institution!,
+                              style: const TextStyle(
+                                color: AppColors.muted,
+                                fontSize: 11.5,
+                              ),
+                            ),
+                        ],
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
+              ),
+            )
+          else
+            ...sitter.qualifications.map(
+              (qualification) => Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      sitter.isVerified
+                          ? Icons.check_circle_rounded
+                          : Icons.school_outlined,
+                      color:
+                          sitter.isVerified ? AppColors.teal : AppColors.muted,
+                      size: 19,
+                    ),
+                    const SizedBox(width: 9),
+                    Expanded(
+                      child: Text(
+                        qualification,
+                        style: const TextStyle(
+                          color: AppColors.ink,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          height: 1.35,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
         ],
       ),
     );

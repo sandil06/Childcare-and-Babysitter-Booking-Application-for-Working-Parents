@@ -245,6 +245,134 @@ class AgencyProvider extends ChangeNotifier {
     }
   }
 
+  // Document-level reviews
+  Future<bool> approveDocument(String verificationId, String documentId) async {
+    _isSubmitting = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      final ok = await _service.approveDocument(verificationId, documentId);
+      if (ok) {
+        await loadVerificationDetails(verificationId);
+      } else {
+        _errorMessage = _service.lastError ?? 'Failed to approve document.';
+      }
+      return ok;
+    } catch (e) {
+      _errorMessage = (e is ApiException) ? e.message : e.toString();
+      return false;
+    } finally {
+      _isSubmitting = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> rejectDocument(String verificationId, String documentId, {required String reason}) async {
+    _isSubmitting = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      final ok = await _service.rejectDocument(verificationId, documentId, reason: reason);
+      if (ok) {
+        await loadVerificationDetails(verificationId);
+      } else {
+        _errorMessage = _service.lastError ?? 'Failed to reject document.';
+      }
+      return ok;
+    } catch (e) {
+      _errorMessage = (e is ApiException) ? e.message : e.toString();
+      return false;
+    } finally {
+      _isSubmitting = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> requestChangesDocument(String verificationId, String documentId, {required String notes}) async {
+    _isSubmitting = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      final ok = await _service.requestChangesDocument(verificationId, documentId, notes: notes);
+      if (ok) {
+        await loadVerificationDetails(verificationId);
+      } else {
+        _errorMessage = _service.lastError ?? 'Failed to request changes on document.';
+      }
+      return ok;
+    } catch (e) {
+      _errorMessage = (e is ApiException) ? e.message : e.toString();
+      return false;
+    } finally {
+      _isSubmitting = false;
+      notifyListeners();
+    }
+  }
+
+  // Qualification-level reviews
+  Future<bool> approveQualification(String verificationId, String qualificationId) async {
+    _isSubmitting = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      final ok = await _service.approveQualification(verificationId, qualificationId);
+      if (ok) {
+        await loadVerificationDetails(verificationId);
+      } else {
+        _errorMessage = _service.lastError ?? 'Failed to approve qualification.';
+      }
+      return ok;
+    } catch (e) {
+      _errorMessage = (e is ApiException) ? e.message : e.toString();
+      return false;
+    } finally {
+      _isSubmitting = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> rejectQualification(String verificationId, String qualificationId, {required String reason}) async {
+    _isSubmitting = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      final ok = await _service.rejectQualification(verificationId, qualificationId, reason: reason);
+      if (ok) {
+        await loadVerificationDetails(verificationId);
+      } else {
+        _errorMessage = _service.lastError ?? 'Failed to reject qualification.';
+      }
+      return ok;
+    } catch (e) {
+      _errorMessage = (e is ApiException) ? e.message : e.toString();
+      return false;
+    } finally {
+      _isSubmitting = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> requestChangesQualification(String verificationId, String qualificationId, {required String notes}) async {
+    _isSubmitting = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      final ok = await _service.requestChangesQualification(verificationId, qualificationId, notes: notes);
+      if (ok) {
+        await loadVerificationDetails(verificationId);
+      } else {
+        _errorMessage = _service.lastError ?? 'Failed to request changes on qualification.';
+      }
+      return ok;
+    } catch (e) {
+      _errorMessage = (e is ApiException) ? e.message : e.toString();
+      return false;
+    } finally {
+      _isSubmitting = false;
+      notifyListeners();
+    }
+  }
+
   // ==========================================
   // USERS
   // ==========================================
