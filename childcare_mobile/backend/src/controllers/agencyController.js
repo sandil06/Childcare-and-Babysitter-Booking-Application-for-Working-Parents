@@ -1334,6 +1334,175 @@ async function dismissReport(req, res, next) {
   }
 }
 
+async function getStatistics(req, res, next) {
+  try {
+    initSampleUsers();
+    initSampleBookings();
+    initSampleReports();
+
+    if (isDbConnected()) {
+      const [
+        totalUsers,
+        totalParents,
+        totalBabysitters,
+        activeUsers,
+        suspendedUsers,
+        totalBookings,
+        pendingBookings,
+        activeBookings,
+        completedBookings,
+        cancelledBookings,
+        pendingVerifications,
+        underReviewVerifications,
+        verifiedRequests,
+        rejectedVerifications,
+        totalReports,
+        openReports,
+        underReviewReports,
+        resolvedReports,
+        urgentReports,
+      ] = await Promise.all([
+        User.countDocuments(),
+        User.countDocuments({ role: ROLES.PARENT }),
+        User.countDocuments({ role: ROLES.BABYSITTER }),
+        User.countDocuments({ accountStatus: 'active' }),
+        User.countDocuments({ accountStatus: 'suspended' }),
+        Booking.countDocuments(),
+        Booking.countDocuments({ status: { $in: ['pending', 'requested'] } }),
+        Booking.countDocuments({ status: { $in: ['confirmed', 'in_progress', 'started'] } }),
+        Booking.countDocuments({ status: 'completed' }),
+        Booking.countDocuments({ status: 'cancelled' }),
+        VerificationRequest.countDocuments({ status: 'pending' }),
+        VerificationRequest.countDocuments({ status: 'under_review' }),
+        VerificationRequest.countDocuments({ status: 'verified' }),
+        VerificationRequest.countDocuments({ status: 'rejected' }),
+        Report.countDocuments(),
+        Report.countDocuments({ status: 'open' }),
+        Report.countDocuments({ status: 'under_review' }),
+        Report.countDocuments({ status: 'resolved' }),
+        Report.countDocuments({ priority: 'urgent' }),
+      ]);
+
+      const volumeAgg = await Booking.aggregate([
+        { $match: { paymentStatus: 'paid' } },
+        { $group: { _id: null, total: { $sum: '$totalAmount' } } },
+      ]);
+      const totalVolume = volumeAgg[0]?.total || 0;
+      const platformRevenue = Math.round(totalVolume * 0.1);
+
+      return ApiResponse.success(res, {
+        users: {
+          total: totalUsers,
+          parents: totalParents,
+          babysitters: totalBabysitters,
+          verified: verifiedRequests,
+          active: activeUsers,
+          suspended: suspendedUsers,
+        },
+        bookings: {
+          total: totalBookings,
+          pending: pendingBookings,
+          active: activeBookings,
+          completed: completedBookings,
+          cancelled: cancelledBookings,
+          rejected: 0,
+        },
+        verifications: {
+          pending: pendingVerifications,
+          under_review: underReviewVerifications,
+          verified: verifiedRequests,
+          rejected: rejectedVerifications,
+        },
+        reports: {
+          total: totalReports,
+          open: openReports,
+          under_review: underReviewReports,
+          resolved: resolvedReports,
+          urgent: urgentReports,
+        },
+        payments: {
+          totalVolume,
+          platformRevenue,
+          successful: completedBookings,
+          failed: cancelledBookings,
+        },
+      }, 'System statistics retrieved successfully');
+    }
+
+    // Offline / Mock aggregation
+    const usersList = Array.from(memoryUsers.values());
+    const bookingsList = Array.from(memoryBookings.values());
+    const verificationsList = Array.from(memoryVerifications.values());
+    const reportsList = Array.from(memoryReports.values());
+
+    const totalUsers = usersList.length || 148;
+    const totalParents = usersList.filter((u) => u.role === 'parent').length || 92;
+    const totalBabysitters = usersList.filter((u) => u.role === 'babysitter').length || 54;
+    const activeUsers = usersList.filter((u) => u.accountStatus !== 'suspended').length || 142;
+    const suspendedUsers = usersList.filter((u) => u.accountStatus === 'suspended').length || 6;
+
+    const totalBookings = bookingsList.length || 320;
+    const pendingBookings = bookingsList.filter((b) => b.status === 'pending').length || 8;
+    const activeBookings = bookingsList.filter((b) => ['confirmed', 'in_progress'].includes(b.status)).length || 18;
+    const completedBookings = bookingsList.filter((b) => b.status === 'completed').length || 284;
+    const cancelledBookings = bookingsList.filter((b) => b.status === 'cancelled').length || 18;
+
+    const pendingVerifications = verificationsList.filter((v) => v.status === 'pending').length || 12;
+    const underReviewVerifications = verificationsList.filter((v) => v.status === 'under_review').length || 4;
+    const verifiedRequests = verificationsList.filter((v) => v.status === 'verified').length || 38;
+    const rejectedVerifications = verificationsList.filter((v) => v.status === 'rejected').length || 4;
+
+    const totalReports = reportsList.length || 36;
+    const openReports = reportsList.filter((r) => r.status === 'open').length || 5;
+    const underReviewReports = reportsList.filter((r) => r.status === 'under_review').length || 4;
+    const resolvedReports = reportsList.filter((r) => r.status === 'resolved').length || 27;
+    const urgentReports = reportsList.filter((r) => r.priority === 'urgent').length || 2;
+
+    const totalVolume = bookingsList.reduce((acc, b) => acc + (b.totalAmount || 0), 0) || 486000;
+    const platformRevenue = Math.round(totalVolume * 0.1);
+
+    return ApiResponse.success(res, {
+      users: {
+        total: totalUsers,
+        parents: totalParents,
+        babysitters: totalBabysitters,
+        verified: verifiedRequests,
+        active: activeUsers,
+        suspended: suspendedUsers,
+      },
+      bookings: {
+        total: totalBookings,
+        pending: pendingBookings,
+        active: activeBookings,
+        completed: completedBookings,
+        cancelled: cancelledBookings,
+        rejected: 0,
+      },
+      verifications: {
+        pending: pendingVerifications,
+        under_review: underReviewVerifications,
+        verified: verifiedRequests,
+        rejected: rejectedVerifications,
+      },
+      reports: {
+        total: totalReports,
+        open: openReports,
+        under_review: underReviewReports,
+        resolved: resolvedReports,
+        urgent: urgentReports,
+      },
+      payments: {
+        totalVolume,
+        platformRevenue,
+        successful: completedBookings,
+        failed: cancelledBookings,
+      },
+    }, 'System statistics retrieved successfully (mock)');
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   getDashboard,
   dashboard: getDashboard,
@@ -1351,6 +1520,7 @@ module.exports = {
   resolveReport,
   escalateReport,
   dismissReport,
+  getStatistics,
   memoryUsers,
   memoryBookings,
   memoryVerifications,

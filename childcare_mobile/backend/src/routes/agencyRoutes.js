@@ -18,14 +18,16 @@ const {
   resolveReport,
   escalateReport,
   dismissReport,
+  getStatistics,
 } = require('../controllers/agencyController');
 const verificationController = require('../controllers/verificationController');
 
 // All agency endpoints require authenticated agency or admin role
 const requireAgency = roleMiddleware(ROLES.AGENCY, ROLES.ADMIN);
 
-// Dashboard
+// Dashboard & System Statistics
 router.get('/dashboard', auth, requireAgency, getDashboard);
+router.get('/statistics', auth, requireAgency, getStatistics);
 
 // Verifications
 router.get('/verifications', auth, requireAgency, verificationController.list);

@@ -371,7 +371,7 @@ class _AgencyDashboardScreenState extends State<AgencyDashboardScreen> {
             icon: Icons.analytics_outlined,
             label: 'Analytics',
             color: const Color(0xFFD97706),
-            onTap: () => Navigator.pushNamed(context, AppRoutes.agencyReports),
+            onTap: () => Navigator.pushNamed(context, AppRoutes.agencyStatistics),
           ),
         ],
       ),

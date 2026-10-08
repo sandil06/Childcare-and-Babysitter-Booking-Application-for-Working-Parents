@@ -54,6 +54,7 @@ import '../features/agency/screens/parent_management_screen.dart';
 import '../features/agency/screens/babysitter_management_screen.dart';
 import '../features/agency/screens/booking_monitoring_screen.dart';
 import '../features/agency/screens/complaint_details_screen.dart';
+import '../features/agency/screens/system_statistics_screen.dart';
 import '../features/agency/models/verification_request_model.dart';
 import '../features/agency/models/report_model.dart';
 
@@ -96,6 +97,7 @@ class AppRoutes {
   static const agencyParentManagement = '/agency/parents';
   static const agencyBabysitterManagement = '/agency/babysitters';
   static const agencyBookings = '/agency/bookings';
+  static const agencyStatistics = '/agency/statistics';
 
   // Babysitter module routes
   static const sitterDashboard = '/babysitter/dashboard';
@@ -204,6 +206,8 @@ class AppRoutes {
             return const BabysitterManagementScreen();
           case agencyBookings:
             return const BookingMonitoringScreen();
+          case agencyStatistics:
+            return const SystemStatisticsScreen();
           case sitterDashboard:
             return const SitterDashboardScreen();
           case sitterRegistration:
