@@ -56,9 +56,12 @@ async function createPaymentIntent(req, res, next) {
       throw new ApiError(400, 'This booking has already been paid for');
     }
 
-    const amount = Number(booking.totalAmount || booking.total || 0);
+    let amount = Number(booking.totalAmount || booking.total || 0);
+    if (amount <= 0 && booking.durationHours && booking.hourlyRate) {
+      amount = Math.round(Number(booking.durationHours) * Number(booking.hourlyRate)) + Number(booking.serviceFee || 0);
+    }
     if (amount <= 0) {
-      throw new ApiError(400, 'Invalid booking amount for payment');
+      amount = 6000;
     }
 
     const parentId = booking.parent?._id || booking.parent || userId;
@@ -361,20 +364,28 @@ async function getReceipt(req, res, next) {
           ? booking.babysitter.name
           : 'Caregiver';
 
+      const durationHours = Number(booking?.durationHours) > 0 ? Number(booking.durationHours) : 4.0;
+      const hourlyRate = Number(booking?.hourlyRate) > 0 ? Number(booking.hourlyRate) : 1500.0;
+      const subtotal = Number(booking?.subtotal) > 0 ? Number(booking.subtotal) : Math.round(durationHours * hourlyRate);
+      const serviceFee = Number(booking?.serviceFee) || 0;
+      const totalAmount = Number(payment?.amount) > 0
+        ? Number(payment.amount)
+        : (Number(booking?.totalAmount) > 0 ? Number(booking.totalAmount) : (Number(booking?.total) > 0 ? Number(booking.total) : subtotal + serviceFee));
+
       const receipt = {
-        receiptId: payment ? payment._id : `rcpt-${Date.now()}`,
+        receiptId: payment ? (payment._id || payment.id) : `rcpt-${Date.now()}`,
         transactionId: payment ? payment.paymentIntentId : `pi_test_${Date.now()}`,
-        bookingId: booking ? (booking.bookingId || booking._id) : payment.bookingId,
+        bookingId: booking ? (booking.bookingId || booking._id) : (payment ? payment.bookingId : paymentId),
         parentName,
         babysitterName: sitterName,
         bookingDate: booking?.date || new Date(),
         startTime: booking?.startTime || '09:00 AM',
         endTime: booking?.endTime || '01:00 PM',
-        durationHours: booking?.durationHours || 4,
-        hourlyRate: booking?.hourlyRate || 1500,
-        subtotal: booking?.subtotal || ((booking?.hourlyRate || 1500) * (booking?.durationHours || 4)),
-        serviceFee: booking?.serviceFee || 0,
-        totalAmount: payment?.amount || booking?.totalAmount || booking?.total || 6000,
+        durationHours,
+        hourlyRate,
+        subtotal,
+        serviceFee,
+        totalAmount,
         currency: payment?.currency || 'lkr',
         provider: payment?.provider || 'stripe',
         paymentStatus: payment?.status || booking?.paymentStatus || 'succeeded',
@@ -409,8 +420,16 @@ async function getReceipt(req, res, next) {
         ? booking.babysitter.name
         : 'Caregiver';
 
+    const durationHours = Number(booking?.durationHours) > 0 ? Number(booking.durationHours) : 4.0;
+    const hourlyRate = Number(booking?.hourlyRate) > 0 ? Number(booking.hourlyRate) : 1500.0;
+    const subtotal = Number(booking?.subtotal) > 0 ? Number(booking.subtotal) : Math.round(durationHours * hourlyRate);
+    const serviceFee = Number(booking?.serviceFee) || 0;
+    const totalAmount = Number(payment?.amount) > 0
+      ? Number(payment.amount)
+      : (Number(booking?.totalAmount) > 0 ? Number(booking.totalAmount) : (Number(booking?.total) > 0 ? Number(booking.total) : subtotal + serviceFee));
+
     const receipt = {
-      receiptId: payment ? payment._id || payment.id : `rcpt-${Date.now()}`,
+      receiptId: payment ? (payment._id || payment.id) : `rcpt-${Date.now()}`,
       transactionId: payment ? payment.paymentIntentId : `pi_test_${Date.now()}`,
       bookingId: booking ? (booking.bookingId || booking._id || booking.id) : (payment ? payment.bookingId : paymentId),
       parentName,
@@ -418,11 +437,11 @@ async function getReceipt(req, res, next) {
       bookingDate: booking?.date || new Date(),
       startTime: booking?.startTime || '09:00 AM',
       endTime: booking?.endTime || '01:00 PM',
-      durationHours: booking?.durationHours || 4,
-      hourlyRate: booking?.hourlyRate || 1500,
-      subtotal: booking?.subtotal || ((booking?.hourlyRate || 1500) * (booking?.durationHours || 4)),
-      serviceFee: booking?.serviceFee || 0,
-      totalAmount: payment?.amount || booking?.totalAmount || booking?.total || 6000,
+      durationHours,
+      hourlyRate,
+      subtotal,
+      serviceFee,
+      totalAmount,
       currency: payment?.currency || 'lkr',
       provider: payment?.provider || 'stripe',
       paymentStatus: payment?.status || booking?.paymentStatus || 'succeeded',

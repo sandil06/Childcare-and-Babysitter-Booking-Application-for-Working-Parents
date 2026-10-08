@@ -6,6 +6,7 @@ import '../../bookings/models/booking_model.dart';
 import '../../bookings/providers/booking_provider.dart';
 import '../models/payment_model.dart';
 import '../services/payment_service.dart';
+import '../services/receipt_pdf_service.dart';
 
 class PaymentReceiptScreen extends StatefulWidget {
   final BookingModel? booking;
@@ -26,19 +27,40 @@ class PaymentReceiptScreen extends StatefulWidget {
 class _PaymentReceiptScreenState extends State<PaymentReceiptScreen> {
   final PaymentService _paymentService = PaymentService();
   bool _isLoading = false;
+  bool _isDownloadingPdf = false;
+  bool _hasLoaded = false;
   Map<String, dynamic>? _receiptData;
 
   @override
-  void initState() {
-    super.initState();
-    _loadReceipt();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_hasLoaded) {
+      _hasLoaded = true;
+      _loadReceipt();
+    }
   }
 
   Future<void> _loadReceipt() async {
     final args = ModalRoute.of(context)?.settings.arguments;
     String? lookupId = widget.receiptId;
-    if (args is Map && args['receiptId'] != null) {
-      lookupId = args['receiptId'].toString();
+    if (args is Map) {
+      if (args['receiptId'] != null) {
+        lookupId = args['receiptId'].toString();
+      } else if (args['payment'] is PaymentModel && (args['payment'] as PaymentModel).paymentIntentId.isNotEmpty) {
+        lookupId = (args['payment'] as PaymentModel).paymentIntentId;
+      } else if (args['payment'] is PaymentModel && (args['payment'] as PaymentModel).id.isNotEmpty) {
+        lookupId = (args['payment'] as PaymentModel).id;
+      } else if (args['booking'] is BookingModel && (args['booking'] as BookingModel).id.isNotEmpty) {
+        lookupId = (args['booking'] as BookingModel).id;
+      } else if (args['paymentIntentId'] != null) {
+        lookupId = args['paymentIntentId'].toString();
+      } else if (args['bookingId'] != null) {
+        lookupId = args['bookingId'].toString();
+      }
+    } else if (args is BookingModel && args.id.isNotEmpty) {
+      lookupId = args.id;
+    } else if (args is PaymentModel && args.paymentIntentId.isNotEmpty) {
+      lookupId = args.paymentIntentId;
     } else if (widget.payment?.paymentIntentId != null) {
       lookupId = widget.payment!.paymentIntentId;
     } else if (widget.booking?.id != null) {
@@ -93,9 +115,21 @@ class _PaymentReceiptScreenState extends State<PaymentReceiptScreen> {
     final serviceFee = (_receiptData?['serviceFee'] is num)
         ? (_receiptData!['serviceFee'] as num).toDouble()
         : (booking?.serviceFee ?? 0.0);
-    final total = (_receiptData?['totalAmount'] is num)
+    double total = (_receiptData?['totalAmount'] is num)
         ? (_receiptData!['totalAmount'] as num).toDouble()
-        : (payment?.amount ?? booking?.totalAmount ?? 6000.0);
+        : (payment != null && payment.amount > 0
+            ? payment.amount
+            : (booking != null && booking.totalAmount > 0
+                ? booking.totalAmount
+                : (booking != null && booking.total > 0
+                    ? booking.total
+                    : subtotal + serviceFee)));
+    if (total <= 0) {
+      total = subtotal + serviceFee;
+    }
+    if (total <= 0) {
+      total = duration * hourlyRate;
+    }
     final provider = _receiptData?['provider']?.toString() ?? 'Stripe (Test Mode)';
 
     return Scaffold(
@@ -117,6 +151,13 @@ class _PaymentReceiptScreenState extends State<PaymentReceiptScreen> {
           ),
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.home_outlined, color: AppColors.ink, size: 22),
+            tooltip: 'Home',
+            onPressed: () {
+              Navigator.pushNamedAndRemoveUntil(context, AppRoutes.home, (route) => false);
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.share_outlined, color: AppColors.ink, size: 22),
             onPressed: () {
@@ -312,23 +353,38 @@ class _PaymentReceiptScreenState extends State<PaymentReceiptScreen> {
                     width: double.infinity,
                     height: 52,
                     child: FilledButton.icon(
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Receipt downloaded as PDF'),
-                            backgroundColor: AppColors.teal,
-                            behavior: SnackBarBehavior.floating,
-                          ),
-                        );
-                      },
-                      icon: const Icon(Icons.download_rounded, size: 20),
-                      label: const Text(
-                        'Download PDF Receipt',
-                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                      onPressed: _isDownloadingPdf
+                          ? null
+                          : () => _handleDownloadPdf(
+                                receiptNo: receiptId,
+                                transactionId: transactionId,
+                                bookingId: bookingId,
+                                parentName: parentName,
+                                babysitterName: sitterName,
+                                dateStr: dateStr,
+                                timeRange: '${booking?.startTime ?? "09:00 AM"} – ${booking?.endTime ?? "05:00 PM"}',
+                                duration: duration,
+                                hourlyRate: hourlyRate,
+                                subtotal: subtotal,
+                                serviceFee: serviceFee,
+                                total: total,
+                                provider: provider,
+                              ),
+                      icon: _isDownloadingPdf
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            )
+                          : const Icon(Icons.download_rounded, size: 20),
+                      label: Text(
+                        _isDownloadingPdf ? 'Generating PDF Receipt...' : 'Download PDF Receipt',
+                        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
                       ),
                       style: FilledButton.styleFrom(
                         backgroundColor: const Color(0xFF005B60),
                         foregroundColor: Colors.white,
+                        disabledBackgroundColor: const Color(0xFF005B60).withValues(alpha: 0.6),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                       ),
                     ),
@@ -424,5 +480,96 @@ class _PaymentReceiptScreenState extends State<PaymentReceiptScreen> {
       return '${parsed.day} ${months[parsed.month - 1]} ${parsed.year}';
     }
     return date.toString();
+  }
+
+  Future<void> _handleDownloadPdf({
+    required String receiptNo,
+    required String transactionId,
+    required String bookingId,
+    required String parentName,
+    required String babysitterName,
+    required String dateStr,
+    required String timeRange,
+    required double duration,
+    required double hourlyRate,
+    required double subtotal,
+    required double serviceFee,
+    required double total,
+    required String provider,
+  }) async {
+    setState(() => _isDownloadingPdf = true);
+    try {
+      final path = await ReceiptPdfService().downloadReceiptPdf(
+        receiptNo: receiptNo,
+        transactionId: transactionId,
+        bookingId: bookingId,
+        parentName: parentName,
+        babysitterName: babysitterName,
+        date: dateStr,
+        timeRange: timeRange,
+        duration: '${duration.toStringAsFixed(1)} Hours',
+        hourlyRate: 'Rs. ${hourlyRate.toStringAsFixed(0)} / hr',
+        subtotal: 'Rs. ${subtotal.toStringAsFixed(0)}',
+        serviceFee: serviceFee == 0 ? 'FREE' : 'Rs. ${serviceFee.toStringAsFixed(0)}',
+        totalAmount: 'Rs. ${total.toStringAsFixed(0)}',
+        paymentStatus: 'PAID',
+        provider: provider,
+      );
+
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Row(
+            children: [
+              Icon(Icons.check_circle_rounded, color: AppColors.teal, size: 26),
+              SizedBox(width: 10),
+              Text('Receipt Downloaded', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Your official LittleHands PDF receipt has been saved to your device storage:',
+                style: TextStyle(fontSize: 13.5, color: AppColors.ink),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: SelectableText(
+                  path,
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.muted),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Close', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.teal)),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to download PDF receipt: $e'),
+          backgroundColor: AppColors.coral,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isDownloadingPdf = false);
+    }
   }
 }

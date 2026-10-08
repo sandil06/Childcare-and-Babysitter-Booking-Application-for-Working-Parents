@@ -441,6 +441,18 @@ async function create(req, res, next) {
       return ApiResponse.success(res, booking, 'Booking created', 201);
     }
 
+    let durationHours = req.body.durationHours || req.body.duration;
+    try {
+      durationHours = bookingService.calculateDurationHours(startTime, endTime);
+    } catch (_) {
+      durationHours = durationHours || 4.0;
+    }
+
+    const hourlyRate = req.body.hourlyRate || (await bookingService.getBabysitterHourlyRate(babysitterId));
+    const subtotal = Math.round(durationHours * hourlyRate);
+    const serviceFee = req.body.serviceFee || 0;
+    const totalAmount = subtotal + serviceFee;
+
     const id = `bk-${Date.now()}`;
     const newBooking = {
       _id: id,
@@ -451,12 +463,12 @@ async function create(req, res, next) {
       date,
       startTime,
       endTime,
-      durationHours: req.body.durationHours || 4.0,
-      hourlyRate: req.body.hourlyRate || 1500.0,
-      subtotal: req.body.subtotal || 6000.0,
-      serviceFee: 0,
-      total: req.body.total || 6000.0,
-      totalAmount: req.body.total || 6000.0,
+      durationHours,
+      hourlyRate,
+      subtotal,
+      serviceFee,
+      total: totalAmount,
+      totalAmount,
       location: req.body.address || req.body.location || 'Colombo, Sri Lanka',
       status: 'pending',
       paymentStatus: 'pending',

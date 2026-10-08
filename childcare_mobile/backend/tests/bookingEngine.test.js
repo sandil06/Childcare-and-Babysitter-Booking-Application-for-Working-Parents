@@ -101,6 +101,23 @@ test('Booking Engine API: price calculation, creation, conflict check, and statu
   assert.equal(priceRes.body.data.subtotal, priceRes.body.data.duration * priceRes.body.data.hourlyRate);
   assert.equal(priceRes.body.data.totalAmount, priceRes.body.data.subtotal + priceRes.body.data.serviceFee);
 
+  // 3b. POST /api/v1/bookings/calculate-price for 8-hour AM/PM slot (09:00 AM - 05:00 PM)
+  const price8hRes = await makeRequest('/api/v1/bookings/calculate-price', {
+    method: 'POST',
+    headers: parentAuth,
+    body: {
+      babysitterId: sitterId,
+      date: '2026-10-16',
+      startTime: '09:00 AM',
+      endTime: '05:00 PM',
+    },
+  });
+  assert.equal(price8hRes.status, 200);
+  assert.equal(price8hRes.body.success, true);
+  assert.equal(price8hRes.body.data.duration, 8);
+  assert.equal(price8hRes.body.data.subtotal, 8 * price8hRes.body.data.hourlyRate);
+  assert.equal(price8hRes.body.data.totalAmount, price8hRes.body.data.subtotal);
+
   // 4. POST /api/v1/bookings: Create Booking 1
   const createRes1 = await makeRequest('/api/v1/bookings', {
     method: 'POST',

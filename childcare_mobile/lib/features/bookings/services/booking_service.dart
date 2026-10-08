@@ -23,6 +23,7 @@ class BookingService {
     required String date,
     required String startTime,
     required String endTime,
+    double? hourlyRate,
   }) async {
     try {
       final token = await LocalStorage.instance.read('auth_token');
@@ -35,6 +36,7 @@ class BookingService {
         'date': date,
         'startTime': startTime,
         'endTime': endTime,
+        if (hourlyRate != null && hourlyRate > 0) 'hourlyRate': hourlyRate,
       });
 
       if (res is Map && res['data'] != null) {
@@ -47,15 +49,12 @@ class BookingService {
     }
 
     // Client-side fallback calculation if offline or backend is unreachable
-    int startM = _parseTimeToMinutes(startTime);
-    int endM = _parseTimeToMinutes(endTime);
-    double duration = (endM > startM) ? (endM - startM) / 60.0 : 4.0;
-    if (duration <= 0) duration = 4.0;
-    const hourlyRate = 1500.0;
-    final subtotal = duration * hourlyRate;
+    final duration = calculateDuration(startTime, endTime);
+    final rate = (hourlyRate != null && hourlyRate > 0) ? hourlyRate : 1500.0;
+    final subtotal = duration * rate;
     return BookingPriceModel(
       duration: duration,
-      hourlyRate: hourlyRate,
+      hourlyRate: rate,
       subtotal: subtotal,
       serviceFee: 0.0,
       totalAmount: subtotal,
@@ -92,20 +91,28 @@ class BookingService {
 
     // Local fallback
     final id = 'bk-${DateTime.now().millisecondsSinceEpoch}';
+    final sTime = bookingData['startTime']?.toString() ?? '09:00';
+    final eTime = bookingData['endTime']?.toString() ?? '13:00';
+    final duration = double.tryParse(bookingData['durationHours']?.toString() ?? '') ?? calculateDuration(sTime, eTime);
+    final rate = double.tryParse(bookingData['hourlyRate']?.toString() ?? '1500.0') ?? 1500.0;
+    final subtotal = double.tryParse(bookingData['subtotal']?.toString() ?? '') ?? (duration * rate);
+    final serviceFee = double.tryParse(bookingData['serviceFee']?.toString() ?? '0.0') ?? 0.0;
+    final total = double.tryParse(bookingData['totalAmount']?.toString() ?? bookingData['total']?.toString() ?? '') ?? (subtotal + serviceFee);
+
     final fallback = BookingModel(
       id: id,
       bookingId: '#BK-${id.substring(id.length - 4)}',
       parentId: bookingData['parent']?.toString() ?? bookingData['parentId']?.toString() ?? 'me',
       babysitterId: bookingData['babysitter']?.toString() ?? bookingData['babysitterId']?.toString() ?? '',
       date: bookingData['date'] != null ? DateTime.tryParse(bookingData['date'].toString()) ?? DateTime.now() : DateTime.now(),
-      startTime: bookingData['startTime']?.toString() ?? '09:00',
-      endTime: bookingData['endTime']?.toString() ?? '13:00',
-      durationHours: double.tryParse(bookingData['durationHours']?.toString() ?? '4.0') ?? 4.0,
-      hourlyRate: double.tryParse(bookingData['hourlyRate']?.toString() ?? '1500.0') ?? 1500.0,
-      subtotal: double.tryParse(bookingData['subtotal']?.toString() ?? '6000.0') ?? 6000.0,
-      serviceFee: 0.0,
-      total: double.tryParse(bookingData['total']?.toString() ?? '6000.0') ?? 6000.0,
-      totalAmount: double.tryParse(bookingData['totalAmount']?.toString() ?? '6000.0') ?? 6000.0,
+      startTime: sTime,
+      endTime: eTime,
+      durationHours: duration,
+      hourlyRate: rate,
+      subtotal: subtotal,
+      serviceFee: serviceFee,
+      total: total,
+      totalAmount: total,
       location: bookingData['location']?.toString() ?? bookingData['address']?.toString() ?? 'Colombo, Sri Lanka',
       specialNotes: bookingData['specialNotes']?.toString() ?? bookingData['notes']?.toString() ?? '',
       status: 'pending',
@@ -406,15 +413,34 @@ class BookingService {
     } catch (_) {}
   }
 
-  int _parseTimeToMinutes(String timeStr) {
+  static int parseTimeToMinutes(String timeStr) {
     if (timeStr.isEmpty) return 0;
-    final clean = timeStr.trim();
-    final parts = clean.split(':');
-    final h = int.tryParse(parts[0]) ?? 0;
+    final clean = timeStr.trim().toUpperCase();
+    final isPm = clean.contains('PM');
+    final isAm = clean.contains('AM');
+    final timeOnly = clean.replaceAll('AM', '').replaceAll('PM', '').trim();
+    final parts = timeOnly.split(':');
+    if (parts.isEmpty) return 0;
+    int h = int.tryParse(parts[0].trim()) ?? 0;
     int m = 0;
     if (parts.length > 1) {
-      m = int.tryParse(parts[1].split(' ')[0]) ?? 0;
+      m = int.tryParse(parts[1].trim()) ?? 0;
+    }
+    if (isPm && h < 12) {
+      h += 12;
+    } else if (isAm && h == 12) {
+      h = 0;
     }
     return h * 60 + m;
+  }
+
+  static double calculateDuration(String startTime, String endTime) {
+    final startM = parseTimeToMinutes(startTime);
+    final endM = parseTimeToMinutes(endTime);
+    if (endM > startM) {
+      final diffM = endM - startM;
+      return (diffM / 60.0 * 10).round() / 10.0;
+    }
+    return 4.0;
   }
 }

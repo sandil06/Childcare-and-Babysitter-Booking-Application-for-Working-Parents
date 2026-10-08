@@ -28,12 +28,37 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
       final args = ModalRoute.of(context)?.settings.arguments;
       if (args is BookingModel) {
         _booking = args;
+        _refreshDetails();
       } else if (widget.initialBooking != null) {
         _booking = widget.initialBooking;
-      }
-      if (_booking != null) {
         _refreshDetails();
+      } else if (args is Map && args['booking'] is BookingModel) {
+        _booking = args['booking'] as BookingModel;
+        _refreshDetails();
+      } else {
+        String? idToLoad;
+        if (args is String && args.isNotEmpty) {
+          idToLoad = args;
+        } else if (args is Map) {
+          idToLoad = args['id']?.toString() ?? args['bookingId']?.toString();
+        }
+        if (idToLoad != null && idToLoad.isNotEmpty) {
+          _loadBookingById(idToLoad);
+        }
       }
+    }
+  }
+
+  Future<void> _loadBookingById(String id) async {
+    setState(() => _isLoading = true);
+    try {
+      final fresh = await _service.getBookingById(id);
+      if (fresh != null && mounted) {
+        setState(() => _booking = fresh);
+      }
+    } catch (_) {
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -58,12 +83,14 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
       return Scaffold(
         backgroundColor: AppColors.cream,
         appBar: AppBar(backgroundColor: AppColors.cream, elevation: 0),
-        body: const Center(
-          child: Text(
-            'Booking details not found.',
-            style: TextStyle(color: AppColors.muted, fontSize: 15),
-          ),
-        ),
+        body: _isLoading
+            ? const Center(child: CircularProgressIndicator(color: AppColors.teal))
+            : const Center(
+                child: Text(
+                  'Booking details not found.',
+                  style: TextStyle(color: AppColors.muted, fontSize: 15),
+                ),
+              ),
       );
     }
 
@@ -85,6 +112,13 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.home_outlined, color: AppColors.ink),
+            tooltip: 'Home',
+            onPressed: () {
+              Navigator.pushNamedAndRemoveUntil(context, AppRoutes.home, (route) => false);
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.refresh_rounded, color: AppColors.ink),
             onPressed: _refreshDetails,

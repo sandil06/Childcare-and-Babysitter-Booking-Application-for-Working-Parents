@@ -218,11 +218,22 @@ class BookingModel {
       parsedDate = DateTime.tryParse(json['startAt'].toString()) ?? DateTime.now();
     }
 
-    final duration = double.tryParse(json['durationHours']?.toString() ?? json['duration']?.toString() ?? '4.0') ?? 4.0;
+    final sTime = json['startTime']?.toString() ?? '09:00';
+    final eTime = json['endTime']?.toString() ?? '13:00';
+    double duration = double.tryParse(json['durationHours']?.toString() ?? json['duration']?.toString() ?? '') ?? 0.0;
+    if (duration <= 0) {
+      duration = calculateDuration(sTime, eTime);
+    }
     final rate = double.tryParse(json['hourlyRate']?.toString() ?? '1500.0') ?? 1500.0;
-    final sub = double.tryParse(json['subtotal']?.toString() ?? '') ?? (duration * rate);
+    double sub = double.tryParse(json['subtotal']?.toString() ?? '') ?? 0.0;
+    if (sub <= 0) {
+      sub = duration * rate;
+    }
     final fee = double.tryParse(json['serviceFee']?.toString() ?? '0.0') ?? 0.0;
-    final tot = double.tryParse(json['totalAmount']?.toString() ?? json['total']?.toString() ?? '') ?? (sub + fee);
+    double tot = double.tryParse(json['totalAmount']?.toString() ?? json['total']?.toString() ?? '') ?? 0.0;
+    if (tot <= 0) {
+      tot = sub + fee;
+    }
 
     return BookingModel(
       id: json['_id']?.toString() ?? json['id']?.toString() ?? '',
@@ -408,4 +419,35 @@ class BookingModel {
 
   bool get isLiveTrackingAvailable =>
       ['accepted', 'confirmed', 'travelling', 'arrived', 'in_progress'].contains(status.toLowerCase());
+
+  static int parseTimeToMinutes(String timeStr) {
+    if (timeStr.isEmpty) return 0;
+    final clean = timeStr.trim().toUpperCase();
+    final isPm = clean.contains('PM');
+    final isAm = clean.contains('AM');
+    final timeOnly = clean.replaceAll('AM', '').replaceAll('PM', '').trim();
+    final parts = timeOnly.split(':');
+    if (parts.isEmpty) return 0;
+    int h = int.tryParse(parts[0].trim()) ?? 0;
+    int m = 0;
+    if (parts.length > 1) {
+      m = int.tryParse(parts[1].trim()) ?? 0;
+    }
+    if (isPm && h < 12) {
+      h += 12;
+    } else if (isAm && h == 12) {
+      h = 0;
+    }
+    return h * 60 + m;
+  }
+
+  static double calculateDuration(String startTime, String endTime) {
+    final startM = parseTimeToMinutes(startTime);
+    final endM = parseTimeToMinutes(endTime);
+    if (endM > startM) {
+      final diffM = endM - startM;
+      return (diffM / 60.0 * 10).round() / 10.0;
+    }
+    return 4.0;
+  }
 }

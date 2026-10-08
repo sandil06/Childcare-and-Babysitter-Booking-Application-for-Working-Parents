@@ -52,6 +52,13 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.home_outlined, color: AppColors.ink),
+            tooltip: 'Home',
+            onPressed: () {
+              Navigator.pushNamedAndRemoveUntil(context, AppRoutes.home, (route) => false);
+            },
+          ),
           Padding(
             padding: const EdgeInsets.only(right: AppSizes.pagePadding),
             child: Center(child: _StepPill()),

@@ -107,7 +107,10 @@ class BookingProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<BookingPriceModel?> fetchPriceCalculation({required String babysitterId}) async {
+  Future<BookingPriceModel?> fetchPriceCalculation({
+    required String babysitterId,
+    double? hourlyRate,
+  }) async {
     if (_startTime == null || _endTime == null || _selectedDate == null) return null;
     _isCalculatingPrice = true;
     _priceError = null;
@@ -125,6 +128,7 @@ class BookingProvider extends ChangeNotifier {
         date: dateStr,
         startTime: '$sH:$sM',
         endTime: '$eH:$eM',
+        hourlyRate: hourlyRate,
       );
       _priceModel = result;
       return result;

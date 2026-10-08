@@ -28,7 +28,10 @@ class _PriceScreenState extends State<PriceScreen> {
     final sitter = _parent.selectedBabysitter;
     if (sitter != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        _booking.fetchPriceCalculation(babysitterId: sitter.id);
+        _booking.fetchPriceCalculation(
+          babysitterId: sitter.id,
+          hourlyRate: sitter.hourlyRate,
+        );
       });
     }
   }
@@ -39,8 +42,13 @@ class _PriceScreenState extends State<PriceScreen> {
     final price = _booking.priceModel;
     final isLoading = _booking.isCalculatingPrice;
 
-    // Fallback calculation if priceModel is loading
-    final duration = price?.duration ?? 4.0;
+    // Accurate calculation based on selected times if priceModel is loading
+    final selectedDuration = (_booking.startTime != null &&
+            _booking.endTime != null &&
+            _booking.endTime!.toMinutes > _booking.startTime!.toMinutes)
+        ? ((_booking.endTime!.toMinutes - _booking.startTime!.toMinutes) / 60.0 * 10).round() / 10.0
+        : 4.0;
+    final duration = price?.duration ?? selectedDuration;
     final rate = price?.hourlyRate ?? (sitter?.hourlyRate ?? 1500.0);
     final subtotal = price?.subtotal ?? (duration * rate);
     final serviceFee = price?.serviceFee ?? 0.0;
@@ -64,6 +72,13 @@ class _PriceScreenState extends State<PriceScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.home_outlined, color: AppColors.ink),
+            tooltip: 'Home',
+            onPressed: () {
+              Navigator.pushNamedAndRemoveUntil(context, AppRoutes.home, (route) => false);
+            },
+          ),
           Padding(
             padding: const EdgeInsets.only(right: AppSizes.pagePadding),
             child: Center(

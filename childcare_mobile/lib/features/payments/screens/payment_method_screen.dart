@@ -30,8 +30,16 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
   Widget build(BuildContext context) {
     final sitter = _parentProvider.selectedBabysitter;
     final priceModel = _bookingProvider.priceModel;
-    final totalAmount = priceModel?.totalAmount ?? 6000.0;
-    final duration = priceModel?.duration ?? 4.0;
+    final selectedDuration = (_bookingProvider.startTime != null &&
+            _bookingProvider.endTime != null &&
+            _bookingProvider.endTime!.toMinutes > _bookingProvider.startTime!.toMinutes)
+        ? ((_bookingProvider.endTime!.toMinutes - _bookingProvider.startTime!.toMinutes) / 60.0 * 10).round() / 10.0
+        : 4.0;
+    final duration = priceModel?.duration ?? selectedDuration;
+    final rate = priceModel?.hourlyRate ?? (sitter?.hourlyRate ?? 1500.0);
+    final subtotal = priceModel?.subtotal ?? (duration * rate);
+    final serviceFee = priceModel?.serviceFee ?? 0.0;
+    final totalAmount = priceModel?.totalAmount ?? (subtotal + serviceFee);
     final date = _bookingProvider.selectedDate;
     final startTime = _bookingProvider.startTime?.formatted ?? '09:00 AM';
     final endTime = _bookingProvider.endTime?.formatted ?? '01:00 PM';
@@ -46,6 +54,15 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
           icon: const Icon(Icons.arrow_back_ios_new, color: AppColors.ink, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.home_outlined, color: AppColors.ink),
+            tooltip: 'Home',
+            onPressed: () {
+              Navigator.pushNamedAndRemoveUntil(context, AppRoutes.home, (route) => false);
+            },
+          ),
+        ],
         title: const Text(
           'Payment Method',
           style: TextStyle(
@@ -518,21 +535,34 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
         final start = _bookingProvider.startTime?.formatted ?? '09:00 AM';
         final end = _bookingProvider.endTime?.formatted ?? '01:00 PM';
         final price = _bookingProvider.priceModel;
+        final rate = price?.hourlyRate ?? (sitter?.hourlyRate ?? 1500.0);
+        final calculatedDuration = (_bookingProvider.startTime != null &&
+                _bookingProvider.endTime != null &&
+                _bookingProvider.endTime!.toMinutes > _bookingProvider.startTime!.toMinutes)
+            ? ((_bookingProvider.endTime!.toMinutes - _bookingProvider.startTime!.toMinutes) / 60.0 * 10).round() / 10.0
+            : (price?.duration ?? 4.0);
+        final computedSubtotal = price?.subtotal ?? (calculatedDuration * rate);
+        final computedFee = price?.serviceFee ?? 0.0;
+        final computedTotal = (price?.totalAmount != null && price!.totalAmount > 0)
+            ? price.totalAmount
+            : (totalAmount > 0 ? totalAmount : computedSubtotal + computedFee);
 
         final newBooking = await _bookingService.createBooking({
           'babysitterId': sitter?.id ?? 'sitter-1',
           'date': '${selectedDate.year}-${selectedDate.month.toString().padLeft(2, '0')}-${selectedDate.day.toString().padLeft(2, '0')}',
           'startTime': start,
           'endTime': end,
-          'hourlyRate': sitter?.hourlyRate ?? 1500.0,
+          'durationHours': calculatedDuration,
+          'hourlyRate': rate,
           'location': 'Colombo, Sri Lanka',
           'specialNotes': 'Childcare booking via mobile app',
           'children': [
             {'name': 'Child', 'age': 4},
           ],
-          'subtotal': price?.subtotal ?? totalAmount,
-          'serviceFee': price?.serviceFee ?? 0.0,
-          'totalAmount': totalAmount,
+          'subtotal': computedSubtotal,
+          'serviceFee': computedFee,
+          'total': computedTotal,
+          'totalAmount': computedTotal,
         });
 
         booking = newBooking;

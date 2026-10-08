@@ -150,6 +150,22 @@ const bookingSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+function parseTimeObj(str) {
+  if (!str) return { hour: 0, min: 0 };
+  const clean = str.trim();
+  const match = clean.match(/^(\d{1,2}):(\d{2})(?:\s*([AP]M))?$/i);
+  if (!match) {
+    const parts = clean.split(':').map(Number);
+    return { hour: parts[0] || 0, min: parts[1] || 0 };
+  }
+  let hour = Number.parseInt(match[1], 10);
+  const min = Number.parseInt(match[2], 10);
+  const period = match[3] ? match[3].toUpperCase() : null;
+  if (period === 'PM' && hour < 12) hour += 12;
+  if (period === 'AM' && hour === 12) hour = 0;
+  return { hour, min };
+}
+
 // Auto-generate reference bookingId before saving
 bookingSchema.pre('save', function (next) {
   if (!this.bookingId) {
@@ -157,24 +173,25 @@ bookingSchema.pre('save', function (next) {
   }
   if (this.date && this.startTime && this.endTime) {
     const base = new Date(this.date);
-    const [sH, sM] = this.startTime.split(':').map(Number);
-    const [eH, eM] = this.endTime.split(':').map(Number);
-    this.startAt = new Date(base.getFullYear(), base.getMonth(), base.getDate(), sH, sM);
-    this.endAt = new Date(base.getFullYear(), base.getMonth(), base.getDate(), eH, eM);
-    if (!this.durationHours || this.durationHours <= 0) {
-      const diffMs = this.endAt - this.startAt;
-      this.durationHours = Math.max(0.5, Math.round((diffMs / (1000 * 60 * 60)) * 10) / 10);
+    const startObj = parseTimeObj(this.startTime);
+    const endObj = parseTimeObj(this.endTime);
+    this.startAt = new Date(base.getFullYear(), base.getMonth(), base.getDate(), startObj.hour, startObj.min);
+    this.endAt = new Date(base.getFullYear(), base.getMonth(), base.getDate(), endObj.hour, endObj.min);
+    const startM = startObj.hour * 60 + startObj.min;
+    const endM = endObj.hour * 60 + endObj.min;
+    if (endM > startM) {
+      this.durationHours = Math.max(0.5, Math.round(((endM - startM) / 60) * 10) / 10);
     }
   }
-  if (!this.subtotal && this.hourlyRate && this.durationHours) {
-    this.subtotal = Math.round(this.hourlyRate * this.durationHours);
+  if (!this.durationHours || this.durationHours <= 0) {
+    this.durationHours = 4.0;
   }
-  if (!this.total && this.subtotal) {
-    this.total = this.subtotal + (this.serviceFee || 0);
+  if (!this.hourlyRate || this.hourlyRate <= 0) {
+    this.hourlyRate = 1500.0;
   }
-  if (!this.totalAmount) {
-    this.totalAmount = this.total || 0;
-  }
+  this.subtotal = Math.round(this.hourlyRate * this.durationHours);
+  this.total = this.subtotal + (this.serviceFee || 0);
+  this.totalAmount = this.total;
   next();
 });
 
