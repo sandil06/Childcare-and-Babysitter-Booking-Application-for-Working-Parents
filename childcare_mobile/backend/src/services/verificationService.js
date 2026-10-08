@@ -11,6 +11,42 @@ function isDbConnected() {
   return mongoose.connection.readyState === 1;
 }
 
+function getAdminObjectId(adminUser) {
+  if (!adminUser) return null;
+  const rawId = adminUser._id || adminUser.id || adminUser.sub;
+  if (rawId && mongoose.Types.ObjectId.isValid(rawId.toString())) {
+    return new mongoose.Types.ObjectId(rawId.toString());
+  }
+  return null;
+}
+
+function sanitizeVerificationReviewFields(request, profile) {
+  if (request) {
+    if (request.reviewedBy && !mongoose.Types.ObjectId.isValid(request.reviewedBy.toString())) {
+      request.reviewedBy = null;
+    }
+    if (Array.isArray(request.documents)) {
+      for (const d of request.documents) {
+        if (d.reviewedBy && !mongoose.Types.ObjectId.isValid(d.reviewedBy.toString())) {
+          d.reviewedBy = null;
+        }
+      }
+    }
+  }
+  if (profile) {
+    if (profile.verificationReviewedBy && !mongoose.Types.ObjectId.isValid(profile.verificationReviewedBy.toString())) {
+      profile.verificationReviewedBy = null;
+    }
+    if (Array.isArray(profile.documents)) {
+      for (const d of profile.documents) {
+        if (d.reviewedBy && !mongoose.Types.ObjectId.isValid(d.reviewedBy.toString())) {
+          d.reviewedBy = null;
+        }
+      }
+    }
+  }
+}
+
 const DEFAULT_DOCUMENTS = [
   {
     type: 'id',
@@ -182,7 +218,7 @@ async function syncVerificationRequests() {
               fileUrl: pDoc.fileUrl || pDoc.url || DEFAULT_DOCUMENTS[0].url,
               status: pDoc.status || 'pending',
               reviewNotes: pDoc.reviewNotes || null,
-              reviewedBy: pDoc.reviewedBy || null,
+              reviewedBy: pDoc.reviewedBy && mongoose.Types.ObjectId.isValid(pDoc.reviewedBy.toString()) ? pDoc.reviewedBy : null,
               reviewedAt: pDoc.reviewedAt || null,
               uploadedAt: pDoc.uploadedAt || new Date(),
             });
@@ -193,7 +229,7 @@ async function syncVerificationRequests() {
             if (['verified', 'rejected', 'changes_requested'].includes(rDoc.status) && pDoc.status !== rDoc.status) {
               pDoc.status = rDoc.status;
               pDoc.reviewNotes = rDoc.reviewNotes;
-              pDoc.reviewedBy = rDoc.reviewedBy;
+              pDoc.reviewedBy = rDoc.reviewedBy && mongoose.Types.ObjectId.isValid(rDoc.reviewedBy.toString()) ? rDoc.reviewedBy : null;
               pDoc.reviewedAt = rDoc.reviewedAt;
               profileModified = true;
             } else if (pDoc.status === 'pending' && rDoc.status !== 'pending') {
@@ -309,8 +345,14 @@ async function syncVerificationRequests() {
           }
         }
 
-        if (reqModified) await existingReq.save();
-        if (profileModified) await profile.save();
+        if (reqModified) {
+          sanitizeVerificationReviewFields(existingReq, null);
+          await existingReq.save();
+        }
+        if (profileModified) {
+          sanitizeVerificationReviewFields(null, profile);
+          await profile.save();
+        }
       }
     }
   } catch (err) {
@@ -425,20 +467,24 @@ async function approveVerification(id, adminUser, notes = '') {
 
   if (!request) throw new ApiError(404, 'Verification request not found');
 
+  const adminObjectId = getAdminObjectId(adminUser);
   const approvalNote = notes || request.reviewNotes || 'Approved by agency';
   const now = new Date();
 
   request.status = 'verified';
   request.reviewNotes = approvalNote;
-  if (adminUser?._id && mongoose.Types.ObjectId.isValid(adminUser._id)) {
-    request.reviewedBy = adminUser._id;
+  if (adminObjectId) {
+    request.reviewedBy = adminObjectId;
   }
   request.reviewedAt = now;
   if (Array.isArray(request.documents)) {
     request.documents.forEach((d) => {
       d.status = 'verified';
+      if (adminObjectId) d.reviewedBy = adminObjectId;
+      d.reviewedAt = now;
     });
   }
+  sanitizeVerificationReviewFields(request, null);
   await request.save();
 
   // Synchronize BabysitterProfile AND documents
@@ -448,23 +494,23 @@ async function approveVerification(id, adminUser, notes = '') {
   if (profile) {
     profile.verificationStatus = 'verified';
     profile.verificationReviewedAt = now;
-    profile.verificationReviewedBy =
-      adminUser?._id && mongoose.Types.ObjectId.isValid(adminUser._id)
-        ? adminUser._id
-        : null;
+    profile.verificationReviewedBy = adminObjectId;
     profile.verificationNotes = approvalNote;
     if (Array.isArray(profile.documents)) {
       profile.documents.forEach((d) => {
         d.status = 'verified';
+        if (adminObjectId) d.reviewedBy = adminObjectId;
+        d.reviewedAt = now;
       });
     }
+    sanitizeVerificationReviewFields(null, profile);
     await profile.save();
   }
 
   // Create AuditLog
   try {
     await AuditLog.create({
-      actor: adminUser?._id,
+      actor: adminObjectId,
       action: 'approve_verification',
       targetType: 'VerificationRequest',
       targetId: id,
@@ -506,16 +552,22 @@ async function rejectVerification(id, adminUser, reason) {
     throw new ApiError(400, 'Verification request is already rejected');
   }
 
+  const adminObjectId = getAdminObjectId(adminUser);
   const now = new Date();
   request.status = 'rejected';
   request.reviewNotes = reason.trim();
-  request.reviewedBy = adminUser?._id;
+  if (adminObjectId) {
+    request.reviewedBy = adminObjectId;
+  }
   request.reviewedAt = now;
   if (Array.isArray(request.documents)) {
     request.documents.forEach((d) => {
       d.status = 'rejected';
+      if (adminObjectId) d.reviewedBy = adminObjectId;
+      d.reviewedAt = now;
     });
   }
+  sanitizeVerificationReviewFields(request, null);
   await request.save();
 
   // Synchronize BabysitterProfile
@@ -525,20 +577,23 @@ async function rejectVerification(id, adminUser, reason) {
   if (profile) {
     profile.verificationStatus = 'rejected';
     profile.verificationReviewedAt = now;
-    profile.verificationReviewedBy = adminUser?._id;
+    profile.verificationReviewedBy = adminObjectId;
     profile.verificationNotes = reason.trim();
     if (Array.isArray(profile.documents)) {
       profile.documents.forEach((d) => {
         d.status = 'rejected';
+        if (adminObjectId) d.reviewedBy = adminObjectId;
+        d.reviewedAt = now;
       });
     }
+    sanitizeVerificationReviewFields(null, profile);
     await profile.save();
   }
 
   // Create AuditLog
   try {
     await AuditLog.create({
-      actor: adminUser?._id,
+      actor: adminObjectId,
       action: 'reject_verification',
       targetType: 'VerificationRequest',
       targetId: id,
@@ -576,16 +631,22 @@ async function requestChanges(id, adminUser, notes) {
   const request = await VerificationRequest.findById(id);
   if (!request) throw new ApiError(404, 'Verification request not found');
 
+  const adminObjectId = getAdminObjectId(adminUser);
   const now = new Date();
   request.status = 'changes_requested';
   request.reviewNotes = notes.trim();
-  request.reviewedBy = adminUser?._id;
+  if (adminObjectId) {
+    request.reviewedBy = adminObjectId;
+  }
   request.reviewedAt = now;
   if (Array.isArray(request.documents)) {
     request.documents.forEach((d) => {
       d.status = 'changes_requested';
+      if (adminObjectId) d.reviewedBy = adminObjectId;
+      d.reviewedAt = now;
     });
   }
+  sanitizeVerificationReviewFields(request, null);
   await request.save();
 
   // Synchronize BabysitterProfile
@@ -595,20 +656,23 @@ async function requestChanges(id, adminUser, notes) {
   if (profile) {
     profile.verificationStatus = 'changes_requested';
     profile.verificationReviewedAt = now;
-    profile.verificationReviewedBy = adminUser?._id;
+    profile.verificationReviewedBy = adminObjectId;
     profile.verificationNotes = notes.trim();
     if (Array.isArray(profile.documents)) {
       profile.documents.forEach((d) => {
         d.status = 'changes_requested';
+        if (adminObjectId) d.reviewedBy = adminObjectId;
+        d.reviewedAt = now;
       });
     }
+    sanitizeVerificationReviewFields(null, profile);
     await profile.save();
   }
 
   // Create AuditLog
   try {
     await AuditLog.create({
-      actor: adminUser?._id,
+      actor: adminObjectId,
       action: 'request_changes_verification',
       targetType: 'VerificationRequest',
       targetId: id,

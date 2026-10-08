@@ -468,12 +468,15 @@ class _SitterVerificationScreenState extends State<SitterVerificationScreen>
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
+        titleSpacing: 0,
         title: const Text(
           'Verification Review',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: TextStyle(
             color: AppColors.ink,
             fontWeight: FontWeight.w700,
-            fontSize: 18,
+            fontSize: 16,
           ),
         ),
         backgroundColor: Colors.white,
@@ -486,8 +489,13 @@ class _SitterVerificationScreenState extends State<SitterVerificationScreen>
         actions: [
           if (req != null)
             Padding(
-              padding: const EdgeInsets.only(right: 16),
-              child: Center(child: VerificationStatusChip(status: req.status)),
+              padding: const EdgeInsets.only(right: 12),
+              child: Center(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: VerificationStatusChip(status: req.status),
+                ),
+              ),
             ),
         ],
         bottom: PreferredSize(
@@ -496,7 +504,9 @@ class _SitterVerificationScreenState extends State<SitterVerificationScreen>
             color: Colors.white,
             child: TabBar(
               controller: _tabController,
-              isScrollable: false,
+              isScrollable: true,
+              tabAlignment: TabAlignment.start,
+              labelPadding: const EdgeInsets.symmetric(horizontal: 14),
               labelColor: AppColors.teal,
               unselectedLabelColor: const Color(0xFF64748B),
               indicatorColor: AppColors.teal,

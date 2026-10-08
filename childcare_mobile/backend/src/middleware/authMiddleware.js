@@ -18,6 +18,7 @@ async function authMiddleware(req, res, next) {
   try {
     const decoded = jwt.verify(token, env.jwtSecret);
     decoded.id = decoded.id || decoded._id || decoded.sub;
+    decoded._id = decoded.id;
 
     // Check if decoded token flags suspended user
     if (decoded.accountStatus === 'suspended' || decoded.isActive === false) {

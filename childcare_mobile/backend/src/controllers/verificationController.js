@@ -500,19 +500,23 @@ async function approve(req, res, next) {
     const now = new Date();
 
     if (request.save) {
+      const adminObjectId = getAdminObjectId(adminUser);
       request.status = 'verified';
       request.reviewNotes = approvalNote;
       request.reviewedAt = now;
-      if (adminUser?._id && mongoose.Types.ObjectId.isValid(adminUser._id)) {
-        request.reviewedBy = adminUser._id;
+      if (adminObjectId) {
+        request.reviewedBy = adminObjectId;
       }
       if (Array.isArray(request.documents)) {
         request.documents.forEach((d) => {
           if (d.status !== 'rejected' && d.status !== 'changes_requested') {
             d.status = 'verified';
+            if (adminObjectId) d.reviewedBy = adminObjectId;
+            d.reviewedAt = now;
           }
         });
       }
+      sanitizeVerificationReviewFields(request, null);
       await request.save();
 
       // Update BabysitterProfile AND documents
@@ -520,18 +524,18 @@ async function approve(req, res, next) {
       if (profile) {
         profile.verificationStatus = 'verified';
         profile.verificationReviewedAt = now;
-        profile.verificationReviewedBy =
-          adminUser?._id && mongoose.Types.ObjectId.isValid(adminUser._id)
-            ? adminUser._id
-            : null;
+        profile.verificationReviewedBy = adminObjectId;
         profile.verificationNotes = approvalNote;
         if (Array.isArray(profile.documents)) {
           profile.documents.forEach((d) => {
             if (d.status !== 'rejected' && d.status !== 'changes_requested') {
               d.status = 'verified';
+              if (adminObjectId) d.reviewedBy = adminObjectId;
+              d.reviewedAt = now;
             }
           });
         }
+        sanitizeVerificationReviewFields(null, profile);
         await profile.save();
       }
 
@@ -626,33 +630,37 @@ async function reject(req, res, next) {
     const now = new Date();
 
     if (request.save) {
+      const adminObjectId = getAdminObjectId(adminUser);
       request.status = 'rejected';
       request.reviewNotes = reason;
       request.reviewedAt = now;
-      if (adminUser?._id && mongoose.Types.ObjectId.isValid(adminUser._id)) {
-        request.reviewedBy = adminUser._id;
+      if (adminObjectId) {
+        request.reviewedBy = adminObjectId;
       }
       if (Array.isArray(request.documents)) {
         request.documents.forEach((d) => {
           d.status = 'rejected';
+          if (adminObjectId) d.reviewedBy = adminObjectId;
+          d.reviewedAt = now;
         });
       }
+      sanitizeVerificationReviewFields(request, null);
       await request.save();
 
       const profile = await findProfileForVerification(request);
       if (profile) {
         profile.verificationStatus = 'rejected';
         profile.verificationReviewedAt = now;
-        profile.verificationReviewedBy =
-          adminUser?._id && mongoose.Types.ObjectId.isValid(adminUser._id)
-            ? adminUser._id
-            : null;
+        profile.verificationReviewedBy = adminObjectId;
         profile.verificationNotes = reason;
         if (Array.isArray(profile.documents)) {
           profile.documents.forEach((d) => {
             d.status = 'rejected';
+            if (adminObjectId) d.reviewedBy = adminObjectId;
+            d.reviewedAt = now;
           });
         }
+        sanitizeVerificationReviewFields(null, profile);
         await profile.save();
       }
 
@@ -744,33 +752,37 @@ async function requestChanges(req, res, next) {
     const now = new Date();
 
     if (request.save) {
+      const adminObjectId = getAdminObjectId(adminUser);
       request.status = 'changes_requested';
       request.reviewNotes = notes;
       request.reviewedAt = now;
-      if (adminUser?._id && mongoose.Types.ObjectId.isValid(adminUser._id)) {
-        request.reviewedBy = adminUser._id;
+      if (adminObjectId) {
+        request.reviewedBy = adminObjectId;
       }
       if (Array.isArray(request.documents)) {
         request.documents.forEach((d) => {
           d.status = 'changes_requested';
+          if (adminObjectId) d.reviewedBy = adminObjectId;
+          d.reviewedAt = now;
         });
       }
+      sanitizeVerificationReviewFields(request, null);
       await request.save();
 
       const profile = await findProfileForVerification(request);
       if (profile) {
         profile.verificationStatus = 'changes_requested';
         profile.verificationReviewedAt = now;
-        profile.verificationReviewedBy =
-          adminUser?._id && mongoose.Types.ObjectId.isValid(adminUser._id)
-            ? adminUser._id
-            : null;
+        profile.verificationReviewedBy = adminObjectId;
         profile.verificationNotes = notes;
         if (Array.isArray(profile.documents)) {
           profile.documents.forEach((d) => {
             d.status = 'changes_requested';
+            if (adminObjectId) d.reviewedBy = adminObjectId;
+            d.reviewedAt = now;
           });
         }
+        sanitizeVerificationReviewFields(null, profile);
         await profile.save();
       }
 
@@ -842,6 +854,42 @@ async function requestChanges(req, res, next) {
   }
 }
 
+function getAdminObjectId(adminUser) {
+  if (!adminUser) return null;
+  const rawId = adminUser._id || adminUser.id || adminUser.sub;
+  if (rawId && mongoose.Types.ObjectId.isValid(rawId.toString())) {
+    return new mongoose.Types.ObjectId(rawId.toString());
+  }
+  return null;
+}
+
+function sanitizeVerificationReviewFields(request, profile) {
+  if (request) {
+    if (request.reviewedBy && !mongoose.Types.ObjectId.isValid(request.reviewedBy.toString())) {
+      request.reviewedBy = null;
+    }
+    if (Array.isArray(request.documents)) {
+      for (const d of request.documents) {
+        if (d.reviewedBy && !mongoose.Types.ObjectId.isValid(d.reviewedBy.toString())) {
+          d.reviewedBy = null;
+        }
+      }
+    }
+  }
+  if (profile) {
+    if (profile.verificationReviewedBy && !mongoose.Types.ObjectId.isValid(profile.verificationReviewedBy.toString())) {
+      profile.verificationReviewedBy = null;
+    }
+    if (Array.isArray(profile.documents)) {
+      for (const d of profile.documents) {
+        if (d.reviewedBy && !mongoose.Types.ObjectId.isValid(d.reviewedBy.toString())) {
+          d.reviewedBy = null;
+        }
+      }
+    }
+  }
+}
+
 /**
  * Helper to match document in request
  */
@@ -879,6 +927,7 @@ async function approveDocument(req, res, next) {
   try {
     const { verificationId, documentId } = req.params;
     const adminUser = req.user;
+    const adminObjectId = getAdminObjectId(adminUser);
     const now = new Date();
 
     const request = await findVerificationFlexible(verificationId);
@@ -890,11 +939,7 @@ async function approveDocument(req, res, next) {
     doc.status = 'verified';
     doc.reviewNotes = null;
     doc.reviewedAt = now;
-    if (adminUser?._id && mongoose.Types.ObjectId.isValid(adminUser._id)) {
-      doc.reviewedBy = adminUser._id;
-    } else {
-      doc.reviewedBy = adminUser?.name || 'Agency Admin';
-    }
+    doc.reviewedBy = adminObjectId;
 
     if (request.save) {
       const profile = await findProfileForVerification(request);
@@ -904,7 +949,7 @@ async function approveDocument(req, res, next) {
           pDoc.status = 'verified';
           pDoc.reviewNotes = null;
           pDoc.reviewedAt = now;
-          pDoc.reviewedBy = adminUser?._id && mongoose.Types.ObjectId.isValid(adminUser._id) ? adminUser._id : null;
+          pDoc.reviewedBy = adminObjectId;
         }
       }
 
@@ -912,9 +957,16 @@ async function approveDocument(req, res, next) {
       const allQualsVer = !Array.isArray(request.qualifications) || request.qualifications.every((q) => typeof q === 'string' || q.status === 'verified');
       if (allDocsVer && allQualsVer && request.documents.length > 0) {
         request.status = 'verified';
-        if (profile) profile.verificationStatus = 'verified';
+        request.reviewedBy = adminObjectId;
+        request.reviewedAt = now;
+        if (profile) {
+          profile.verificationStatus = 'verified';
+          profile.verificationReviewedBy = adminObjectId;
+          profile.verificationReviewedAt = now;
+        }
       }
 
+      sanitizeVerificationReviewFields(request, profile);
       await request.save();
       if (profile) await profile.save();
 
@@ -964,6 +1016,7 @@ async function rejectDocument(req, res, next) {
       return next(new ApiError(400, 'Rejection reason is required.'));
     }
     const adminUser = req.user;
+    const adminObjectId = getAdminObjectId(adminUser);
     const now = new Date();
 
     const request = await findVerificationFlexible(verificationId);
@@ -975,15 +1028,9 @@ async function rejectDocument(req, res, next) {
     doc.status = 'rejected';
     doc.reviewNotes = reason.trim();
     doc.reviewedAt = now;
-    if (adminUser?._id && mongoose.Types.ObjectId.isValid(adminUser._id)) {
-      doc.reviewedBy = adminUser._id;
-    } else {
-      doc.reviewedBy = adminUser?.name || 'Agency Admin';
-    }
+    doc.reviewedBy = adminObjectId;
 
     if (request.save) {
-      await request.save();
-
       const profile = await findProfileForVerification(request);
       if (profile && Array.isArray(profile.documents)) {
         const pDoc = findDoc(profile.documents, documentId) || profile.documents.find((d) => d.name === doc.name);
@@ -991,10 +1038,13 @@ async function rejectDocument(req, res, next) {
           pDoc.status = 'rejected';
           pDoc.reviewNotes = reason.trim();
           pDoc.reviewedAt = now;
-          pDoc.reviewedBy = adminUser?._id && mongoose.Types.ObjectId.isValid(adminUser._id) ? adminUser._id : null;
-          await profile.save();
+          pDoc.reviewedBy = adminObjectId;
         }
       }
+
+      sanitizeVerificationReviewFields(request, profile);
+      await request.save();
+      if (profile) await profile.save();
 
       try {
         await Notification.create({
@@ -1042,6 +1092,7 @@ async function requestChangesDocument(req, res, next) {
       return next(new ApiError(400, 'Instructions / notes are required when requesting changes.'));
     }
     const adminUser = req.user;
+    const adminObjectId = getAdminObjectId(adminUser);
     const now = new Date();
 
     const request = await findVerificationFlexible(verificationId);
@@ -1053,15 +1104,9 @@ async function requestChangesDocument(req, res, next) {
     doc.status = 'changes_requested';
     doc.reviewNotes = notes.trim();
     doc.reviewedAt = now;
-    if (adminUser?._id && mongoose.Types.ObjectId.isValid(adminUser._id)) {
-      doc.reviewedBy = adminUser._id;
-    } else {
-      doc.reviewedBy = adminUser?.name || 'Agency Admin';
-    }
+    doc.reviewedBy = adminObjectId;
 
     if (request.save) {
-      await request.save();
-
       const profile = await findProfileForVerification(request);
       if (profile && Array.isArray(profile.documents)) {
         const pDoc = findDoc(profile.documents, documentId) || profile.documents.find((d) => d.name === doc.name);
@@ -1069,10 +1114,13 @@ async function requestChangesDocument(req, res, next) {
           pDoc.status = 'changes_requested';
           pDoc.reviewNotes = notes.trim();
           pDoc.reviewedAt = now;
-          pDoc.reviewedBy = adminUser?._id && mongoose.Types.ObjectId.isValid(adminUser._id) ? adminUser._id : null;
-          await profile.save();
+          pDoc.reviewedBy = adminObjectId;
         }
       }
+
+      sanitizeVerificationReviewFields(request, profile);
+      await request.save();
+      if (profile) await profile.save();
 
       try {
         await Notification.create({
@@ -1116,6 +1164,7 @@ async function approveQualification(req, res, next) {
   try {
     const { verificationId, qualificationId } = req.params;
     const adminUser = req.user;
+    const adminObjectId = getAdminObjectId(adminUser);
     const now = new Date();
 
     const request = await findVerificationFlexible(verificationId);
@@ -1129,13 +1178,13 @@ async function approveQualification(req, res, next) {
       let pQual = findQual(profile.qualifications, qualificationId);
       if (pQual) {
         if (typeof pQual === 'string') {
-          pQual = { title: pQual, status: 'verified', reviewedBy: adminUser?._id, reviewedAt: now };
+          pQual = { title: pQual, status: 'verified', reviewedBy: adminObjectId, reviewedAt: now };
           profile.qualifications = profile.qualifications.map((q) => (q === qualificationId ? pQual : q));
         } else {
           pQual.status = 'verified';
           pQual.reviewNotes = null;
           pQual.reviewedAt = now;
-          pQual.reviewedBy = adminUser?._id && mongoose.Types.ObjectId.isValid(adminUser._id) ? adminUser._id : null;
+          pQual.reviewedBy = adminObjectId;
         }
         await profile.save();
       }
@@ -1146,11 +1195,12 @@ async function approveQualification(req, res, next) {
       let pQual = findQual(request.babysitterProfile.qualifications, qualificationId);
       if (pQual) {
         if (typeof pQual === 'string') {
-          pQual = { title: pQual, status: 'verified', reviewedAt: now };
+          pQual = { title: pQual, status: 'verified', reviewedAt: now, reviewedBy: adminObjectId };
         } else {
           pQual.status = 'verified';
           pQual.reviewNotes = null;
           pQual.reviewedAt = now;
+          pQual.reviewedBy = adminObjectId;
         }
         qual = pQual;
       }
@@ -1158,11 +1208,12 @@ async function approveQualification(req, res, next) {
 
     if (!qual) {
       // Create or record qualification as verified
-      qual = { id: qualificationId, title: qualificationId, status: 'verified', reviewedAt: now };
+      qual = { id: qualificationId, title: qualificationId, status: 'verified', reviewedAt: now, reviewedBy: adminObjectId };
     } else if (typeof qual === 'object') {
       qual.status = 'verified';
       qual.reviewNotes = null;
       qual.reviewedAt = now;
+      qual.reviewedBy = adminObjectId;
     }
 
     if (request.save) {
@@ -1170,8 +1221,15 @@ async function approveQualification(req, res, next) {
       const allQualsVer = !Array.isArray(request.qualifications) || request.qualifications.every((q) => typeof q === 'string' || q.status === 'verified');
       if (allDocsVer && allQualsVer && request.documents.length > 0) {
         request.status = 'verified';
-        if (profile) profile.verificationStatus = 'verified';
+        request.reviewedBy = adminObjectId;
+        request.reviewedAt = now;
+        if (profile) {
+          profile.verificationStatus = 'verified';
+          profile.verificationReviewedBy = adminObjectId;
+          profile.verificationReviewedAt = now;
+        }
       }
+      sanitizeVerificationReviewFields(request, profile);
       await request.save();
       if (profile) await profile.save();
       try {
@@ -1225,6 +1283,7 @@ async function rejectQualification(req, res, next) {
       return next(new ApiError(400, 'Rejection reason is required.'));
     }
     const adminUser = req.user;
+    const adminObjectId = getAdminObjectId(adminUser);
     const now = new Date();
 
     const request = await findVerificationFlexible(verificationId);
@@ -1238,13 +1297,13 @@ async function rejectQualification(req, res, next) {
       let pQual = findQual(profile.qualifications, qualificationId);
       if (pQual) {
         if (typeof pQual === 'string') {
-          pQual = { title: pQual, status: 'rejected', reviewNotes: reason.trim(), reviewedAt: now };
+          pQual = { title: pQual, status: 'rejected', reviewNotes: reason.trim(), reviewedAt: now, reviewedBy: adminObjectId };
           profile.qualifications = profile.qualifications.map((q) => (q === qualificationId ? pQual : q));
         } else {
           pQual.status = 'rejected';
           pQual.reviewNotes = reason.trim();
           pQual.reviewedAt = now;
-          pQual.reviewedBy = adminUser?._id && mongoose.Types.ObjectId.isValid(adminUser._id) ? adminUser._id : null;
+          pQual.reviewedBy = adminObjectId;
         }
         await profile.save();
       }
@@ -1252,14 +1311,16 @@ async function rejectQualification(req, res, next) {
     }
 
     if (!qual) {
-      qual = { id: qualificationId, title: qualificationId, status: 'rejected', reviewNotes: reason.trim(), reviewedAt: now };
+      qual = { id: qualificationId, title: qualificationId, status: 'rejected', reviewNotes: reason.trim(), reviewedAt: now, reviewedBy: adminObjectId };
     } else if (typeof qual === 'object') {
       qual.status = 'rejected';
       qual.reviewNotes = reason.trim();
       qual.reviewedAt = now;
+      qual.reviewedBy = adminObjectId;
     }
 
     if (request.save) {
+      sanitizeVerificationReviewFields(request, profile);
       await request.save();
       try {
         await Notification.create({
@@ -1312,6 +1373,7 @@ async function requestChangesQualification(req, res, next) {
       return next(new ApiError(400, 'Instructions / notes are required when requesting changes.'));
     }
     const adminUser = req.user;
+    const adminObjectId = getAdminObjectId(adminUser);
     const now = new Date();
 
     const request = await findVerificationFlexible(verificationId);
@@ -1325,13 +1387,13 @@ async function requestChangesQualification(req, res, next) {
       let pQual = findQual(profile.qualifications, qualificationId);
       if (pQual) {
         if (typeof pQual === 'string') {
-          pQual = { title: pQual, status: 'changes_requested', reviewNotes: notes.trim(), reviewedAt: now };
+          pQual = { title: pQual, status: 'changes_requested', reviewNotes: notes.trim(), reviewedAt: now, reviewedBy: adminObjectId };
           profile.qualifications = profile.qualifications.map((q) => (q === qualificationId ? pQual : q));
         } else {
           pQual.status = 'changes_requested';
           pQual.reviewNotes = notes.trim();
           pQual.reviewedAt = now;
-          pQual.reviewedBy = adminUser?._id && mongoose.Types.ObjectId.isValid(adminUser._id) ? adminUser._id : null;
+          pQual.reviewedBy = adminObjectId;
         }
         await profile.save();
       }
@@ -1339,14 +1401,16 @@ async function requestChangesQualification(req, res, next) {
     }
 
     if (!qual) {
-      qual = { id: qualificationId, title: qualificationId, status: 'changes_requested', reviewNotes: notes.trim(), reviewedAt: now };
+      qual = { id: qualificationId, title: qualificationId, status: 'changes_requested', reviewNotes: notes.trim(), reviewedAt: now, reviewedBy: adminObjectId };
     } else if (typeof qual === 'object') {
       qual.status = 'changes_requested';
       qual.reviewNotes = notes.trim();
       qual.reviewedAt = now;
+      qual.reviewedBy = adminObjectId;
     }
 
     if (request.save) {
+      sanitizeVerificationReviewFields(request, profile);
       await request.save();
       try {
         await Notification.create({
