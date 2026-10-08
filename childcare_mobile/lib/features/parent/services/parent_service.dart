@@ -36,8 +36,10 @@ class ParentService {
     bool? isAvailable,
     String? skill,
     String? language,
+    int page = 1,
+    int limit = 10,
   }) async {
-    final query = <String, dynamic>{'limit': 50};
+    final query = <String, dynamic>{'page': page, 'limit': limit};
     if (search.trim().isNotEmpty) query['search'] = search.trim();
     if (minHourlyRate != null) query['minHourlyRate'] = minHourlyRate;
     if (maxHourlyRate != null) query['maxHourlyRate'] = maxHourlyRate;

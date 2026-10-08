@@ -18,12 +18,19 @@ class NotificationService {
     }
   }
 
-  /// Retrieves notifications with optional category filtering
-  Future<List<AppNotificationModel>> getNotifications({String? category}) async {
+  /// Retrieves notifications with optional category filtering and pagination
+  Future<List<AppNotificationModel>> getNotifications({
+    String? category,
+    int page = 1,
+    int limit = 15,
+  }) async {
     await _ensureAuthToken();
 
     try {
-      final queryParams = <String, dynamic>{};
+      final queryParams = <String, dynamic>{
+        'page': page,
+        'limit': limit,
+      };
       if (category != null && category != 'all') {
         queryParams['category'] = category;
       }

@@ -15,7 +15,12 @@ class ParentProvider extends ChangeNotifier {
   ParentModel? _profile;
   List<BabysitterModel> _babysitters = [];
   BabysitterModel? _selectedBabysitter;
-  bool _isLoading = false;
+  bool _isInitialLoading = false;
+  bool _isRefreshing = false;
+  bool _isLoadingMore = false;
+  bool _hasMore = true;
+  int _currentPage = 1;
+  static const int _limit = 10;
   String? _errorMessage;
   String _search = '';
   double? _minHourlyRate;
@@ -29,7 +34,11 @@ class ParentProvider extends ChangeNotifier {
   ParentModel? get profile => _profile;
   List<BabysitterModel> get babysitters => List.unmodifiable(_babysitters);
   BabysitterModel? get selectedBabysitter => _selectedBabysitter;
-  bool get isLoading => _isLoading;
+  bool get isLoading => _isInitialLoading || _isRefreshing;
+  bool get isInitialLoading => _isInitialLoading;
+  bool get isRefreshing => _isRefreshing;
+  bool get isLoadingMore => _isLoadingMore;
+  bool get hasMore => _hasMore;
   String? get errorMessage => _errorMessage;
   String get search => _search;
   bool get hasFilters =>
@@ -52,13 +61,19 @@ class ParentProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> searchBabysitters({String? search}) async {
+  Future<void> searchBabysitters({String? search, bool isRefresh = false}) async {
     if (search != null) _search = search;
-    _isLoading = true;
+    if (isRefresh) {
+      _isRefreshing = true;
+    } else if (_babysitters.isEmpty) {
+      _isInitialLoading = true;
+    }
     _errorMessage = null;
     notifyListeners();
+
     try {
-      _babysitters = await _service.searchBabysitters(
+      _currentPage = 1;
+      final results = await _service.searchBabysitters(
         search: _search,
         minHourlyRate: _minHourlyRate,
         maxHourlyRate: _maxHourlyRate,
@@ -67,11 +82,53 @@ class ParentProvider extends ChangeNotifier {
         isAvailable: _isAvailable,
         skill: _skill,
         language: _language,
+        page: _currentPage,
+        limit: _limit,
       );
+      _babysitters = results;
+      _hasMore = results.length >= _limit;
     } catch (error) {
       _errorMessage = error.toString();
     } finally {
-      _isLoading = false;
+      _isInitialLoading = false;
+      _isRefreshing = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> loadMore() async {
+    if (_isLoadingMore || !_hasMore || _isInitialLoading || _isRefreshing) {
+      return;
+    }
+
+    _isLoadingMore = true;
+    notifyListeners();
+
+    try {
+      final nextPage = _currentPage + 1;
+      final results = await _service.searchBabysitters(
+        search: _search,
+        minHourlyRate: _minHourlyRate,
+        maxHourlyRate: _maxHourlyRate,
+        minExperience: _minExperience,
+        minRating: _minRating,
+        isAvailable: _isAvailable,
+        skill: _skill,
+        language: _language,
+        page: nextPage,
+        limit: _limit,
+      );
+      if (results.isNotEmpty) {
+        _currentPage = nextPage;
+        _babysitters = [..._babysitters, ...results];
+        _hasMore = results.length >= _limit;
+      } else {
+        _hasMore = false;
+      }
+    } catch (error) {
+      _errorMessage = error.toString();
+    } finally {
+      _isLoadingMore = false;
       notifyListeners();
     }
   }
@@ -123,7 +180,11 @@ class ParentProvider extends ChangeNotifier {
     _profile = null;
     _babysitters = [];
     _selectedBabysitter = null;
-    _isLoading = false;
+    _isInitialLoading = false;
+    _isRefreshing = false;
+    _isLoadingMore = false;
+    _hasMore = true;
+    _currentPage = 1;
     _errorMessage = null;
     _search = '';
     clearFilters();
