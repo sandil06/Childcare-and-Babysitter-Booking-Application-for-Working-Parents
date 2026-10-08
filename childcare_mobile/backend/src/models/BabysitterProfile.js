@@ -74,8 +74,21 @@ const babysitterProfileSchema = new mongoose.Schema(
 
     verificationStatus: {
       type: String,
-      enum: ['pending', 'under_review', 'verified', 'rejected'],
+      enum: ['pending', 'under_review', 'verified', 'rejected', 'changes_requested'],
       default: 'pending',
+    },
+    verificationNotes: {
+      type: String,
+      default: '',
+    },
+    verificationReviewedAt: {
+      type: Date,
+      default: null,
+    },
+    verificationReviewedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
     },
     averageRating: {
       type: Number,

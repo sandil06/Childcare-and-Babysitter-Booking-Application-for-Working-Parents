@@ -7,6 +7,7 @@ const Notification = require('../models/Notification');
 const ApiResponse = require('../utils/ApiResponse');
 const ApiError = require('../utils/ApiError');
 const pagination = require('../utils/pagination');
+const verificationService = require('../services/verificationService');
 
 function isDbConnected() {
   return mongoose.connection.readyState === 1;
@@ -161,6 +162,7 @@ async function list(req, res, next) {
     const { page, limit, skip } = pagination(req.query);
 
     if (isDbConnected()) {
+      await verificationService.syncVerificationRequests();
       const filter = {};
       if (status && status !== 'all') {
         filter.status = status;
@@ -267,18 +269,29 @@ async function approve(req, res, next) {
       const request = await VerificationRequest.findById(id);
       if (!request) return next(new ApiError(404, 'Verification request not found'));
 
+      if (request.status === 'verified') {
+        return next(new ApiError(400, 'Verification request is already approved'));
+      }
+
+      const approvalNote = notes || request.reviewNotes || 'Approved by agency';
+      const now = new Date();
+
       request.status = 'verified';
-      request.reviewNotes = notes || request.reviewNotes || 'Approved by agency';
+      request.reviewNotes = approvalNote;
       request.reviewedBy = adminUser?._id;
-      request.reviewedAt = new Date();
+      request.reviewedAt = now;
       await request.save();
 
       // Update BabysitterProfile
-      if (request.babysitterProfile) {
-        await BabysitterProfile.findByIdAndUpdate(request.babysitterProfile, {
+      await BabysitterProfile.findOneAndUpdate(
+        { $or: [{ _id: request.babysitterProfile }, { user: request.babysitter }] },
+        {
           verificationStatus: 'verified',
-        });
-      }
+          verificationReviewedAt: now,
+          verificationReviewedBy: adminUser?._id,
+          verificationNotes: approvalNote,
+        }
+      );
 
       // Create AuditLog
       try {
@@ -287,7 +300,7 @@ async function approve(req, res, next) {
           action: 'approve_verification',
           targetType: 'VerificationRequest',
           targetId: id,
-          notes: notes || 'Babysitter profile verified and approved',
+          notes: approvalNote,
           metadata: { babysitterId: request.babysitter },
         });
       } catch (logErr) {
@@ -299,7 +312,7 @@ async function approve(req, res, next) {
         await Notification.create({
           user: request.babysitter,
           title: 'Profile Approved & Verified',
-          message: 'Your babysitter profile has been approved! Parents can now find and book you.',
+          message: 'Your babysitter profile has been approved! Parents can now find and book you in the catalog.',
           type: 'verification_approved',
           data: { verificationId: id },
         });
@@ -315,12 +328,17 @@ async function approve(req, res, next) {
     const request = memoryVerifications.get(id);
     if (!request) return next(new ApiError(404, 'Verification request not found'));
 
+    if (request.status === 'verified') {
+      return next(new ApiError(400, 'Verification request is already approved'));
+    }
+
     request.status = 'verified';
     request.reviewNotes = notes || 'Approved by agency';
     request.reviewedAt = new Date();
     request.reviewedBy = adminUser?.name || 'Agency Admin';
     if (request.babysitterProfile) {
       request.babysitterProfile.verificationStatus = 'verified';
+      request.babysitterProfile.verificationNotes = request.reviewNotes;
     }
     memoryVerifications.set(id, request);
 
@@ -337,10 +355,10 @@ async function approve(req, res, next) {
 async function reject(req, res, next) {
   try {
     const { id } = req.params;
-    const { reason } = req.body;
+    const reason = (req.body.reason || req.body.notes || '').trim();
     const adminUser = req.user;
 
-    if (!reason || !reason.trim()) {
+    if (!reason) {
       return next(new ApiError(400, 'Rejection reason is required'));
     }
 
@@ -348,17 +366,26 @@ async function reject(req, res, next) {
       const request = await VerificationRequest.findById(id);
       if (!request) return next(new ApiError(404, 'Verification request not found'));
 
+      if (request.status === 'rejected') {
+        return next(new ApiError(400, 'Verification request is already rejected'));
+      }
+
+      const now = new Date();
       request.status = 'rejected';
-      request.reviewNotes = reason.trim();
+      request.reviewNotes = reason;
       request.reviewedBy = adminUser?._id;
-      request.reviewedAt = new Date();
+      request.reviewedAt = now;
       await request.save();
 
-      if (request.babysitterProfile) {
-        await BabysitterProfile.findByIdAndUpdate(request.babysitterProfile, {
+      await BabysitterProfile.findOneAndUpdate(
+        { $or: [{ _id: request.babysitterProfile }, { user: request.babysitter }] },
+        {
           verificationStatus: 'rejected',
-        });
-      }
+          verificationReviewedAt: now,
+          verificationReviewedBy: adminUser?._id,
+          verificationNotes: reason,
+        }
+      );
 
       try {
         await AuditLog.create({
@@ -366,7 +393,7 @@ async function reject(req, res, next) {
           action: 'reject_verification',
           targetType: 'VerificationRequest',
           targetId: id,
-          notes: reason.trim(),
+          notes: reason,
           metadata: { babysitterId: request.babysitter },
         });
       } catch (logErr) {
@@ -377,9 +404,9 @@ async function reject(req, res, next) {
         await Notification.create({
           user: request.babysitter,
           title: 'Verification Request Rejected',
-          message: `Your verification request was rejected. Reason: ${reason.trim()}`,
+          message: `Your verification request was rejected. Reason: ${reason}`,
           type: 'verification_rejected',
-          data: { verificationId: id, reason: reason.trim() },
+          data: { verificationId: id, reason },
         });
       } catch (notifErr) {
         // continue
@@ -393,12 +420,17 @@ async function reject(req, res, next) {
     const request = memoryVerifications.get(id);
     if (!request) return next(new ApiError(404, 'Verification request not found'));
 
+    if (request.status === 'rejected') {
+      return next(new ApiError(400, 'Verification request is already rejected'));
+    }
+
     request.status = 'rejected';
-    request.reviewNotes = reason.trim();
+    request.reviewNotes = reason;
     request.reviewedAt = new Date();
     request.reviewedBy = adminUser?.name || 'Agency Admin';
     if (request.babysitterProfile) {
       request.babysitterProfile.verificationStatus = 'rejected';
+      request.babysitterProfile.verificationNotes = reason;
     }
     memoryVerifications.set(id, request);
 
@@ -415,10 +447,10 @@ async function reject(req, res, next) {
 async function requestChanges(req, res, next) {
   try {
     const { id } = req.params;
-    const { notes } = req.body;
+    const notes = (req.body.notes || req.body.reason || '').trim();
     const adminUser = req.user;
 
-    if (!notes || !notes.trim()) {
+    if (!notes) {
       return next(new ApiError(400, 'Instructions / notes for required changes are required'));
     }
 
@@ -426,17 +458,22 @@ async function requestChanges(req, res, next) {
       const request = await VerificationRequest.findById(id);
       if (!request) return next(new ApiError(404, 'Verification request not found'));
 
+      const now = new Date();
       request.status = 'changes_requested';
-      request.reviewNotes = notes.trim();
+      request.reviewNotes = notes;
       request.reviewedBy = adminUser?._id;
-      request.reviewedAt = new Date();
+      request.reviewedAt = now;
       await request.save();
 
-      if (request.babysitterProfile) {
-        await BabysitterProfile.findByIdAndUpdate(request.babysitterProfile, {
+      await BabysitterProfile.findOneAndUpdate(
+        { $or: [{ _id: request.babysitterProfile }, { user: request.babysitter }] },
+        {
           verificationStatus: 'changes_requested',
-        });
-      }
+          verificationReviewedAt: now,
+          verificationReviewedBy: adminUser?._id,
+          verificationNotes: notes,
+        }
+      );
 
       try {
         await AuditLog.create({
@@ -444,7 +481,7 @@ async function requestChanges(req, res, next) {
           action: 'request_changes_verification',
           targetType: 'VerificationRequest',
           targetId: id,
-          notes: notes.trim(),
+          notes,
           metadata: { babysitterId: request.babysitter },
         });
       } catch (logErr) {
@@ -455,9 +492,9 @@ async function requestChanges(req, res, next) {
         await Notification.create({
           user: request.babysitter,
           title: 'Verification Changes Requested',
-          message: `The agency has requested additional information or updated documents: ${notes.trim()}`,
-          type: 'system',
-          data: { verificationId: id, notes: notes.trim() },
+          message: `The agency has requested additional information or updated documents: ${notes}`,
+          type: 'verification_changes_requested',
+          data: { verificationId: id, notes },
         });
       } catch (notifErr) {
         // continue
@@ -472,11 +509,12 @@ async function requestChanges(req, res, next) {
     if (!request) return next(new ApiError(404, 'Verification request not found'));
 
     request.status = 'changes_requested';
-    request.reviewNotes = notes.trim();
+    request.reviewNotes = notes;
     request.reviewedAt = new Date();
     request.reviewedBy = adminUser?.name || 'Agency Admin';
     if (request.babysitterProfile) {
       request.babysitterProfile.verificationStatus = 'changes_requested';
+      request.babysitterProfile.verificationNotes = notes;
     }
     memoryVerifications.set(id, request);
 
@@ -505,15 +543,17 @@ async function submitVerification(req, res, next) {
     }
 
     if (isDbConnected()) {
+      const docItems = documents.map((d) => ({
+        type: d.type || 'certificate',
+        name: d.name,
+        url: d.url,
+        status: 'pending',
+        uploadedAt: new Date(),
+      }));
+
       let request = await VerificationRequest.findOne({ babysitter: userId });
       if (request) {
-        request.documents = documents.map((d) => ({
-          type: d.type || 'certificate',
-          name: d.name,
-          url: d.url,
-          status: 'pending',
-          uploadedAt: new Date(),
-        }));
+        request.documents = docItems;
         request.status = 'pending';
         request.reviewNotes = '';
         request.submittedAt = new Date();
@@ -524,20 +564,18 @@ async function submitVerification(req, res, next) {
           babysitter: userId,
           babysitterProfile: sitterProfile?._id,
           status: 'pending',
-          documents: documents.map((d) => ({
-            type: d.type || 'certificate',
-            name: d.name,
-            url: d.url,
-            status: 'pending',
-            uploadedAt: new Date(),
-          })),
+          documents: docItems,
           submittedAt: new Date(),
         });
       }
 
       await BabysitterProfile.findOneAndUpdate(
         { user: userId },
-        { verificationStatus: 'pending' }
+        {
+          verificationStatus: 'pending',
+          verificationNotes: '',
+          documents: docItems,
+        }
       );
 
       // Notify agency admins
@@ -613,8 +651,21 @@ async function getMyVerificationStatus(req, res, next) {
     const userId = req.user?.id || req.user?._id;
 
     if (isDbConnected()) {
-      const request = await VerificationRequest.findOne({ babysitter: userId }).lean();
+      let request = await VerificationRequest.findOne({ babysitter: userId }).lean();
       if (!request) {
+        const profile = await BabysitterProfile.findOne({ user: userId }).lean();
+        if (profile) {
+          return ApiResponse.success(
+            res,
+            {
+              status: profile.verificationStatus || 'pending',
+              documents: profile.documents || [],
+              reviewNotes: profile.verificationNotes || '',
+              reviewedAt: profile.verificationReviewedAt,
+            },
+            'Verification status retrieved'
+          );
+        }
         return ApiResponse.success(
           res,
           { status: 'unverified', documents: [], reviewNotes: '' },

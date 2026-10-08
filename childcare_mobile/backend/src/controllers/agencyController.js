@@ -10,6 +10,7 @@ const ApiResponse = require('../utils/ApiResponse');
 const ApiError = require('../utils/ApiError');
 const pagination = require('../utils/pagination');
 const ROLES = require('../constants/roles');
+const verificationService = require('../services/verificationService');
 
 function isDbConnected() {
   return mongoose.connection.readyState === 1;
@@ -321,6 +322,8 @@ initSampleUsers();
 async function getDashboard(req, res, next) {
   try {
     if (isDbConnected()) {
+      await verificationService.syncVerificationRequests();
+
       const [
         totalUsers,
         totalParents,
@@ -385,24 +388,30 @@ async function getDashboard(req, res, next) {
         totalAmount: b.totalAmount || b.total || 0,
       }));
 
+      const statsData = {
+        totalUsers,
+        totalParents,
+        totalBabysitters,
+        verifiedBabysitters,
+        pendingVerifications,
+        rejectedVerifications,
+        rejectedApplications: rejectedVerifications,
+        totalBookings,
+        activeBookings,
+        completedBookings,
+        cancelledBookings,
+        openComplaints,
+        openSafetyReports: openComplaints,
+        resolvedComplaints,
+      };
+
       return ApiResponse.success(
         res,
         {
-          stats: {
-            totalUsers,
-            totalParents,
-            totalBabysitters,
-            verifiedBabysitters,
-            pendingVerifications,
-            rejectedVerifications,
-            totalBookings,
-            activeBookings,
-            completedBookings,
-            cancelledBookings,
-            openComplaints,
-            resolvedComplaints,
-          },
+          stats: statsData,
+          ...statsData,
           recentVerifications: recentVerifications || [],
+          recentVerificationRequests: recentVerifications || [],
           recentComplaints: recentComplaints || [],
           recentBookings: formattedBookings,
           systemActivities: [
@@ -1341,6 +1350,7 @@ async function getStatistics(req, res, next) {
     initSampleReports();
 
     if (isDbConnected()) {
+      await verificationService.syncVerificationRequests();
       const [
         totalUsers,
         totalParents,

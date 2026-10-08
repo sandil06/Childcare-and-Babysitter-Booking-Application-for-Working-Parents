@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 const BabysitterProfile = require('../models/BabysitterProfile');
+const VerificationRequest = require('../models/VerificationRequest');
 const Notification = require('../models/Notification');
 const ROLES = require('../constants/roles');
 const ApiError = require('../utils/ApiError');
@@ -26,9 +27,9 @@ async function getProfileByUserId(userId) {
         'name email phone avatar'
       );
       if (!profile) {
-        // Auto-create a profile if user exists in database
+        // Auto-create a profile ONLY if user exists and has babysitter role
         const user = await User.findById(userId);
-        if (user) {
+        if (user && user.role === ROLES.BABYSITTER) {
           profile = await BabysitterProfile.create({
             user: user._id,
             phone: user.phone || '',
@@ -40,7 +41,7 @@ async function getProfileByUserId(userId) {
             averageRating: 0.0,
             totalReviews: 0,
             totalCompletedBookings: 0,
-            verificationStatus: 'verified',
+            verificationStatus: 'pending',
             isAvailable: true,
           });
           await profile.populate('user', 'name email phone avatar');
@@ -192,6 +193,58 @@ async function registerBabysitter(data) {
       verificationStatus: 'pending',
     });
 
+    // Auto-create initial VerificationRequest so Agency Console immediately reflects pending verification
+    try {
+      const defaultDocs = [
+        {
+          type: 'id',
+          name: 'National Identity Card (NIC)',
+          url: 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=800',
+          status: 'pending',
+          uploadedAt: new Date(),
+        },
+        {
+          type: 'police_check',
+          name: 'Police Clearance Certificate',
+          url: 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=800',
+          status: 'pending',
+          uploadedAt: new Date(),
+        },
+        {
+          type: 'certificate',
+          name: 'First Aid & CPR Certificate',
+          url: 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=800',
+          status: 'pending',
+          uploadedAt: new Date(),
+        },
+      ];
+
+      await VerificationRequest.create({
+        babysitter: user._id,
+        babysitterProfile: profile._id,
+        status: 'pending',
+        documents: defaultDocs,
+        submittedAt: new Date(),
+      });
+
+      profile.documents = defaultDocs;
+      await profile.save();
+
+      // Notify Agency Admin users
+      const agencyAdmins = await User.find({ role: { $in: [ROLES.AGENCY, ROLES.ADMIN] } }).select('_id');
+      for (const admin of agencyAdmins) {
+        await Notification.create({
+          user: admin._id,
+          title: 'New Verification Request',
+          message: `${fullName} has submitted credentials for administrative verification.`,
+          type: 'system',
+          data: { babysitterId: user._id },
+        });
+      }
+    } catch (e) {
+      console.error('[BabysitterService] Error creating initial verification request:', e.message);
+    }
+
     await profile.populate('user', 'name email phone avatar');
 
     await Notification.create({
@@ -245,6 +298,9 @@ async function listBabysitters(filter = {}) {
     query.verificationStatus = filter.verificationStatus;
   } else if (filter.status) {
     query.verificationStatus = filter.status;
+  } else {
+    // Default to verified babysitters only in public catalog (Requirement 16)
+    query.verificationStatus = 'verified';
   }
   if (filter.isAvailable !== undefined) query.isAvailable = filter.isAvailable === 'true' || filter.isAvailable === true;
   if (filter.minHourlyRate != null) query.hourlyRate = { $gte: Number(filter.minHourlyRate) };
