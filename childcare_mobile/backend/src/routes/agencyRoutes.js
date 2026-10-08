@@ -19,6 +19,7 @@ const {
   escalateReport,
   dismissReport,
   getStatistics,
+  getAuditLogs,
 } = require('../controllers/agencyController');
 const verificationController = require('../controllers/verificationController');
 
@@ -28,6 +29,7 @@ const requireAgency = roleMiddleware(ROLES.AGENCY, ROLES.ADMIN);
 // Dashboard & System Statistics
 router.get('/dashboard', auth, requireAgency, getDashboard);
 router.get('/statistics', auth, requireAgency, getStatistics);
+router.get('/audit-logs', auth, requireAgency, getAuditLogs);
 
 // Verifications
 router.get('/verifications', auth, requireAgency, verificationController.list);

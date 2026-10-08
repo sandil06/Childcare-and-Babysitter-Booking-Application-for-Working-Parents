@@ -1503,6 +1503,95 @@ async function getStatistics(req, res, next) {
   }
 }
 
+const memoryAuditLogs = [];
+
+function initSampleAuditLogs() {
+  if (memoryAuditLogs.length > 0) return;
+
+  const samples = [
+    {
+      _id: 'audit-01',
+      id: 'audit-01',
+      adminName: 'Chief Compliance Officer',
+      adminEmail: 'compliance@littlehands.lk',
+      action: 'approve_verification',
+      targetType: 'VerificationRequest',
+      targetId: 'ver-101',
+      notes: 'Approved babysitter verification documents for Amaya Fernando',
+      createdAt: new Date(Date.now() - 3600000 * 2),
+    },
+    {
+      _id: 'audit-02',
+      id: 'audit-02',
+      adminName: 'Chief Compliance Officer',
+      adminEmail: 'compliance@littlehands.lk',
+      action: 'suspend_user',
+      targetType: 'User',
+      targetId: 'u-1',
+      notes: 'Suspended user account: Repeated policy violations',
+      createdAt: new Date(Date.now() - 3600000 * 4),
+    },
+    {
+      _id: 'audit-03',
+      id: 'audit-03',
+      adminName: 'Agency Administrator',
+      adminEmail: 'admin@littlehands.lk',
+      action: 'resolve_report',
+      targetType: 'Report',
+      targetId: 'rep-401',
+      notes: 'Mediation complete, refund credited',
+      createdAt: new Date(Date.now() - 86400000),
+    },
+  ];
+
+  memoryAuditLogs.push(...samples);
+}
+
+initSampleAuditLogs();
+
+async function getAuditLogs(req, res, next) {
+  try {
+    const { action, targetType, page = 1, limit = 20 } = req.query;
+    initSampleAuditLogs();
+
+    if (isDbConnected()) {
+      const query = {};
+      if (action && action !== 'all') query.action = action;
+      if (targetType && targetType !== 'all') query.targetType = targetType;
+
+      const skip = (Number(page) - 1) * Number(limit);
+      const [logs, total] = await Promise.all([
+        AuditLog.find(query)
+          .populate('actor', 'name email role')
+          .sort({ createdAt: -1 })
+          .skip(skip)
+          .limit(Number(limit))
+          .lean(),
+        AuditLog.countDocuments(query),
+      ]);
+
+      return ApiResponse.paginated(res, logs, { page, limit, total }, 'Audit logs retrieved successfully');
+    }
+
+    let logs = [...memoryAuditLogs];
+    if (action && action !== 'all') {
+      logs = logs.filter((l) => l.action === action);
+    }
+    if (targetType && targetType !== 'all') {
+      logs = logs.filter((l) => l.targetType === targetType);
+    }
+
+    logs.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    const total = logs.length;
+    const startIndex = (Number(page) - 1) * Number(limit);
+    const paginated = logs.slice(startIndex, startIndex + Number(limit));
+
+    return ApiResponse.paginated(res, paginated, { page, limit, total }, 'Audit logs retrieved successfully (mock)');
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   getDashboard,
   dashboard: getDashboard,
@@ -1521,8 +1610,10 @@ module.exports = {
   escalateReport,
   dismissReport,
   getStatistics,
+  getAuditLogs,
   memoryUsers,
   memoryBookings,
   memoryVerifications,
   memoryReports,
+  memoryAuditLogs,
 };

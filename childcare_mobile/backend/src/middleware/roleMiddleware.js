@@ -11,7 +11,7 @@ function roleMiddleware(...rolesInput) {
 
     const userRole = (req.user.role || '').toLowerCase();
 
-    // 1. Direct match or Super Admin override
+    // 1. Direct role match or super admin override
     if (userRole === ROLES.ADMIN || roles.includes(userRole)) {
       return next();
     }

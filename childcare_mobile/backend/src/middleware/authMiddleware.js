@@ -18,7 +18,7 @@ async function authMiddleware(req, res, next) {
   try {
     const decoded = jwt.verify(token, env.jwtSecret);
 
-    // If decoded payload already flags account as suspended
+    // Check if decoded token flags suspended user
     if (decoded.accountStatus === 'suspended' || decoded.isActive === false) {
       return next(new ApiError(403, 'Your account has been suspended by administration'));
     }
