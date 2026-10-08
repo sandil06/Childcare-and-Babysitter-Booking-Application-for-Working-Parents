@@ -39,9 +39,9 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
 
   Future<void> _refreshDetails() async {
     if (_booking == null) return;
-    setState(() => _isLoading = true);
     try {
-      final fresh = await _service.getBookingById(_booking!.id);
+      final targetId = _booking!.id.isNotEmpty ? _booking!.id : _booking!.bookingId;
+      final fresh = await _service.getBookingById(targetId);
       if (fresh != null && mounted) {
         setState(() => _booking = fresh);
       }

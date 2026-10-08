@@ -4,6 +4,7 @@ import '../../../config/routes.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/services/profile_image_service.dart';
 import '../../../core/storage/local_storage.dart';
 import '../../babysitter/providers/babysitter_provider.dart';
 import '../../babysitter/services/babysitter_service.dart';
@@ -17,11 +18,15 @@ class ParentProfileScreen extends StatefulWidget {
 }
 
 class _ParentProfileScreenState extends State<ParentProfileScreen> {
+  bool _isUploadingAvatar = false;
+
   // Retain data during refresh - do not clear to null
   final Map<String, dynamic> _parentProfile = {
     'name': 'Parent',
     'email': '',
     'phone': '',
+    'avatar': null,
+    'profileImage': null,
     'address': '',
     'childrenCount': 0,
     'emergencyContact': '',
@@ -39,6 +44,7 @@ class _ParentProfileScreenState extends State<ParentProfileScreen> {
     final name = await LocalStorage.instance.read('user_name');
     final email = await LocalStorage.instance.read('user_email');
     final phone = await LocalStorage.instance.read('user_phone');
+    final avatar = await LocalStorage.instance.read('user_avatar');
     if (mounted) {
       setState(() {
         if (name != null && name.toString().isNotEmpty) {
@@ -49,6 +55,10 @@ class _ParentProfileScreenState extends State<ParentProfileScreen> {
         }
         if (phone != null && phone.toString().isNotEmpty) {
           _parentProfile['phone'] = phone.toString();
+        }
+        if (avatar != null && avatar.toString().isNotEmpty) {
+          _parentProfile['avatar'] = avatar.toString();
+          _parentProfile['profileImage'] = avatar.toString();
         }
       });
     }
@@ -83,6 +93,11 @@ class _ParentProfileScreenState extends State<ParentProfileScreen> {
           if (data['isNicVerified'] != null) {
             _parentProfile['isNicVerified'] = data['isNicVerified'] == true;
           }
+          final serverAvatar = data['avatar'] ?? data['profileImage'];
+          if (serverAvatar != null && serverAvatar.toString().isNotEmpty) {
+            _parentProfile['avatar'] = serverAvatar.toString();
+            _parentProfile['profileImage'] = serverAvatar.toString();
+          }
           if (data['children'] is List) {
             _parentProfile['children'] = List<dynamic>.from(
               data['children'] as List,
@@ -104,9 +119,51 @@ class _ParentProfileScreenState extends State<ParentProfileScreen> {
             data['phone'].toString(),
           );
         }
+        final serverAvatar = data['avatar'] ?? data['profileImage'];
+        if (serverAvatar != null && serverAvatar.toString().isNotEmpty) {
+          await LocalStorage.instance.write(
+            'user_avatar',
+            serverAvatar.toString(),
+          );
+        }
       }
     } catch (e) {
       debugPrint('Failed to load parent profile from API: $e');
+    }
+  }
+
+  Future<void> _handlePickAvatar() async {
+    setState(() => _isUploadingAvatar = true);
+    try {
+      final newUrl = await ProfileImageService.instance.showImagePickerOptions(context, role: 'parent');
+      if (!mounted) return;
+      if (newUrl != null) {
+        setState(() {
+          _parentProfile['avatar'] = newUrl;
+          _parentProfile['profileImage'] = newUrl;
+        });
+        await LocalStorage.instance.write('user_avatar', newUrl);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Profile picture updated successfully!'),
+            backgroundColor: AppColors.teal,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to update picture: $e'),
+            backgroundColor: AppColors.coral,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isUploadingAvatar = false);
+      }
     }
   }
 
@@ -580,34 +637,6 @@ class _ParentProfileScreenState extends State<ParentProfileScreen> {
 
               // Contact & Address Card
               _buildContactCard(),
-              const SizedBox(height: 24),
-
-              // Sitter Mode Switcher
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () =>
-                      Navigator.pushNamed(context, AppRoutes.sitterDashboard),
-                  icon: const Icon(
-                    Icons.swap_horiz_rounded,
-                    color: AppColors.teal,
-                  ),
-                  label: const Text(
-                    'Switch to Sitter Mode',
-                    style: TextStyle(
-                      color: AppColors.teal,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: AppColors.teal),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
-                ),
-              ),
               const SizedBox(height: 32),
             ],
           ),
@@ -619,6 +648,7 @@ class _ParentProfileScreenState extends State<ParentProfileScreen> {
   Widget _buildHeaderCard() {
     final name = (_parentProfile['name'] as String?)?.trim() ?? 'Parent';
     final email = (_parentProfile['email'] as String?)?.trim() ?? '';
+    final avatarUrl = (_parentProfile['avatar'] ?? _parentProfile['profileImage']) as String?;
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -635,16 +665,54 @@ class _ParentProfileScreenState extends State<ParentProfileScreen> {
       ),
       child: Row(
         children: [
-          CircleAvatar(
-            radius: 34,
-            backgroundColor: AppColors.mint,
-            child: Text(
-              _initialsFromName(name),
-              style: const TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w700,
-                color: AppColors.teal,
-              ),
+          GestureDetector(
+            onTap: _isUploadingAvatar ? null : _handlePickAvatar,
+            child: Stack(
+              children: [
+                CircleAvatar(
+                  radius: 34,
+                  backgroundColor: AppColors.mint,
+                  backgroundImage: (avatarUrl != null && avatarUrl.isNotEmpty)
+                      ? NetworkImage(ProfileImageService.resolveImageUrl(avatarUrl))
+                      : null,
+                  child: _isUploadingAvatar
+                      ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AppColors.teal,
+                          ),
+                        )
+                      : (avatarUrl == null || avatarUrl.isEmpty
+                          ? Text(
+                              _initialsFromName(name),
+                              style: const TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.teal,
+                              ),
+                            )
+                          : null),
+                ),
+                Positioned(
+                  bottom: 0,
+                  right: 0,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: AppColors.teal,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2),
+                    ),
+                    child: const Icon(
+                      Icons.camera_alt_rounded,
+                      size: 14,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
           const SizedBox(width: 16),

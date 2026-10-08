@@ -4,6 +4,7 @@ import '../../../config/routes.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/services/profile_image_service.dart';
 import '../../../core/storage/local_storage.dart';
 import '../models/babysitter_model.dart';
 import '../providers/babysitter_provider.dart';
@@ -22,6 +23,38 @@ class _SitterProfileScreenState extends State<SitterProfileScreen> {
   final BabysitterProvider _provider = BabysitterProvider.instance;
   String _userName = '';
   String _userEmail = '';
+  bool _isUploadingAvatar = false;
+
+  Future<void> _handlePickAvatar() async {
+    setState(() => _isUploadingAvatar = true);
+    try {
+      final newUrl = await ProfileImageService.instance.showImagePickerOptions(context, role: 'babysitter');
+      if (!mounted) return;
+      if (newUrl != null) {
+        await _provider.fetchProfile(showLoading: false);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Profile picture updated successfully!'),
+            backgroundColor: AppColors.teal,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to update picture: $e'),
+            backgroundColor: AppColors.coral,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isUploadingAvatar = false);
+      }
+    }
+  }
 
   @override
   void initState() {
@@ -578,24 +611,62 @@ class _SitterProfileScreenState extends State<SitterProfileScreen> {
         children: [
           Row(
             children: [
-              CircleAvatar(
-                radius: 36,
-                backgroundColor: AppColors.mint,
-                child: Text(
-                  profile.name.trim().isNotEmpty
-                      ? profile.name
-                            .trim()
-                            .split(' ')
-                            .where((e) => e.isNotEmpty)
-                            .map((e) => e[0].toUpperCase())
-                            .take(2)
-                            .join()
-                      : 'CG',
-                  style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.teal,
-                  ),
+              GestureDetector(
+                onTap: _isUploadingAvatar ? null : _handlePickAvatar,
+                child: Stack(
+                  children: [
+                    CircleAvatar(
+                      radius: 36,
+                      backgroundColor: AppColors.mint,
+                      backgroundImage: (profile.profileImage != null && profile.profileImage!.isNotEmpty)
+                          ? NetworkImage(ProfileImageService.resolveImageUrl(profile.profileImage!))
+                          : null,
+                      child: _isUploadingAvatar
+                          ? const SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: AppColors.teal,
+                              ),
+                            )
+                          : ((profile.profileImage == null || profile.profileImage!.isEmpty)
+                              ? Text(
+                                  profile.name.trim().isNotEmpty
+                                      ? profile.name
+                                            .trim()
+                                            .split(' ')
+                                            .where((e) => e.isNotEmpty)
+                                            .map((e) => e[0].toUpperCase())
+                                            .take(2)
+                                            .join()
+                                      : 'CG',
+                                  style: const TextStyle(
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.teal,
+                                  ),
+                                )
+                              : null),
+                    ),
+                    Positioned(
+                      bottom: 0,
+                      right: 0,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: AppColors.teal,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2),
+                        ),
+                        child: const Icon(
+                          Icons.camera_alt_rounded,
+                          size: 14,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(width: 16),

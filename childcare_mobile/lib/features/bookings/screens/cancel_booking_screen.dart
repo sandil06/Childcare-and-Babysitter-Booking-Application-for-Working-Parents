@@ -92,7 +92,8 @@ class _CancelBookingScreenState extends State<CancelBookingScreen> {
           ? '$_selectedReason ($customNotes)'
           : _selectedReason;
 
-      final res = await _service.cancelBooking(_booking!.id, reason: fullReason);
+      final bookingTargetId = _booking!.id.isNotEmpty ? _booking!.id : _booking!.bookingId;
+      final res = await _service.cancelBooking(bookingTargetId, reason: fullReason);
       if (mounted) {
         if (res != null) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -115,7 +116,7 @@ class _CancelBookingScreenState extends State<CancelBookingScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Cancellation error: ${e.toString()}'),
+            content: Text(e.toString().replaceAll('ApiException: ', '').replaceAll('Exception: ', '')),
             backgroundColor: AppColors.coral,
           ),
         );

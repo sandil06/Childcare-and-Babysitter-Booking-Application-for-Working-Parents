@@ -1010,7 +1010,8 @@ async function cancelBookingByAdmin(req, res, next) {
 
       booking.status = 'cancelled';
       booking.cancellationReason = reason.trim();
-      booking.cancelledBy = 'agency_admin';
+      booking.cancelledBy = (adminUser?._id && mongoose.Types.ObjectId.isValid(adminUser._id)) ? adminUser._id : null;
+      booking.cancelledAt = new Date();
       await booking.save();
 
       try {
@@ -1023,6 +1024,28 @@ async function cancelBookingByAdmin(req, res, next) {
         });
       } catch (logErr) {
         // continue
+      }
+
+      // Notify parent and sitter
+      const bParentId = booking.parent?._id || booking.parent;
+      const bSitterId = booking.babysitter?._id || booking.babysitter;
+      if (bParentId) {
+        Notification.create({
+          user: bParentId,
+          title: 'Booking Cancelled by Agency',
+          message: `Your booking #${booking.bookingId || booking._id} was cancelled by administration: ${reason.trim()}`,
+          type: 'booking_emergency_cancelled',
+          data: { bookingId: booking._id },
+        }).catch(() => {});
+      }
+      if (bSitterId) {
+        Notification.create({
+          user: bSitterId,
+          title: 'Booking Cancelled by Agency',
+          message: `Your booking #${booking.bookingId || booking._id} was cancelled by administration: ${reason.trim()}`,
+          type: 'booking_emergency_cancelled',
+          data: { bookingId: booking._id },
+        }).catch(() => {});
       }
 
       return ApiResponse.success(res, booking, 'Booking cancelled by administrator');

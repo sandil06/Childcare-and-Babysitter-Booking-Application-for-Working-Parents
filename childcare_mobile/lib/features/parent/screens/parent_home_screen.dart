@@ -5,6 +5,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/services/profile_image_service.dart';
 import '../../../core/storage/local_storage.dart';
 
 class ParentHomeScreen extends StatefulWidget {
@@ -16,6 +17,7 @@ class ParentHomeScreen extends StatefulWidget {
 
 class _ParentHomeScreenState extends State<ParentHomeScreen> {
   String _userName = 'Parent';
+  String? _userAvatar;
   List<dynamic> _sitters = [];
   bool _isLoadingSitters = true;
 
@@ -27,8 +29,16 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
 
   Future<void> _loadData() async {
     final name = await LocalStorage.instance.read('user_name');
-    if (mounted && name != null && name.toString().trim().isNotEmpty) {
-      setState(() => _userName = name.toString().trim());
+    final avatar = await LocalStorage.instance.read('user_avatar');
+    if (mounted) {
+      setState(() {
+        if (name != null && name.toString().trim().isNotEmpty) {
+          _userName = name.toString().trim();
+        }
+        if (avatar != null && avatar.toString().trim().isNotEmpty) {
+          _userAvatar = avatar.toString().trim();
+        }
+      });
     }
 
     try {
@@ -90,54 +100,19 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                       child: CircleAvatar(
                         radius: 23,
                         backgroundColor: AppColors.sand,
-                        child: Text(
-                          _getInitials(_userName),
-                          style: const TextStyle(
-                            color: AppColors.ink,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    InkWell(
-                      onTap: () => Navigator.pushNamed(
-                        context,
-                        AppRoutes.sitterDashboard,
-                      ),
-                      borderRadius: BorderRadius.circular(20),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.mint,
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: AppColors.teal.withValues(alpha: 0.3),
-                          ),
-                        ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.swap_horiz_rounded,
-                              size: 16,
-                              color: AppColors.teal,
-                            ),
-                            SizedBox(width: 4),
-                            Text(
-                              'Sitter Mode',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.teal,
-                              ),
-                            ),
-                          ],
-                        ),
+                        backgroundImage: (_userAvatar != null && _userAvatar!.isNotEmpty)
+                            ? NetworkImage(ProfileImageService.resolveImageUrl(_userAvatar!))
+                            : null,
+                        child: (_userAvatar == null || _userAvatar!.isEmpty)
+                            ? Text(
+                                _getInitials(_userName),
+                                style: const TextStyle(
+                                  color: AppColors.ink,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 14,
+                                ),
+                              )
+                            : null,
                       ),
                     ),
                     const Spacer(),

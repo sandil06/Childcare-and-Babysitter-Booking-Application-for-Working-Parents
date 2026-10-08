@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 
 import '../../../core/network/api_client.dart';
+import '../../../core/network/api_exception.dart';
 import '../../../core/storage/local_storage.dart';
 import '../models/booking_model.dart';
 import '../models/booking_price_model.dart';
@@ -233,16 +234,20 @@ class BookingService {
       final res = await _client.patch('bookings/$id/cancel', body: {
         'reason': reason ?? 'Cancelled by parent',
       });
-      if (res is Map && res['data'] != null) {
-        final updated = BookingModel.fromJson(Map<String, dynamic>.from(res['data']));
+      final data = (res is Map && res['data'] != null)
+          ? res['data']
+          : (res is Map ? res : null);
+      if (data != null && data is Map<String, dynamic>) {
+        final updated = BookingModel.fromJson(data);
         _updateLocalBooking(updated);
         return updated;
       }
     } catch (e) {
       debugPrint('cancelBooking API error: $e');
+      if (e is ApiException) rethrow;
     }
 
-    // Local update
+    // Local update fallback
     await _loadLocalBookings();
     final index = _localBookings.indexWhere((b) => b.id == id);
     if (index != -1) {
@@ -272,16 +277,20 @@ class BookingService {
         'startTime': startTime,
         'endTime': endTime,
       });
-      if (res is Map && res['data'] != null) {
-        final updated = BookingModel.fromJson(Map<String, dynamic>.from(res['data']));
+      final data = (res is Map && res['data'] != null)
+          ? res['data']
+          : (res is Map ? res : null);
+      if (data != null && data is Map<String, dynamic>) {
+        final updated = BookingModel.fromJson(data);
         _updateLocalBooking(updated);
         return updated;
       }
     } catch (e) {
       debugPrint('rescheduleBooking API error: $e');
+      if (e is ApiException) rethrow;
     }
 
-    // Local update
+    // Local update fallback
     await _loadLocalBookings();
     final index = _localBookings.indexWhere((b) => b.id == id);
     if (index != -1) {

@@ -132,6 +132,12 @@ async function updateProfileByUserId(userId, updateData) {
       if (safeUpdate.name !== undefined) {
         await User.findByIdAndUpdate(userId, { name: safeUpdate.name });
       }
+      if (safeUpdate.profileImage !== undefined || safeUpdate.avatar !== undefined) {
+        const img = safeUpdate.profileImage || safeUpdate.avatar;
+        safeUpdate.profileImage = img;
+        safeUpdate.avatar = img;
+        await User.findByIdAndUpdate(userId, { avatar: img, profileImage: img });
+      }
       let profile = await BabysitterProfile.findOne({ user: userId });
       if (!profile) {
         profile = await getProfileByUserId(userId);
@@ -141,7 +147,7 @@ async function updateProfileByUserId(userId, updateData) {
           { user: userId },
           { $set: safeUpdate },
           { new: true, runValidators: true }
-        ).populate('user', 'name email phone avatar');
+        ).populate('user', 'name email phone avatar profileImage');
         if (profile) {
           memoryBabysitters.set(userId.toString(), profile.toObject ? profile.toObject() : profile);
           return profile;

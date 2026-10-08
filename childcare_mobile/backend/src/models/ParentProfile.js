@@ -21,6 +21,8 @@ const parentProfileSchema = new mongoose.Schema(
     phone: { type: String, default: '', trim: true },
     address: { type: String, default: '', trim: true },
     emergencyContact: { type: String, default: '', trim: true },
+    avatar: { type: String, default: null },
+    profileImage: { type: String, default: null },
     isNicVerified: { type: Boolean, default: false },
     children: [childSchema],
   },

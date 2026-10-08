@@ -37,6 +37,8 @@ async function getProfile(req, res, next) {
         name: profile?.user?.name || req.user?.name || 'Parent',
         email: profile?.user?.email || req.user?.email || '',
         phone: profile?.phone || profile?.user?.phone || '',
+        avatar: profile?.avatar || profile?.profileImage || profile?.user?.avatar || profile?.user?.profileImage || null,
+        profileImage: profile?.profileImage || profile?.avatar || profile?.user?.profileImage || profile?.user?.avatar || null,
         address: profile?.address || '',
         emergencyContact: profile?.emergencyContact || '',
         isNicVerified: profile?.isNicVerified || false,
@@ -55,6 +57,8 @@ async function getProfile(req, res, next) {
         name: req.user?.name || 'Parent',
         email: req.user?.email || '',
         phone: req.user?.phone || '',
+        avatar: null,
+        profileImage: null,
         address: '',
         emergencyContact: '',
         isNicVerified: false,
@@ -74,7 +78,8 @@ async function updateProfile(req, res, next) {
     const userId = req.user?.sub || req.user?.id;
     if (!userId) return next(new ApiError(401, 'Authentication required'));
 
-    const { name, phone, address, emergencyContact, children } = req.body;
+    const { name, phone, address, emergencyContact, children, avatar, profileImage } = req.body;
+    const img = avatar || profileImage;
 
     if (isDbConnected()) {
       if (name) {
@@ -83,23 +88,32 @@ async function updateProfile(req, res, next) {
       if (phone !== undefined) {
         await User.findByIdAndUpdate(userId, { phone });
       }
+      if (img) {
+        await User.findByIdAndUpdate(userId, { avatar: img, profileImage: img });
+      }
       const updateData = {};
       if (phone !== undefined) updateData.phone = phone;
       if (address !== undefined) updateData.address = address;
       if (emergencyContact !== undefined) updateData.emergencyContact = emergencyContact;
       if (children !== undefined) updateData.children = children;
+      if (img) {
+        updateData.avatar = img;
+        updateData.profileImage = img;
+      }
 
       const profile = await ParentProfile.findOneAndUpdate(
         { user: userId },
         { $set: updateData },
         { new: true, upsert: true }
-      ).populate('user', 'name email phone avatar');
+      ).populate('user', 'name email phone avatar profileImage');
 
       const responseData = {
         userId,
         name: profile?.user?.name || name,
         email: profile?.user?.email || '',
         phone: profile?.phone || phone || '',
+        avatar: profile?.avatar || profile?.profileImage || profile?.user?.avatar || profile?.user?.profileImage || img || null,
+        profileImage: profile?.profileImage || profile?.avatar || profile?.user?.profileImage || profile?.user?.avatar || img || null,
         address: profile?.address || address || '',
         emergencyContact: profile?.emergencyContact || emergencyContact || '',
         isNicVerified: profile?.isNicVerified || false,
@@ -112,6 +126,10 @@ async function updateProfile(req, res, next) {
 
     const existing = memoryParents.get(userId.toString()) || {};
     const updated = { ...existing, ...req.body };
+    if (img) {
+      updated.avatar = img;
+      updated.profileImage = img;
+    }
     memoryParents.set(userId.toString(), updated);
     return ApiResponse.success(res, updated, 'Parent profile updated successfully');
   } catch (err) {

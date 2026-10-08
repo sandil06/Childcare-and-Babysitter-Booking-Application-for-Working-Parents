@@ -25,7 +25,6 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
   bool _isLoading = false;
-  bool _isSitterMode = false;
   bool _isEmailInput = false;
 
   @override
@@ -266,6 +265,13 @@ class _LoginScreenState extends State<LoginScreen> {
               userObj['role'].toString(),
             );
           }
+          final avatarVal = userObj['avatar'] ?? userObj['profileImage'];
+          if (avatarVal != null && avatarVal.toString().isNotEmpty) {
+            await LocalStorage.instance.write(
+              'user_avatar',
+              avatarVal.toString(),
+            );
+          }
         }
 
         final serverRole = userObj?['role']?.toString().toLowerCase();
@@ -365,7 +371,6 @@ class _LoginScreenState extends State<LoginScreen> {
         'auth/google',
         body: {
           'idToken': idToken,
-          'role': _isSitterMode ? 'babysitter' : 'parent',
         },
       );
       if (res is! Map<String, dynamic> || res['token'] == null) {
@@ -384,25 +389,50 @@ class _LoginScreenState extends State<LoginScreen> {
         'user_id': user['id'],
         'user_phone': user['phone'],
         'user_role': user['role'],
+        'user_avatar': user['avatar'] ?? user['profileImage'],
       }.entries) {
         if (entry.value != null && entry.value.toString().isNotEmpty) {
           await LocalStorage.instance.write(entry.key, entry.value.toString());
         }
       }
 
-      BabysitterService.clearCurrentProfile();
-      BabysitterProvider.instance.reset();
-      await BabysitterProvider.instance.fetchProfile();
-      await BabysitterProvider.instance.fetchDashboard();
+      final serverRole = user['role']?.toString().toLowerCase();
+
+      if (serverRole == 'babysitter') {
+        BabysitterService.clearCurrentProfile();
+        BabysitterProvider.instance.reset();
+        await BabysitterProvider.instance.fetchProfile();
+        await BabysitterProvider.instance.fetchDashboard();
+      } else if (serverRole == 'agency' || serverRole == 'admin') {
+        await AgencyProvider.instance.loadDashboard();
+      }
 
       if (!mounted) return;
-      final isSitter =
-          user['role']?.toString() == 'babysitter' || _isSitterMode;
-      Navigator.pushNamedAndRemoveUntil(
-        context,
-        isSitter ? AppRoutes.sitterDashboard : AppRoutes.home,
-        (_) => false,
-      );
+      switch (serverRole) {
+        case 'agency':
+        case 'admin':
+          Navigator.pushNamedAndRemoveUntil(
+            context,
+            AppRoutes.agencyDashboard,
+            (_) => false,
+          );
+          break;
+        case 'babysitter':
+          Navigator.pushNamedAndRemoveUntil(
+            context,
+            AppRoutes.sitterDashboard,
+            (_) => false,
+          );
+          break;
+        case 'parent':
+        default:
+          Navigator.pushNamedAndRemoveUntil(
+            context,
+            AppRoutes.home,
+            (_) => false,
+          );
+          break;
+      }
     } on PlatformException catch (e) {
       if (mounted) {
         final isChannelOrPlayServices = e.code == 'channel-error' ||
@@ -555,11 +585,9 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 6),
 
               // Subtitle
-              Text(
-                _isSitterMode
-                    ? 'Log in to manage your sitter bookings and availability'
-                    : 'Log in to find and book verified childcare nearby',
-                style: const TextStyle(
+              const Text(
+                'Log in to access your account, bookings, and services',
+                style: TextStyle(
                   fontSize: 13.5,
                   color: AppColors.muted,
                   height: 1.4,
@@ -1028,27 +1056,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
-
-              // Sitter / Parent Mode Switcher link
-              Center(
-                child: TextButton(
-                  onPressed: () {
-                    setState(() => _isSitterMode = !_isSitterMode);
-                  },
-                  child: Text(
-                    _isSitterMode
-                        ? '← Switch to Parent Login'
-                        : 'Are you a babysitter? Sign in as Sitter →',
-                    style: const TextStyle(
-                      color: Color(0xFF005B60),
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 24),
             ],
           ),
         ),

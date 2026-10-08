@@ -79,20 +79,27 @@ async function checkAvailabilityAndConflicts({ babysitterId, date, startTime, en
 
   if (isDbConnected()) {
     const targetDate = new Date(date);
-    const startOfDay = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate());
-    const endOfDay = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate(), 23, 59, 59, 999);
+    const startOfDay = new Date(Date.UTC(targetDate.getUTCFullYear(), targetDate.getUTCMonth(), targetDate.getUTCDate(), 0, 0, 0, 0));
+    const endOfDay = new Date(Date.UTC(targetDate.getUTCFullYear(), targetDate.getUTCMonth(), targetDate.getUTCDate(), 23, 59, 59, 999));
+    const localStart = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate(), 0, 0, 0, 0);
+    const localEnd = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate(), 23, 59, 59, 999);
+    const minStart = startOfDay < localStart ? startOfDay : localStart;
+    const maxEnd = endOfDay > localEnd ? endOfDay : localEnd;
 
-    let sitterUserId = babysitterId;
+    let sitterUserIds = [babysitterId];
     if (mongoose.Types.ObjectId.isValid(babysitterId)) {
-      const profile = await BabysitterProfile.findById(babysitterId);
-      if (profile && profile.user) {
-        sitterUserId = profile.user;
+      const profile = await BabysitterProfile.findOne({
+        $or: [{ _id: babysitterId }, { user: babysitterId }],
+      });
+      if (profile) {
+        if (profile.user) sitterUserIds.push(profile.user);
+        if (profile._id) sitterUserIds.push(profile._id);
       }
     }
 
     const query = {
-      babysitter: sitterUserId,
-      date: { $gte: startOfDay, $lte: endOfDay },
+      babysitter: { $in: sitterUserIds },
+      date: { $gte: minStart, $lte: maxEnd },
       status: { $in: ['pending', 'accepted', 'confirmed', 'travelling', 'arrived', 'in_progress'] },
     };
 

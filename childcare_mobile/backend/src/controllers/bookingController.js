@@ -546,7 +546,9 @@ async function cancel(req, res, next) {
       const parentId = booking.parent?._id ? booking.parent._id.toString() : booking.parent?.toString();
       const sitterId = booking.babysitter?._id ? booking.babysitter._id.toString() : booking.babysitter?.toString();
 
-      if (parentId !== userId.toString() && sitterId !== userId.toString()) {
+      const userRole = req.user?.role;
+      const isAdminOrAgency = ['agency', 'admin'].includes(userRole);
+      if (parentId !== userId.toString() && sitterId !== userId.toString() && !isAdminOrAgency) {
         return next(new ApiError(403, 'You are not authorized to cancel this booking'));
       }
 
@@ -560,6 +562,18 @@ async function cancel(req, res, next) {
       booking.cancelledAt = new Date();
       await booking.save();
 
+      // Notify the other user (sitter if parent cancelled, parent if sitter cancelled)
+      const recipientId = (userId.toString() === parentId) ? sitterId : parentId;
+      if (recipientId) {
+        createNotification({
+          userId: recipientId,
+          title: 'Booking Cancelled',
+          message: `Booking #${booking.bookingId || booking._id} has been cancelled: ${reason}`,
+          type: 'booking_cancelled',
+          data: { bookingId: booking._id },
+        }).catch(() => {});
+      }
+
       return ApiResponse.success(res, booking, 'Booking cancelled successfully');
     }
 
@@ -567,7 +581,9 @@ async function cancel(req, res, next) {
     if (!booking) return next(new ApiError(404, 'Booking not found'));
     const parentId = booking.parent?._id ? booking.parent._id.toString() : booking.parent?.toString();
     const sitterId = booking.babysitter?._id ? booking.babysitter._id.toString() : booking.babysitter?.toString();
-    if (parentId !== userId.toString() && sitterId !== userId.toString()) {
+    const userRole = req.user?.role;
+    const isAdminOrAgency = ['agency', 'admin'].includes(userRole);
+    if (parentId !== userId.toString() && sitterId !== userId.toString() && !isAdminOrAgency) {
       return next(new ApiError(403, 'You are not authorized to cancel this booking'));
     }
 
@@ -581,6 +597,18 @@ async function cancel(req, res, next) {
     booking.cancelledAt = new Date();
     booking.updatedAt = new Date();
     memoryBookings.set(bookingId, booking);
+
+    const recipientId = (userId.toString() === parentId) ? sitterId : parentId;
+    if (recipientId) {
+      createNotification({
+        userId: recipientId,
+        title: 'Booking Cancelled',
+        message: `Booking #${booking.bookingId || booking._id || booking.id} has been cancelled: ${reason}`,
+        type: 'booking_cancelled',
+        data: { bookingId: booking._id || booking.id },
+      }).catch(() => {});
+    }
+
     return ApiResponse.success(res, booking, 'Booking cancelled successfully');
   } catch (err) {
     next(err);
@@ -597,6 +625,17 @@ async function reschedule(req, res, next) {
       return next(new ApiError(400, 'date, startTime, and endTime are required for rescheduling'));
     }
 
+    const sMin = bookingService.timeToMinutes(startTime);
+    const eMin = bookingService.timeToMinutes(endTime);
+    if (eMin <= sMin) {
+      return next(new ApiError(400, 'End time must be after start time'));
+    }
+
+    const parsedDate = new Date(date);
+    if (isNaN(parsedDate.getTime())) {
+      return next(new ApiError(400, 'Invalid date format'));
+    }
+
     if (isDbConnected() && mongoose.Types.ObjectId.isValid(bookingId)) {
       const booking = await Booking.findById(bookingId).populate('parent babysitter', 'name email phone avatar');
       if (!booking) return next(new ApiError(404, 'Booking not found'));
@@ -604,12 +643,19 @@ async function reschedule(req, res, next) {
       const parentId = booking.parent?._id ? booking.parent._id.toString() : booking.parent?.toString();
       const sitterId = booking.babysitter?._id ? booking.babysitter._id.toString() : booking.babysitter?.toString();
 
-      if (parentId !== userId.toString() && sitterId !== userId.toString()) {
+      const userRole = req.user?.role;
+      const isAdminOrAgency = ['agency', 'admin'].includes(userRole);
+      if (parentId !== userId.toString() && !isAdminOrAgency) {
         return next(new ApiError(403, 'You are not authorized to reschedule this booking'));
       }
 
-      if (['completed', 'cancelled', 'rejected'].includes(booking.status)) {
-        return next(new ApiError(400, `Cannot reschedule a booking that is ${booking.status}`));
+      if (!['pending', 'accepted', 'confirmed'].includes(booking.status)) {
+        return next(
+          new ApiError(
+            400,
+            `Cannot reschedule a booking that is ${booking.status}. Rescheduling is only permitted for pending, accepted, or confirmed bookings.`
+          )
+        );
       }
 
       // Check conflict for new time slot
@@ -629,18 +675,30 @@ async function reschedule(req, res, next) {
       const newSubtotal = Math.round(newDuration * (booking.hourlyRate || 1500));
       const newTotal = newSubtotal + (booking.serviceFee || 0);
 
+      // Price change during reschedule validation:
+      const currentPaidTotal = booking.total || booking.totalAmount;
+      if (booking.paymentStatus === 'paid' && newTotal !== currentPaidTotal) {
+        return next(
+          new ApiError(
+            400,
+            'This booking cannot be rescheduled to a different price after payment.'
+          )
+        );
+      }
+
       // Record reschedule history
+      booking.rescheduleHistory = booking.rescheduleHistory || [];
       booking.rescheduleHistory.push({
         oldDate: booking.date,
         oldStartTime: booking.startTime,
         oldEndTime: booking.endTime,
-        newDate: new Date(date),
+        newDate: parsedDate,
         newStartTime: startTime,
         newEndTime: endTime,
         requestedAt: new Date(),
       });
 
-      booking.date = new Date(date);
+      booking.date = parsedDate;
       booking.startTime = startTime;
       booking.endTime = endTime;
       booking.durationHours = newDuration;
@@ -649,28 +707,101 @@ async function reschedule(req, res, next) {
       booking.totalAmount = newTotal;
 
       await booking.save();
+
+      // Notify babysitter
+      if (sitterId) {
+        const dateFormatted = parsedDate.toISOString().split('T')[0];
+        createNotification({
+          userId: sitterId,
+          title: 'Booking Rescheduled',
+          message: `Booking #${booking.bookingId || booking._id} has been rescheduled to ${dateFormatted} (${startTime} – ${endTime}).`,
+          type: 'booking_rescheduled',
+          data: { bookingId: booking._id },
+        }).catch(() => {});
+      }
+
       return ApiResponse.success(res, booking, 'Booking rescheduled successfully');
     }
 
+    // Memory fallback
     const booking = memoryBookings.get(bookingId);
     if (!booking) return next(new ApiError(404, 'Booking not found'));
+
+    const parentId = booking.parent?._id ? booking.parent._id.toString() : booking.parent?.toString();
+    const sitterId = booking.babysitter?._id ? booking.babysitter._id.toString() : booking.babysitter?.toString();
+    const userRole = req.user?.role;
+    const isAdminOrAgency = ['agency', 'admin'].includes(userRole);
+    if (parentId !== userId.toString() && !isAdminOrAgency) {
+      return next(new ApiError(403, 'You are not authorized to reschedule this booking'));
+    }
+
+    if (!['pending', 'accepted', 'confirmed'].includes(booking.status)) {
+      return next(
+        new ApiError(
+          400,
+          `Cannot reschedule a booking that is ${booking.status}. Rescheduling is only permitted for pending, accepted, or confirmed bookings.`
+        )
+      );
+    }
+
+    const conflictCheck = await bookingService.checkAvailabilityAndConflicts({
+      babysitterId: sitterId,
+      date,
+      startTime,
+      endTime,
+      excludeBookingId: booking._id || booking.id,
+      memoryStore: memoryBookings,
+    });
+    if (!conflictCheck.available) {
+      return next(new ApiError(400, conflictCheck.reason));
+    }
+
+    const newDuration = bookingService.calculateDurationHours(startTime, endTime);
+    const newSubtotal = Math.round(newDuration * (booking.hourlyRate || 1500));
+    const newTotal = newSubtotal + (booking.serviceFee || 0);
+
+    const currentPaidTotal = booking.total || booking.totalAmount;
+    if (booking.paymentStatus === 'paid' && newTotal !== currentPaidTotal) {
+      return next(
+        new ApiError(
+          400,
+          'This booking cannot be rescheduled to a different price after payment.'
+        )
+      );
+    }
 
     booking.rescheduleHistory = booking.rescheduleHistory || [];
     booking.rescheduleHistory.push({
       oldDate: booking.date,
       oldStartTime: booking.startTime,
       oldEndTime: booking.endTime,
-      newDate: new Date(date),
+      newDate: parsedDate,
       newStartTime: startTime,
       newEndTime: endTime,
       requestedAt: new Date(),
     });
 
-    booking.date = new Date(date);
+    booking.date = parsedDate;
     booking.startTime = startTime;
     booking.endTime = endTime;
+    booking.durationHours = newDuration;
+    booking.subtotal = newSubtotal;
+    booking.total = newTotal;
+    booking.totalAmount = newTotal;
     booking.updatedAt = new Date();
     memoryBookings.set(bookingId, booking);
+
+    if (sitterId) {
+      const dateFormatted = parsedDate.toISOString().split('T')[0];
+      createNotification({
+        userId: sitterId,
+        title: 'Booking Rescheduled',
+        message: `Booking #${booking.bookingId || booking._id || booking.id} has been rescheduled to ${dateFormatted} (${startTime} – ${endTime}).`,
+        type: 'booking_rescheduled',
+        data: { bookingId: booking._id || booking.id },
+      }).catch(() => {});
+    }
+
     return ApiResponse.success(res, booking, 'Booking rescheduled successfully');
   } catch (err) {
     next(err);

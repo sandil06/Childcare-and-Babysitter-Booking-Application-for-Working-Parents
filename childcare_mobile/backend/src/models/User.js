@@ -9,6 +9,12 @@ const userSchema = new mongoose.Schema(
     secondaryPasswordHash: { type: String, default: null },
     googleId: { type: String, sparse: true, unique: true },
     role: { type: String, enum: ['parent', 'babysitter', 'agency', 'admin'], default: 'parent' },
+    avatar: { type: String, default: null },
+    profileImage: { type: String, default: null },
+    accountStatus: { type: String, enum: ['active', 'suspended'], default: 'active' },
+    isActive: { type: Boolean, default: true },
+    suspensionReason: { type: String, default: null },
+    suspendedAt: { type: Date, default: null },
     isEmailVerified: { type: Boolean, default: false },
   },
   { timestamps: true }

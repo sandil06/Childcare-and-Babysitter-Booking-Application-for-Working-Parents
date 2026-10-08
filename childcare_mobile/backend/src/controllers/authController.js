@@ -348,6 +348,8 @@ async function login(req, res, next) {
             email: user.email,
             phone: user.phone || '',
             role: user.role,
+            avatar: user.avatar || user.profileImage || null,
+            profileImage: user.profileImage || user.avatar || null,
             accountStatus: user.accountStatus || 'active',
             isActive: user.isActive !== false,
           },
@@ -424,6 +426,8 @@ async function me(req, res, next) {
             email: liveUser.email,
             phone: liveUser.phone || '',
             role: liveUser.role,
+            avatar: liveUser.avatar || liveUser.profileImage || null,
+            profileImage: liveUser.profileImage || liveUser.avatar || null,
             accountStatus: liveUser.accountStatus || 'active',
             isActive: liveUser.isActive !== false,
             isEmailVerified: liveUser.isEmailVerified,
@@ -437,11 +441,105 @@ async function me(req, res, next) {
   }
 }
 
+async function uploadAvatar(req, res, next) {
+  try {
+    const userId = req.user?.id || req.user?._id || req.user?.sub;
+    if (!userId) return next(new ApiError(401, 'Authentication required'));
+
+    let avatarUrl = null;
+
+    if (req.file) {
+      avatarUrl = `/uploads/${req.file.filename}`;
+    } else if (req.body?.imageUrl || req.body?.profileImage || req.body?.avatar) {
+      avatarUrl = req.body.imageUrl || req.body.profileImage || req.body.avatar;
+    } else {
+      return next(new ApiError(400, 'No image file or image URL provided'));
+    }
+
+    if (mongoose.connection.readyState === 1) {
+      const user = await User.findByIdAndUpdate(
+        userId,
+        { avatar: avatarUrl, profileImage: avatarUrl },
+        { new: true }
+      );
+
+      // Also update role-specific profiles
+      try {
+        const ParentProfile = require('../models/ParentProfile');
+        await ParentProfile.findOneAndUpdate(
+          { user: userId },
+          { avatar: avatarUrl, profileImage: avatarUrl }
+        );
+      } catch (_) {}
+
+      try {
+        const BabysitterProfile = require('../models/BabysitterProfile');
+        await BabysitterProfile.findOneAndUpdate(
+          { user: userId },
+          { avatar: avatarUrl, profileImage: avatarUrl }
+        );
+      } catch (_) {}
+
+      return ApiResponse.success(
+        res,
+        {
+          url: avatarUrl,
+          avatarUrl,
+          avatar: avatarUrl,
+          profileImage: avatarUrl,
+          user: {
+            id: user?._id?.toString() || userId.toString(),
+            name: user?.name,
+            email: user?.email,
+            avatar: avatarUrl,
+            avatarUrl,
+            profileImage: avatarUrl,
+          },
+        },
+        'Profile image updated successfully'
+      );
+    }
+
+    // Memory store fallback
+    try {
+      const { memoryParents } = require('./parentController');
+      const memParent = memoryParents.get(userId.toString());
+      if (memParent) {
+        memParent.avatar = avatarUrl;
+        memParent.profileImage = avatarUrl;
+      }
+    } catch (_) {}
+
+    try {
+      const { memoryBabysitters } = require('../services/babysitterService');
+      const memSitter = memoryBabysitters.get(userId.toString());
+      if (memSitter) {
+        memSitter.avatar = avatarUrl;
+        memSitter.profileImage = avatarUrl;
+      }
+    } catch (_) {}
+
+    return ApiResponse.success(
+      res,
+      {
+        url: avatarUrl,
+        avatarUrl,
+        avatar: avatarUrl,
+        profileImage: avatarUrl,
+      },
+      'Profile image updated successfully'
+    );
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   register,
   login,
   googleLogin,
   me,
+  uploadAvatar,
   sendVerification,
   verifyEmailCode,
 };

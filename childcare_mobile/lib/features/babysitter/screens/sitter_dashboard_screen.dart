@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../config/routes.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_sizes.dart';
+import '../../../core/services/profile_image_service.dart';
 import '../../../core/storage/local_storage.dart';
 import '../models/babysitter_model.dart';
 import '../models/booking_request_model.dart';
@@ -485,6 +486,7 @@ class _SitterDashboardScreenState extends State<SitterDashboardScreen> {
   }
 
   Widget _buildHeader(BabysitterModel profile, int unreadCount) {
+    final image = profile.profileImage;
     return Row(
       children: [
         GestureDetector(
@@ -492,22 +494,27 @@ class _SitterDashboardScreenState extends State<SitterDashboardScreen> {
           child: CircleAvatar(
             radius: 24,
             backgroundColor: AppColors.mint,
-            child: Text(
-              profile.name.trim().isNotEmpty
-                  ? profile.name
-                        .trim()
-                        .split(' ')
-                        .where((e) => e.isNotEmpty)
-                        .map((e) => e[0].toUpperCase())
-                        .take(2)
-                        .join()
-                  : 'CG',
-              style: const TextStyle(
-                fontWeight: FontWeight.w700,
-                color: AppColors.teal,
-                fontSize: 16,
-              ),
-            ),
+            backgroundImage: (image != null && image.isNotEmpty)
+                ? NetworkImage(ProfileImageService.resolveImageUrl(image))
+                : null,
+            child: (image == null || image.isEmpty)
+                ? Text(
+                    profile.name.trim().isNotEmpty
+                        ? profile.name
+                              .trim()
+                              .split(' ')
+                              .where((e) => e.isNotEmpty)
+                              .map((e) => e[0].toUpperCase())
+                              .take(2)
+                              .join()
+                        : 'CG',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.teal,
+                      fontSize: 16,
+                    ),
+                  )
+                : null,
           ),
         ),
         const SizedBox(width: 14),
@@ -543,15 +550,6 @@ class _SitterDashboardScreenState extends State<SitterDashboardScreen> {
               ),
             ],
           ),
-        ),
-        IconButton(
-          icon: const Icon(
-            Icons.swap_horiz_rounded,
-            color: AppColors.ink,
-            size: 24,
-          ),
-          tooltip: 'Switch to Parent Mode',
-          onPressed: () => Navigator.pushNamed(context, AppRoutes.home),
         ),
         // Notifications Icon
         Stack(

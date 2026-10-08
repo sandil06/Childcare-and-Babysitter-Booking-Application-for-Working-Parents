@@ -222,8 +222,9 @@ class _RescheduleBookingScreenState extends State<RescheduleBookingScreen> {
 
     try {
       final dateStr = '${_newDate.year}-${_newDate.month.toString().padLeft(2, '0')}-${_newDate.day.toString().padLeft(2, '0')}';
+      final bookingTargetId = _booking!.id.isNotEmpty ? _booking!.id : _booking!.bookingId;
       final res = await _service.rescheduleBooking(
-        _booking!.id,
+        bookingTargetId,
         date: dateStr,
         startTime: _formatTimeOfDay(_newStartTime),
         endTime: _formatTimeOfDay(_newEndTime),
@@ -251,7 +252,7 @@ class _RescheduleBookingScreenState extends State<RescheduleBookingScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(e.toString().replaceAll('Exception: ', '')),
+            content: Text(e.toString().replaceAll('ApiException: ', '').replaceAll('Exception: ', '')),
             backgroundColor: AppColors.coral,
           ),
         );

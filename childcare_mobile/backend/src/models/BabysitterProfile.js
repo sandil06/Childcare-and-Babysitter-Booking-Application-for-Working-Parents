@@ -37,6 +37,7 @@ const babysitterProfileSchema = new mongoose.Schema(
     address: { type: String, default: '', trim: true },
     phone: { type: String, default: '', trim: true },
     profileImage: { type: String, default: null },
+    avatar: { type: String, default: null },
 
     hourlyRate: {
       type: Number,
