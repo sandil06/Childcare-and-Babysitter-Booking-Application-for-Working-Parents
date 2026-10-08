@@ -61,4 +61,33 @@ class ParentService {
     final response = await _client.get('babysitters/$id');
     return BabysitterModel.fromJson(Map<String, dynamic>.from(response as Map));
   }
+
+  Future<Map<String, dynamic>?> submitSafetyReport({
+    required String reportedUserId,
+    required String category,
+    required String description,
+    String? bookingId,
+    String priority = 'medium',
+    List<String> evidence = const [],
+  }) async {
+    await _restoreToken();
+    try {
+      final payload = <String, dynamic>{
+        'reportedUserId': reportedUserId,
+        'category': category,
+        'description': description,
+        'priority': priority,
+        'evidence': evidence,
+      };
+      if (bookingId != null && bookingId.isNotEmpty) {
+        payload['bookingId'] = bookingId;
+      }
+      final response = await _client.post('reports', body: payload);
+      if (response is Map && response['data'] != null) {
+        return Map<String, dynamic>.from(response['data'] as Map);
+      }
+    } catch (_) {}
+    return null;
+  }
 }
+

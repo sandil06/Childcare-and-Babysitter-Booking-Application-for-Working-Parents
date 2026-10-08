@@ -487,4 +487,31 @@ class BabysitterService {
     }
     return null;
   }
+
+  Future<Map<String, dynamic>?> submitVerificationDocuments(
+    List<Map<String, String>> docs,
+  ) async {
+    try {
+      final res = await _client.post('verifications/submit', body: {'documents': docs});
+      if (res is Map && res['data'] != null) {
+        return Map<String, dynamic>.from(res['data'] as Map);
+      }
+    } catch (e) {
+      debugPrint('[BabysitterService] submitVerificationDocuments error: $e');
+    }
+    return null;
+  }
+
+  Future<Map<String, dynamic>?> getVerificationStatus() async {
+    try {
+      final res = await _client.get('verifications/my-status');
+      if (res is Map && res['data'] != null) {
+        return Map<String, dynamic>.from(res['data'] as Map);
+      }
+    } catch (e) {
+      debugPrint('[BabysitterService] getVerificationStatus error: $e');
+    }
+    return null;
+  }
 }
+

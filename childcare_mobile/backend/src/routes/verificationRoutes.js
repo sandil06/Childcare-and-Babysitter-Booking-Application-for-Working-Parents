@@ -6,6 +6,11 @@ const verificationController = require('../controllers/verificationController');
 
 const requireAgency = roleMiddleware(ROLES.AGENCY, ROLES.ADMIN);
 
+// Babysitter self-service verification submission & status check
+router.post('/submit', auth, verificationController.submitVerification);
+router.get('/my-status', auth, verificationController.getMyVerificationStatus);
+
+// Administrative verification review and approval workflows
 router.get('/', auth, requireAgency, verificationController.list);
 router.get('/:id', auth, requireAgency, verificationController.getById);
 router.patch('/:id/approve', auth, requireAgency, verificationController.approve);

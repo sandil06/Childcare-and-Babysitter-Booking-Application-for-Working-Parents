@@ -486,11 +486,170 @@ async function requestChanges(req, res, next) {
   }
 }
 
+/**
+ * POST /api/v1/verifications/submit
+ * Babysitter submits documents for verification
+ */
+async function submitVerification(req, res, next) {
+  try {
+    const userId = req.user?.id || req.user?._id;
+    const { documents } = req.body;
+
+    if (!Array.isArray(documents) || documents.length === 0) {
+      return next(new ApiError(400, 'At least one verification document is required'));
+    }
+
+    const validDocs = documents.every((d) => d && d.url && d.name);
+    if (!validDocs) {
+      return next(new ApiError(400, 'Each document must have a valid name and URL'));
+    }
+
+    if (isDbConnected()) {
+      let request = await VerificationRequest.findOne({ babysitter: userId });
+      if (request) {
+        request.documents = documents.map((d) => ({
+          type: d.type || 'certificate',
+          name: d.name,
+          url: d.url,
+          status: 'pending',
+          uploadedAt: new Date(),
+        }));
+        request.status = 'pending';
+        request.reviewNotes = '';
+        request.submittedAt = new Date();
+        await request.save();
+      } else {
+        const sitterProfile = await BabysitterProfile.findOne({ user: userId });
+        request = await VerificationRequest.create({
+          babysitter: userId,
+          babysitterProfile: sitterProfile?._id,
+          status: 'pending',
+          documents: documents.map((d) => ({
+            type: d.type || 'certificate',
+            name: d.name,
+            url: d.url,
+            status: 'pending',
+            uploadedAt: new Date(),
+          })),
+          submittedAt: new Date(),
+        });
+      }
+
+      await BabysitterProfile.findOneAndUpdate(
+        { user: userId },
+        { verificationStatus: 'pending' }
+      );
+
+      // Notify agency admins
+      try {
+        await Notification.create({
+          user: userId,
+          title: 'Verification Documents Received',
+          message: 'Your verification submission has been received and is queued for administrative review.',
+          type: 'system',
+          data: { verificationId: request._id },
+        });
+      } catch (e) {
+        // continue
+      }
+
+      return ApiResponse.success(res, request, 'Verification documents submitted successfully', 201);
+    }
+
+    // Memory Fallback
+    initSampleVerifications();
+    let existing = Array.from(memoryVerifications.values()).find(
+      (v) => (v.babysitter?._id || v.babysitter?.id) === userId
+    );
+
+    const docItems = documents.map((d) => ({
+      type: d.type || 'certificate',
+      name: d.name,
+      url: d.url,
+      status: 'pending',
+      uploadedAt: new Date(),
+    }));
+
+    if (existing) {
+      existing.documents = docItems;
+      existing.status = 'pending';
+      existing.reviewNotes = '';
+      existing.submittedAt = new Date();
+      memoryVerifications.set(existing._id, existing);
+    } else {
+      const newId = `ver-${Date.now()}`;
+      existing = {
+        _id: newId,
+        id: newId,
+        babysitter: {
+          _id: userId,
+          id: userId,
+          name: req.user?.name || 'Babysitter',
+          email: req.user?.email || 'sitter@example.com',
+        },
+        babysitterProfile: {
+          verificationStatus: 'pending',
+        },
+        status: 'pending',
+        documents: docItems,
+        submittedAt: new Date(),
+        createdAt: new Date(),
+      };
+      memoryVerifications.set(newId, existing);
+    }
+
+    return ApiResponse.success(res, existing, 'Verification documents submitted successfully', 201);
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * GET /api/v1/verifications/my-status
+ * Babysitter checks own verification submission status
+ */
+async function getMyVerificationStatus(req, res, next) {
+  try {
+    const userId = req.user?.id || req.user?._id;
+
+    if (isDbConnected()) {
+      const request = await VerificationRequest.findOne({ babysitter: userId }).lean();
+      if (!request) {
+        return ApiResponse.success(
+          res,
+          { status: 'unverified', documents: [], reviewNotes: '' },
+          'Verification status retrieved'
+        );
+      }
+      return ApiResponse.success(res, request, 'Verification status retrieved');
+    }
+
+    initSampleVerifications();
+    const existing = Array.from(memoryVerifications.values()).find(
+      (v) => (v.babysitter?._id || v.babysitter?.id) === userId
+    );
+
+    if (!existing) {
+      return ApiResponse.success(
+        res,
+        { status: 'unverified', documents: [], reviewNotes: '' },
+        'Verification status retrieved (mock)'
+      );
+    }
+
+    return ApiResponse.success(res, existing, 'Verification status retrieved (mock)');
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   list,
   getById,
   approve,
   reject,
   requestChanges,
+  submitVerification,
+  getMyVerificationStatus,
   memoryVerifications,
 };
