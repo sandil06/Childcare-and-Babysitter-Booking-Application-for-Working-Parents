@@ -32,6 +32,12 @@ class VerificationBadge extends StatelessWidget {
         icon = Icons.hourglass_top_rounded;
         label = 'Under Review';
         break;
+      case 'changes_requested':
+        bg = const Color(0xFFFEF3C7);
+        fg = const Color(0xFFD97706);
+        icon = Icons.edit_note_rounded;
+        label = 'Changes Requested';
+        break;
       case 'rejected':
         bg = const Color(0xFFFDE8E8);
         fg = AppColors.coral;

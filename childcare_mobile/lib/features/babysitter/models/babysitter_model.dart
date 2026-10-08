@@ -68,7 +68,8 @@ class BabysitterModel {
     this.languages = const ['English'],
     this.qualifications = const [],
     this.documents = const [],
-    this.verificationStatus = 'verified',
+    this.verificationStatus = 'pending',
+    this.verificationNotes = '',
     this.averageRating = 0.0,
     this.totalReviews = 0,
     this.totalCompletedBookings = 0,
@@ -93,7 +94,8 @@ class BabysitterModel {
   final List<String> languages;
   final List<String> qualifications;
   final List<VerificationDocumentModel> documents;
-  final String verificationStatus; // 'pending', 'under_review', 'verified', 'rejected'
+  final String verificationStatus; // 'pending', 'under_review', 'verified', 'rejected', 'changes_requested'
+  final String verificationNotes;
   final double averageRating;
   final int totalReviews;
   final int totalCompletedBookings;
@@ -102,6 +104,9 @@ class BabysitterModel {
   final DateTime? updatedAt;
 
   bool get isVerified => verificationStatus == 'verified';
+  bool get isPending => verificationStatus == 'pending' || verificationStatus == 'under_review';
+  bool get hasChangesRequested => verificationStatus == 'changes_requested';
+  bool get isRejected => verificationStatus == 'rejected';
 
   factory BabysitterModel.fromJson(Map<String, dynamic> json) {
     var rawDocs = json['documents'];
@@ -148,7 +153,10 @@ class BabysitterModel {
       qualifications: (json['qualifications'] as List?)?.map((e) => e.toString()).toList() ??
           const [],
       documents: docsList,
-      verificationStatus: json['verificationStatus']?.toString() ?? 'verified',
+      verificationStatus: json['verificationStatus']?.toString() ?? 'pending',
+      verificationNotes: json['verificationNotes']?.toString() ??
+          json['reviewNotes']?.toString() ??
+          '',
       averageRating: (json['averageRating'] as num?)?.toDouble() ?? 0.0,
       totalReviews: (json['totalReviews'] as num?)?.toInt() ?? 0,
       totalCompletedBookings:
@@ -181,6 +189,7 @@ class BabysitterModel {
         'qualifications': qualifications,
         'documents': documents.map((e) => e.toJson()).toList(),
         'verificationStatus': verificationStatus,
+        'verificationNotes': verificationNotes,
         'averageRating': averageRating,
         'totalReviews': totalReviews,
         'totalCompletedBookings': totalCompletedBookings,
@@ -205,6 +214,7 @@ class BabysitterModel {
     List<String>? qualifications,
     List<VerificationDocumentModel>? documents,
     String? verificationStatus,
+    String? verificationNotes,
     double? averageRating,
     int? totalReviews,
     int? totalCompletedBookings,
@@ -230,6 +240,7 @@ class BabysitterModel {
       qualifications: qualifications ?? this.qualifications,
       documents: documents ?? this.documents,
       verificationStatus: verificationStatus ?? this.verificationStatus,
+      verificationNotes: verificationNotes ?? this.verificationNotes,
       averageRating: averageRating ?? this.averageRating,
       totalReviews: totalReviews ?? this.totalReviews,
       totalCompletedBookings:

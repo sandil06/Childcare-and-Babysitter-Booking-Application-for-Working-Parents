@@ -175,7 +175,7 @@ class _AgencyDashboardScreenState extends State<AgencyDashboardScreen> {
                               onTap: () => Navigator.pushNamed(
                                 context,
                                 AppRoutes.agencyVerificationRequests,
-                              ),
+                              ).then((_) => _provider.loadDashboard(refresh: true)),
                             ),
                             DashboardStatCard(
                               title: 'Verified Babysitters',
@@ -280,7 +280,7 @@ class _AgencyDashboardScreenState extends State<AgencyDashboardScreen> {
                               onPressed: () => Navigator.pushNamed(
                                 context,
                                 AppRoutes.agencyVerificationRequests,
-                              ),
+                              ).then((_) => _provider.loadDashboard(refresh: true)),
                               child: const Text(
                                 'View All',
                                 style: TextStyle(
@@ -425,6 +425,17 @@ class _AgencyDashboardScreenState extends State<AgencyDashboardScreen> {
     );
   }
 
+  void _openVerificationDetails(VerificationRequestModel request) {
+    _provider.selectVerification(request);
+    Navigator.pushNamed(
+      context,
+      AppRoutes.agencySitterVerification,
+      arguments: request,
+    ).then((_) {
+      _provider.loadDashboard(refresh: true);
+    });
+  }
+
   Widget _buildRecentVerificationsList(List<VerificationRequestModel> items) {
     if (items.isEmpty) {
       return Container(
@@ -445,43 +456,47 @@ class _AgencyDashboardScreenState extends State<AgencyDashboardScreen> {
 
     return Column(
       children: items.map((req) {
-        return Container(
-          margin: const EdgeInsets.only(bottom: 10),
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(AppSizes.radius),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
-          ),
-          child: Row(
-            children: [
-              CircleAvatar(
-                radius: 22,
-                backgroundColor: const Color(0xFFE6F5F2),
-                child: Text(
-                  req.name.isNotEmpty ? req.name[0].toUpperCase() : 'B',
-                  style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.teal),
+        return InkWell(
+          onTap: () => _openVerificationDetails(req),
+          borderRadius: BorderRadius.circular(AppSizes.radius),
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(AppSizes.radius),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
+            ),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 22,
+                  backgroundColor: const Color(0xFFE6F5F2),
+                  child: Text(
+                    req.name.isNotEmpty ? req.name[0].toUpperCase() : 'B',
+                    style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.teal),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      req.name,
-                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '${req.experienceYears} yrs experience • ${req.documents.length} docs submitted',
-                      style: const TextStyle(color: AppColors.muted, fontSize: 12),
-                    ),
-                  ],
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        req.name,
+                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${req.experienceYears} yrs experience • ${req.documents.length} docs submitted',
+                        style: const TextStyle(color: AppColors.muted, fontSize: 12),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              VerificationStatusChip(status: req.status),
-            ],
+                VerificationStatusChip(status: req.status),
+              ],
+            ),
           ),
         );
       }).toList(),

@@ -54,7 +54,10 @@ class _SitterDashboardScreenState extends State<SitterDashboardScreen> {
   }
 
   Future<void> _handleRefresh() async {
-    await _provider.refreshDashboard();
+    await Future.wait([
+      _provider.refreshDashboard(),
+      _provider.fetchProfile(showLoading: false),
+    ]);
   }
 
   String _getGreeting() {
@@ -250,7 +253,11 @@ class _SitterDashboardScreenState extends State<SitterDashboardScreen> {
                 ],
                 // Header
                 _buildHeader(profile, unreadNotifs),
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
+
+                // Verification Status Banner
+                _buildVerificationStatusCard(profile),
+                const SizedBox(height: 16),
 
                 // Availability Toggle Card
                 _buildAvailabilityCard(profile),
@@ -332,6 +339,145 @@ class _SitterDashboardScreenState extends State<SitterDashboardScreen> {
             icon: Icon(Icons.person_outline_rounded),
             selectedIcon: Icon(Icons.person_rounded, color: AppColors.teal),
             label: 'Profile',
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVerificationStatusCard(BabysitterModel profile) {
+    Color bg;
+    Color border;
+    Color textCol;
+    IconData icon;
+    String title;
+    String message;
+    Widget? actionWidget;
+
+    switch (profile.verificationStatus.toLowerCase()) {
+      case 'verified':
+        bg = const Color(0xFFECFDF5);
+        border = const Color(0xFFA7F3D0);
+        textCol = const Color(0xFF065F46);
+        icon = Icons.verified_rounded;
+        title = 'Verified Caregiver Profile';
+        message =
+            'Your account and credentials are fully verified. You are active and visible in parent searches.';
+        break;
+      case 'changes_requested':
+        bg = const Color(0xFFFFFBEB);
+        border = const Color(0xFFFDE68A);
+        textCol = const Color(0xFF92400E);
+        icon = Icons.assignment_late_rounded;
+        title = 'Action Required: Changes Requested';
+        message = profile.verificationNotes.isNotEmpty
+            ? 'The agency reviewed your application: "${profile.verificationNotes}". Please update your verification documents.'
+            : 'The agency reviewed your application and requested updated documents or details.';
+        actionWidget = Padding(
+          padding: const EdgeInsets.only(top: 8),
+          child: TextButton.icon(
+            onPressed: () => Navigator.pushNamed(context, AppRoutes.sitterProfile),
+            icon: const Icon(Icons.upload_file_rounded, size: 16, color: Color(0xFFB45309)),
+            label: const Text(
+              'Update Documents in Profile',
+              style: TextStyle(
+                color: Color(0xFFB45309),
+                fontWeight: FontWeight.w700,
+                fontSize: 12.5,
+              ),
+            ),
+            style: TextButton.styleFrom(
+              padding: EdgeInsets.zero,
+              visualDensity: VisualDensity.compact,
+            ),
+          ),
+        );
+        break;
+      case 'rejected':
+        bg = const Color(0xFFFEF2F2);
+        border = const Color(0xFFFECACA);
+        textCol = const Color(0xFF991B1B);
+        icon = Icons.error_outline_rounded;
+        title = 'Verification Needs Attention';
+        message = profile.verificationNotes.isNotEmpty
+            ? 'Application declined: "${profile.verificationNotes}". Please review your credentials in profile.'
+            : 'Your verification check could not be completed. Please review your credentials in profile.';
+        actionWidget = Padding(
+          padding: const EdgeInsets.only(top: 8),
+          child: TextButton.icon(
+            onPressed: () => Navigator.pushNamed(context, AppRoutes.sitterProfile),
+            icon: const Icon(Icons.refresh_rounded, size: 16, color: Color(0xFFDC2626)),
+            label: const Text(
+              'Review Profile & Documents',
+              style: TextStyle(
+                color: Color(0xFFDC2626),
+                fontWeight: FontWeight.w700,
+                fontSize: 12.5,
+              ),
+            ),
+            style: TextButton.styleFrom(
+              padding: EdgeInsets.zero,
+              visualDensity: VisualDensity.compact,
+            ),
+          ),
+        );
+        break;
+      case 'under_review':
+        bg = const Color(0xFFF0FDF4);
+        border = const Color(0xFFBBF7D0);
+        textCol = const Color(0xFF166534);
+        icon = Icons.hourglass_top_rounded;
+        title = 'Application Under Review';
+        message = 'An agency administrator is actively verifying your credentials and documents.';
+        break;
+      case 'pending':
+      default:
+        bg = const Color(0xFFF1F5F9);
+        border = const Color(0xFFCBD5E1);
+        textCol = const Color(0xFF334155);
+        icon = Icons.access_time_rounded;
+        title = 'Verification Pending';
+        message = 'Your application has been received and is queued for administrative review.';
+        break;
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(AppSizes.radius),
+        border: Border.all(color: border),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: textCol, size: 22),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13.5,
+                    color: textCol,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  message,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: textCol.withValues(alpha: 0.85),
+                    height: 1.35,
+                  ),
+                ),
+                ?actionWidget,
+              ],
+            ),
           ),
         ],
       ),

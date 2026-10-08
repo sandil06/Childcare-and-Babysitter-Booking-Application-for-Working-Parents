@@ -215,7 +215,9 @@ class AgencyProvider extends ChangeNotifier {
     try {
       final ok = await _service.requestChangesVerification(id, notes: notes);
       if (ok) {
+        _verificationRequests = _verificationRequests.where((v) => v.id != id).toList();
         await loadVerificationRequests(refresh: true);
+        await loadDashboard(refresh: true);
       }
       return ok;
     } finally {
