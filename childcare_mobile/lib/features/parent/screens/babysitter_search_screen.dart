@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../../config/routes.dart';
@@ -24,6 +25,7 @@ class _BabysitterSearchView extends StatefulWidget {
 class _BabysitterSearchViewState extends State<_BabysitterSearchView> {
   final _controller = TextEditingController();
   final _provider = ParentProvider.instance;
+  Timer? _debounceTimer;
 
   @override
   void initState() {
@@ -33,6 +35,7 @@ class _BabysitterSearchViewState extends State<_BabysitterSearchView> {
 
   @override
   void dispose() {
+    _debounceTimer?.cancel();
     _provider.removeListener(_refresh);
     _controller.dispose();
     super.dispose();
@@ -42,10 +45,19 @@ class _BabysitterSearchViewState extends State<_BabysitterSearchView> {
     if (mounted) setState(() {});
   }
 
- Future<void> _submit() async {
-  final searchText = _controller.text.trim();
-  await _provider.searchBabysitters(search: searchText);
-}
+  void _onSearchChanged(String query) {
+    setState(() {});
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(const Duration(milliseconds: 350), () {
+      _provider.searchBabysitters(search: query.trim());
+    });
+  }
+
+  Future<void> _submit() async {
+    _debounceTimer?.cancel();
+    final searchText = _controller.text.trim();
+    await _provider.searchBabysitters(search: searchText);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -96,18 +108,17 @@ class _BabysitterSearchViewState extends State<_BabysitterSearchView> {
                     ),
                     const SizedBox(height: 20),
                     _SearchField(
-  controller: _controller,
-  isLoading: _provider.isLoading,
-  onChanged: (_) => setState(() {}),
-  onSubmitted: (_) => _submit(),
-  onClear: () {
-    _controller.clear();
-    _submit();
-    setState(() {});
-  },
-  onFilter: () =>
-    Navigator.pushNamed(context, AppRoutes.babysitterList),
-),
+                      controller: _controller,
+                      isLoading: _provider.isLoading,
+                      onChanged: _onSearchChanged,
+                      onSubmitted: (_) => _submit(),
+                      onClear: () {
+                        _controller.clear();
+                        _submit();
+                      },
+                      onFilter: () =>
+                          Navigator.pushNamed(context, AppRoutes.babysitterList),
+                    ),
                     const SizedBox(height: 12),
                     const _LocationRow(),
                     const SizedBox(height: 16),
