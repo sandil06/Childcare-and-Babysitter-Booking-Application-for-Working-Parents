@@ -47,6 +47,13 @@ class SocketService {
         _socket!.onConnect((_) {
           isConnectedNotifier.value = true;
           debugPrint('[SocketService] Connected to $socketUrl. Rejoining ${_activeRooms.length} rooms.');
+          // Ensure all registered handlers are bound to the live socket connection
+          _registeredHandlers.forEach((event, handlers) {
+            _socket?.off(event);
+            for (final handler in handlers) {
+              _socket?.on(event, handler);
+            }
+          });
           // Automatically re-join previously active rooms upon reconnect
           for (final room in _activeRooms) {
             if (room.startsWith('conv:')) {

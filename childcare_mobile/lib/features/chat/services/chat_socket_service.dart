@@ -24,7 +24,6 @@ class ChatSocketService {
       _socket.joinConversation(conversationId);
 
       _socket.on('receive_message', _handleReceiveMessage);
-      _socket.on('new_message', _handleReceiveMessage);
 
       _socket.on('typing_start', (data) {
         if (data is Map && data['conversationId'] == conversationId) {
@@ -106,7 +105,6 @@ class ChatSocketService {
     if (_currentConversationId != null) {
       _socket.leaveConversation(_currentConversationId!);
       _socket.off('receive_message');
-      _socket.off('new_message');
       _socket.off('typing_start');
       _socket.off('typing_stop');
       _currentConversationId = null;
