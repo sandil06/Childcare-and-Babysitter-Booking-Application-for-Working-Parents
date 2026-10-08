@@ -565,6 +565,57 @@ async function getUsers(req, res, next) {
   }
 }
 
+async function findUserFlexible(id) {
+  if (!id) return null;
+  if (isDbConnected()) {
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      const u = await User.findById(id);
+      if (u) return u;
+    }
+    const cleanId = id.toString().trim();
+    const byEmailOrPhone = await User.findOne({
+      $or: [{ email: cleanId.toLowerCase() }, { phone: cleanId }],
+    });
+    if (byEmailOrPhone) return byEmailOrPhone;
+
+    try {
+      const BabysitterProfile = require('../models/BabysitterProfile');
+      if (mongoose.Types.ObjectId.isValid(cleanId)) {
+        const bp = await BabysitterProfile.findById(cleanId);
+        if (bp && (bp.user || bp.userId)) {
+          const u = await User.findById(bp.user || bp.userId);
+          if (u) return u;
+        }
+      }
+    } catch (_) {}
+
+    try {
+      const ParentProfile = require('../models/ParentProfile');
+      if (mongoose.Types.ObjectId.isValid(cleanId)) {
+        const pp = await ParentProfile.findById(cleanId);
+        if (pp && (pp.user || pp.userId)) {
+          const u = await User.findById(pp.user || pp.userId);
+          if (u) return u;
+        }
+      }
+    } catch (_) {}
+  }
+
+  initSampleUsers();
+  let mem = memoryUsers.get(id);
+  if (!mem) {
+    const cleanId = id.toString().trim().toLowerCase();
+    mem = Array.from(memoryUsers.values()).find(
+      (u) =>
+        u._id === id ||
+        u.id === id ||
+        u.email?.toLowerCase() === cleanId ||
+        u.phone === cleanId
+    );
+  }
+  return mem || null;
+}
+
 /**
  * GET /api/v1/agency/users/:id
  * Retrieve details for a specific user
@@ -572,16 +623,14 @@ async function getUsers(req, res, next) {
 async function getUserById(req, res, next) {
   try {
     const { id } = req.params;
-
-    if (isDbConnected() && mongoose.Types.ObjectId.isValid(id)) {
-      const user = await User.findById(id).select('-passwordHash').lean();
-      if (!user) return next(new ApiError(404, 'User not found'));
-      return ApiResponse.success(res, user, 'User details retrieved');
-    }
-
-    initSampleUsers();
-    const user = memoryUsers.get(id);
+    const user = await findUserFlexible(id);
     if (!user) return next(new ApiError(404, 'User not found'));
+
+    if (user.toObject) {
+      const safeUser = user.toObject();
+      delete safeUser.passwordHash;
+      return ApiResponse.success(res, safeUser, 'User details retrieved');
+    }
 
     return ApiResponse.success(res, user, 'User details retrieved');
   } catch (err) {
@@ -603,21 +652,37 @@ async function suspendUser(req, res, next) {
       return next(new ApiError(400, 'Suspension reason is required'));
     }
 
-    if (isDbConnected() && mongoose.Types.ObjectId.isValid(id)) {
-      const user = await User.findById(id);
-      if (!user) return next(new ApiError(404, 'User not found'));
+    const user = await findUserFlexible(id);
+    if (!user) return next(new ApiError(404, 'User not found'));
 
+    if (user.save) {
       user.accountStatus = 'suspended';
       user.isActive = false;
       user.suspensionReason = reason.trim();
+      user.suspendedAt = new Date();
       await user.save();
+
+      if (user.role === 'babysitter') {
+        try {
+          const BabysitterProfile = require('../models/BabysitterProfile');
+          await BabysitterProfile.findOneAndUpdate(
+            { user: user._id },
+            { isAvailable: false }
+          );
+        } catch (_) {}
+      }
 
       try {
         await AuditLog.create({
-          actor: adminUser?._id,
+          actor:
+            adminUser?._id && mongoose.Types.ObjectId.isValid(adminUser._id)
+              ? adminUser._id
+              : null,
+          adminName: adminUser?.name || 'Agency Administrator',
+          adminEmail: adminUser?.email || '',
           action: 'suspend_user',
           targetType: 'User',
-          targetId: id,
+          targetId: user._id.toString(),
           notes: reason.trim(),
           metadata: { email: user.email, role: user.role },
         });
@@ -641,14 +706,12 @@ async function suspendUser(req, res, next) {
       return ApiResponse.success(res, safeUser, 'User suspended successfully');
     }
 
-    initSampleUsers();
-    const user = memoryUsers.get(id);
-    if (!user) return next(new ApiError(404, 'User not found'));
-
+    // In-memory fallback
     user.accountStatus = 'suspended';
     user.isActive = false;
     user.suspensionReason = reason.trim();
-    memoryUsers.set(id, user);
+    user.suspendedAt = new Date();
+    memoryUsers.set(user.id || user._id || id, user);
 
     return ApiResponse.success(res, user, 'User suspended successfully');
   } catch (err) {
@@ -665,21 +728,37 @@ async function reactivateUser(req, res, next) {
     const { id } = req.params;
     const adminUser = req.user;
 
-    if (isDbConnected() && mongoose.Types.ObjectId.isValid(id)) {
-      const user = await User.findById(id);
-      if (!user) return next(new ApiError(404, 'User not found'));
+    const user = await findUserFlexible(id);
+    if (!user) return next(new ApiError(404, 'User not found'));
 
+    if (user.save) {
       user.accountStatus = 'active';
       user.isActive = true;
       user.suspensionReason = '';
+      user.suspendedAt = null;
       await user.save();
+
+      if (user.role === 'babysitter') {
+        try {
+          const BabysitterProfile = require('../models/BabysitterProfile');
+          await BabysitterProfile.findOneAndUpdate(
+            { user: user._id },
+            { isAvailable: true }
+          );
+        } catch (_) {}
+      }
 
       try {
         await AuditLog.create({
-          actor: adminUser?._id,
+          actor:
+            adminUser?._id && mongoose.Types.ObjectId.isValid(adminUser._id)
+              ? adminUser._id
+              : null,
+          adminName: adminUser?.name || 'Agency Administrator',
+          adminEmail: adminUser?.email || '',
           action: 'reactivate_user',
           targetType: 'User',
-          targetId: id,
+          targetId: user._id.toString(),
           notes: 'User account restored to active status',
           metadata: { email: user.email, role: user.role },
         });
@@ -691,7 +770,8 @@ async function reactivateUser(req, res, next) {
         await Notification.create({
           user: user._id,
           title: 'Account Reactivated',
-          message: 'Your account has been reactivated. You can now access all services.',
+          message:
+            'Your account has been reactivated. You can now access all services.',
           type: 'system',
         });
       } catch (notifErr) {
@@ -703,14 +783,12 @@ async function reactivateUser(req, res, next) {
       return ApiResponse.success(res, safeUser, 'User reactivated successfully');
     }
 
-    initSampleUsers();
-    const user = memoryUsers.get(id);
-    if (!user) return next(new ApiError(404, 'User not found'));
-
+    // In-memory fallback
     user.accountStatus = 'active';
     user.isActive = true;
     user.suspensionReason = '';
-    memoryUsers.set(id, user);
+    user.suspendedAt = null;
+    memoryUsers.set(user.id || user._id || id, user);
 
     return ApiResponse.success(res, user, 'User reactivated successfully');
   } catch (err) {

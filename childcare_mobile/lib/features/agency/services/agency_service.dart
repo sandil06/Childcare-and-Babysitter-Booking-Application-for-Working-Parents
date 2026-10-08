@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../../../core/network/api_client.dart';
+import '../../../core/network/api_exception.dart';
 import '../../../core/storage/local_storage.dart';
 import '../models/admin_user_model.dart';
 import '../models/agency_dashboard_model.dart';
@@ -15,6 +16,19 @@ class AgencyService {
   AgencyService._internal();
 
   final ApiClient _client = ApiClient();
+  String? lastError;
+
+  bool _isSuccessResponse(dynamic res) {
+    if (res == null) return false;
+    if (res is bool) return res;
+    if (res is Map) {
+      if (res.containsKey('success')) {
+        return res['success'] == true;
+      }
+      return res.isNotEmpty;
+    }
+    return true;
+  }
 
   Future<void> _ensureAuthToken() async {
     final token = await LocalStorage.instance.read('auth_token');
@@ -269,8 +283,9 @@ class AgencyService {
       final res = await _client.patch('agency/verifications/$id/approve', body: {
         'notes': ?notes,
       });
-      return res is Map && res['success'] == true;
+      return _isSuccessResponse(res);
     } catch (e) {
+      lastError = (e is ApiException) ? e.message : e.toString();
       debugPrint('[AgencyService] approveVerification error: $e');
       return false;
     }
@@ -282,8 +297,9 @@ class AgencyService {
       final res = await _client.patch('agency/verifications/$id/reject', body: {
         'reason': reason,
       });
-      return res is Map && res['success'] == true;
+      return _isSuccessResponse(res);
     } catch (e) {
+      lastError = (e is ApiException) ? e.message : e.toString();
       debugPrint('[AgencyService] rejectVerification error: $e');
       return false;
     }
@@ -295,8 +311,9 @@ class AgencyService {
       final res = await _client.patch('agency/verifications/$id/request-changes', body: {
         'notes': notes,
       });
-      return res is Map && res['success'] == true;
+      return _isSuccessResponse(res);
     } catch (e) {
+      lastError = (e is ApiException) ? e.message : e.toString();
       debugPrint('[AgencyService] requestChangesVerification error: $e');
       return false;
     }
@@ -368,8 +385,9 @@ class AgencyService {
       final res = await _client.patch('agency/users/$id/suspend', body: {
         'reason': reason,
       });
-      return res is Map && res['success'] == true;
+      return _isSuccessResponse(res);
     } catch (e) {
+      lastError = (e is ApiException) ? e.message : e.toString();
       debugPrint('[AgencyService] suspendUser error: $e');
       return false;
     }
@@ -379,8 +397,9 @@ class AgencyService {
     await _ensureAuthToken();
     try {
       final res = await _client.patch('agency/users/$id/reactivate', body: {});
-      return res is Map && res['success'] == true;
+      return _isSuccessResponse(res);
     } catch (e) {
+      lastError = (e is ApiException) ? e.message : e.toString();
       debugPrint('[AgencyService] reactivateUser error: $e');
       return false;
     }
@@ -453,8 +472,9 @@ class AgencyService {
       final res = await _client.patch('agency/bookings/$id/cancel', body: {
         'reason': reason,
       });
-      return res is Map && res['success'] == true;
+      return _isSuccessResponse(res);
     } catch (e) {
+      lastError = (e is ApiException) ? e.message : e.toString();
       debugPrint('[AgencyService] cancelBooking error: $e');
       return false;
     }
@@ -554,8 +574,9 @@ class AgencyService {
         'status': status,
         'resolutionNotes': ?resolutionNotes,
       });
-      return res is Map && res['success'] == true;
+      return _isSuccessResponse(res);
     } catch (e) {
+      lastError = (e is ApiException) ? e.message : e.toString();
       debugPrint('[AgencyService] updateReportStatus error: $e');
       return false;
     }
@@ -570,8 +591,9 @@ class AgencyService {
       final res = await _client.patch('agency/reports/$id/resolve', body: {
         'resolutionNotes': resolutionNotes,
       });
-      return res is Map && res['success'] == true;
+      return _isSuccessResponse(res);
     } catch (e) {
+      lastError = (e is ApiException) ? e.message : e.toString();
       debugPrint('[AgencyService] resolveReport error: $e');
       return false;
     }
@@ -586,8 +608,9 @@ class AgencyService {
       final res = await _client.patch('agency/reports/$id/escalate', body: {
         'notes': ?notes,
       });
-      return res is Map && res['success'] == true;
+      return _isSuccessResponse(res);
     } catch (e) {
+      lastError = (e is ApiException) ? e.message : e.toString();
       debugPrint('[AgencyService] escalateReport error: $e');
       return false;
     }
@@ -602,8 +625,9 @@ class AgencyService {
       final res = await _client.patch('agency/reports/$id/dismiss', body: {
         'reason': reason,
       });
-      return res is Map && res['success'] == true;
+      return _isSuccessResponse(res);
     } catch (e) {
+      lastError = (e is ApiException) ? e.message : e.toString();
       debugPrint('[AgencyService] dismissReport error: $e');
       return false;
     }
@@ -679,8 +703,9 @@ class AgencyService {
         'targetAudience': targetAudience,
         'priority': priority,
       });
-      return res is Map && res['success'] == true;
+      return _isSuccessResponse(res);
     } catch (e) {
+      lastError = (e is ApiException) ? e.message : e.toString();
       debugPrint('[AgencyService] broadcastNotification error: $e');
       return false;
     }

@@ -89,24 +89,31 @@ class _BookingMonitoringScreenState extends State<BookingMonitoringScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        b['bookingId'] ?? '#BK-900',
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.ink,
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          b['bookingId'] ?? '#BK-900',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.ink,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Scheduled for ${b['date'] ?? 'Upcoming'}',
-                        style: const TextStyle(fontSize: 12.5, color: AppColors.muted),
-                      ),
-                    ],
+                        const SizedBox(height: 2),
+                        Text(
+                          'Scheduled for ${b['date'] ?? 'Upcoming'}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 12.5, color: AppColors.muted),
+                        ),
+                      ],
+                    ),
                   ),
+                  const SizedBox(width: 8),
                   _buildStatusPill(status),
                 ],
               ),
@@ -287,9 +294,19 @@ class _BookingMonitoringScreenState extends State<BookingMonitoringScreen> {
         children: [
           Text(role, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: color)),
           const SizedBox(height: 2),
-          Text(name, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: AppColors.ink), maxLines: 1),
+          Text(
+            name,
+            style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: AppColors.ink),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
           const SizedBox(height: 2),
-          Text(phone, style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B))),
+          Text(
+            phone,
+            style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
         ],
       ),
     );
@@ -510,14 +527,19 @@ class _BookingMonitoringScreenState extends State<BookingMonitoringScreen> {
                                       Row(
                                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                         children: [
-                                          Text(
-                                            b['bookingId'] ?? '#BK-900',
-                                            style: const TextStyle(
-                                              fontSize: 15,
-                                              fontWeight: FontWeight.w800,
-                                              color: AppColors.ink,
+                                          Expanded(
+                                            child: Text(
+                                              b['bookingId'] ?? '#BK-900',
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: const TextStyle(
+                                                fontSize: 15,
+                                                fontWeight: FontWeight.w800,
+                                                color: AppColors.ink,
+                                              ),
                                             ),
                                           ),
+                                          const SizedBox(width: 8),
                                           _buildStatusPill(b['status']?.toString() ?? 'confirmed'),
                                         ],
                                       ),
@@ -526,9 +548,13 @@ class _BookingMonitoringScreenState extends State<BookingMonitoringScreen> {
                                         children: [
                                           const Icon(Icons.people_alt_outlined, size: 14, color: Color(0xFF64748B)),
                                           const SizedBox(width: 6),
-                                          Text(
-                                            '${b['parentName'] ?? 'Parent'} ➔ ${b['babysitterName'] ?? 'Sitter'}',
-                                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.ink),
+                                          Expanded(
+                                            child: Text(
+                                              '${b['parentName'] ?? 'Parent'} ➔ ${b['babysitterName'] ?? 'Sitter'}',
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.ink),
+                                            ),
                                           ),
                                         ],
                                       ),
@@ -536,10 +562,15 @@ class _BookingMonitoringScreenState extends State<BookingMonitoringScreen> {
                                       Row(
                                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                         children: [
-                                          Text(
-                                            '${b['date'] ?? 'Upcoming'} • ${b['startTime'] ?? '09:00 AM'}',
-                                            style: const TextStyle(fontSize: 12, color: AppColors.muted),
+                                          Expanded(
+                                            child: Text(
+                                              '${b['date'] ?? 'Upcoming'} • ${b['startTime'] ?? '09:00 AM'}',
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: const TextStyle(fontSize: 12, color: AppColors.muted),
+                                            ),
                                           ),
+                                          const SizedBox(width: 8),
                                           Text(
                                             'LKR ${b['totalAmount'] ?? 6000}',
                                             style: const TextStyle(

@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../../../core/network/api_exception.dart';
 import '../models/admin_user_model.dart';
 import '../models/agency_dashboard_model.dart';
 import '../models/report_model.dart';
@@ -179,14 +180,20 @@ class AgencyProvider extends ChangeNotifier {
 
   Future<bool> approveVerification(String id, {String? notes}) async {
     _isSubmitting = true;
+    _errorMessage = null;
     notifyListeners();
     try {
       final ok = await _service.approveVerification(id, notes: notes);
       if (ok) {
         _verificationRequests = _verificationRequests.where((v) => v.id != id).toList();
         await loadDashboard(refresh: true);
+      } else {
+        _errorMessage = _service.lastError ?? 'Failed to approve verification.';
       }
       return ok;
+    } catch (e) {
+      _errorMessage = (e is ApiException) ? e.message : e.toString();
+      return false;
     } finally {
       _isSubmitting = false;
       notifyListeners();
@@ -195,14 +202,20 @@ class AgencyProvider extends ChangeNotifier {
 
   Future<bool> rejectVerification(String id, {required String reason}) async {
     _isSubmitting = true;
+    _errorMessage = null;
     notifyListeners();
     try {
       final ok = await _service.rejectVerification(id, reason: reason);
       if (ok) {
         _verificationRequests = _verificationRequests.where((v) => v.id != id).toList();
         await loadDashboard(refresh: true);
+      } else {
+        _errorMessage = _service.lastError ?? 'Failed to reject verification.';
       }
       return ok;
+    } catch (e) {
+      _errorMessage = (e is ApiException) ? e.message : e.toString();
+      return false;
     } finally {
       _isSubmitting = false;
       notifyListeners();
@@ -211,6 +224,7 @@ class AgencyProvider extends ChangeNotifier {
 
   Future<bool> requestChangesVerification(String id, {required String notes}) async {
     _isSubmitting = true;
+    _errorMessage = null;
     notifyListeners();
     try {
       final ok = await _service.requestChangesVerification(id, notes: notes);
@@ -218,8 +232,13 @@ class AgencyProvider extends ChangeNotifier {
         _verificationRequests = _verificationRequests.where((v) => v.id != id).toList();
         await loadVerificationRequests(refresh: true);
         await loadDashboard(refresh: true);
+      } else {
+        _errorMessage = _service.lastError ?? 'Failed to request changes.';
       }
       return ok;
+    } catch (e) {
+      _errorMessage = (e is ApiException) ? e.message : e.toString();
+      return false;
     } finally {
       _isSubmitting = false;
       notifyListeners();
@@ -259,13 +278,19 @@ class AgencyProvider extends ChangeNotifier {
 
   Future<bool> suspendUser(String id, {required String reason}) async {
     _isSubmitting = true;
+    _errorMessage = null;
     notifyListeners();
     try {
       final ok = await _service.suspendUser(id, reason: reason);
       if (ok) {
         await loadUsers(refresh: true);
+      } else {
+        _errorMessage = _service.lastError ?? 'Failed to suspend user.';
       }
       return ok;
+    } catch (e) {
+      _errorMessage = (e is ApiException) ? e.message : e.toString();
+      return false;
     } finally {
       _isSubmitting = false;
       notifyListeners();
@@ -274,13 +299,19 @@ class AgencyProvider extends ChangeNotifier {
 
   Future<bool> reactivateUser(String id) async {
     _isSubmitting = true;
+    _errorMessage = null;
     notifyListeners();
     try {
       final ok = await _service.reactivateUser(id);
       if (ok) {
         await loadUsers(refresh: true);
+      } else {
+        _errorMessage = _service.lastError ?? 'Failed to reactivate user.';
       }
       return ok;
+    } catch (e) {
+      _errorMessage = (e is ApiException) ? e.message : e.toString();
+      return false;
     } finally {
       _isSubmitting = false;
       notifyListeners();
@@ -311,13 +342,19 @@ class AgencyProvider extends ChangeNotifier {
 
   Future<bool> cancelBooking(String id, {required String reason}) async {
     _isSubmitting = true;
+    _errorMessage = null;
     notifyListeners();
     try {
       final ok = await _service.cancelBooking(id, reason: reason);
       if (ok) {
         await loadBookings(refresh: true);
+      } else {
+        _errorMessage = _service.lastError ?? 'Failed to cancel booking.';
       }
       return ok;
+    } catch (e) {
+      _errorMessage = (e is ApiException) ? e.message : e.toString();
+      return false;
     } finally {
       _isSubmitting = false;
       notifyListeners();
@@ -361,6 +398,7 @@ class AgencyProvider extends ChangeNotifier {
     String? resolutionNotes,
   }) async {
     _isSubmitting = true;
+    _errorMessage = null;
     notifyListeners();
     try {
       final ok = await _service.updateReportStatus(
@@ -371,8 +409,13 @@ class AgencyProvider extends ChangeNotifier {
       if (ok) {
         await loadReports(refresh: true);
         await loadDashboard(refresh: true);
+      } else {
+        _errorMessage = _service.lastError ?? 'Failed to update report status.';
       }
       return ok;
+    } catch (e) {
+      _errorMessage = (e is ApiException) ? e.message : e.toString();
+      return false;
     } finally {
       _isSubmitting = false;
       notifyListeners();
@@ -384,14 +427,20 @@ class AgencyProvider extends ChangeNotifier {
     required String resolutionNotes,
   }) async {
     _isSubmitting = true;
+    _errorMessage = null;
     notifyListeners();
     try {
       final ok = await _service.resolveReport(id, resolutionNotes: resolutionNotes);
       if (ok) {
         await loadReports(refresh: true);
         await loadDashboard(refresh: true);
+      } else {
+        _errorMessage = _service.lastError ?? 'Failed to resolve report.';
       }
       return ok;
+    } catch (e) {
+      _errorMessage = (e is ApiException) ? e.message : e.toString();
+      return false;
     } finally {
       _isSubmitting = false;
       notifyListeners();
@@ -403,14 +452,20 @@ class AgencyProvider extends ChangeNotifier {
     String? notes,
   }) async {
     _isSubmitting = true;
+    _errorMessage = null;
     notifyListeners();
     try {
       final ok = await _service.escalateReport(id, notes: notes);
       if (ok) {
         await loadReports(refresh: true);
         await loadDashboard(refresh: true);
+      } else {
+        _errorMessage = _service.lastError ?? 'Failed to escalate report.';
       }
       return ok;
+    } catch (e) {
+      _errorMessage = (e is ApiException) ? e.message : e.toString();
+      return false;
     } finally {
       _isSubmitting = false;
       notifyListeners();
@@ -422,14 +477,20 @@ class AgencyProvider extends ChangeNotifier {
     required String reason,
   }) async {
     _isSubmitting = true;
+    _errorMessage = null;
     notifyListeners();
     try {
       final ok = await _service.dismissReport(id, reason: reason);
       if (ok) {
         await loadReports(refresh: true);
         await loadDashboard(refresh: true);
+      } else {
+        _errorMessage = _service.lastError ?? 'Failed to dismiss report.';
       }
       return ok;
+    } catch (e) {
+      _errorMessage = (e is ApiException) ? e.message : e.toString();
+      return false;
     } finally {
       _isSubmitting = false;
       notifyListeners();
@@ -479,6 +540,7 @@ class AgencyProvider extends ChangeNotifier {
     String priority = 'normal',
   }) async {
     _isSubmitting = true;
+    _errorMessage = null;
     notifyListeners();
     try {
       final ok = await _service.broadcastNotification(
@@ -489,8 +551,13 @@ class AgencyProvider extends ChangeNotifier {
       );
       if (ok) {
         await loadAgencyNotifications(refresh: true);
+      } else {
+        _errorMessage = _service.lastError ?? 'Failed to broadcast notification.';
       }
       return ok;
+    } catch (e) {
+      _errorMessage = (e is ApiException) ? e.message : e.toString();
+      return false;
     } finally {
       _isSubmitting = false;
       notifyListeners();
