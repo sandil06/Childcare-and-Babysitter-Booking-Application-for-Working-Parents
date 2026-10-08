@@ -52,17 +52,18 @@ async function syncVerificationRequests() {
 
       const existingReq = await VerificationRequest.findOne({ babysitter: sitter._id });
       if (!existingReq) {
+        const isProfileVerified = profile.verificationStatus === 'verified';
         const docs = profile.documents && profile.documents.length > 0
           ? profile.documents.map((d) => ({
               type: d.type || 'id',
               name: d.name || 'Identity Document',
               url: d.url || DEFAULT_DOCUMENTS[0].url,
-              status: profile.verificationStatus || 'pending',
+              status: isProfileVerified ? 'verified' : (profile.verificationStatus || 'pending'),
               uploadedAt: d.uploadedAt || profile.createdAt || new Date(),
             }))
           : DEFAULT_DOCUMENTS.map((d) => ({
               ...d,
-              status: profile.verificationStatus || 'pending',
+              status: isProfileVerified ? 'verified' : (profile.verificationStatus || 'pending'),
               uploadedAt: profile.createdAt || new Date(),
             }));
 
@@ -76,6 +77,50 @@ async function syncVerificationRequests() {
           reviewedBy: profile.verificationReviewedBy || null,
           submittedAt: profile.createdAt || new Date(),
         });
+
+        if (isProfileVerified && Array.isArray(profile.documents)) {
+          let updatedDocs = false;
+          profile.documents.forEach((d) => {
+            if (d.status !== 'verified') {
+              d.status = 'verified';
+              updatedDocs = true;
+            }
+          });
+          if (updatedDocs) await profile.save();
+        }
+      } else {
+        // Bi-directional document and status synchronization
+        if (existingReq.status === 'verified' || profile.verificationStatus === 'verified') {
+          let profileChanged = false;
+          if (profile.verificationStatus !== 'verified') {
+            profile.verificationStatus = 'verified';
+            profileChanged = true;
+          }
+          if (Array.isArray(profile.documents) && profile.documents.length > 0) {
+            profile.documents.forEach((d) => {
+              if (d.status !== 'verified') {
+                d.status = 'verified';
+                profileChanged = true;
+              }
+            });
+          }
+          if (profileChanged) await profile.save();
+
+          let reqChanged = false;
+          if (existingReq.status !== 'verified') {
+            existingReq.status = 'verified';
+            reqChanged = true;
+          }
+          if (Array.isArray(existingReq.documents) && existingReq.documents.length > 0) {
+            existingReq.documents.forEach((d) => {
+              if (d.status !== 'verified') {
+                d.status = 'verified';
+                reqChanged = true;
+              }
+            });
+          }
+          if (reqChanged) await existingReq.save();
+        }
       }
     }
   } catch (err) {
@@ -179,18 +224,29 @@ async function approveVerification(id, adminUser, notes = '') {
   request.reviewNotes = approvalNote;
   request.reviewedBy = adminUser?._id;
   request.reviewedAt = now;
+  if (Array.isArray(request.documents)) {
+    request.documents.forEach((d) => {
+      d.status = 'verified';
+    });
+  }
   await request.save();
 
-  // Synchronize BabysitterProfile
-  await BabysitterProfile.findOneAndUpdate(
-    { $or: [{ _id: request.babysitterProfile }, { user: request.babysitter }] },
-    {
-      verificationStatus: 'verified',
-      verificationReviewedAt: now,
-      verificationReviewedBy: adminUser?._id,
-      verificationNotes: approvalNote,
+  // Synchronize BabysitterProfile AND documents
+  const profile = await BabysitterProfile.findOne({
+    $or: [{ _id: request.babysitterProfile }, { user: request.babysitter }],
+  });
+  if (profile) {
+    profile.verificationStatus = 'verified';
+    profile.verificationReviewedAt = now;
+    profile.verificationReviewedBy = adminUser?._id;
+    profile.verificationNotes = approvalNote;
+    if (Array.isArray(profile.documents)) {
+      profile.documents.forEach((d) => {
+        d.status = 'verified';
+      });
     }
-  );
+    await profile.save();
+  }
 
   // Create AuditLog
   try {
@@ -242,18 +298,29 @@ async function rejectVerification(id, adminUser, reason) {
   request.reviewNotes = reason.trim();
   request.reviewedBy = adminUser?._id;
   request.reviewedAt = now;
+  if (Array.isArray(request.documents)) {
+    request.documents.forEach((d) => {
+      d.status = 'rejected';
+    });
+  }
   await request.save();
 
   // Synchronize BabysitterProfile
-  await BabysitterProfile.findOneAndUpdate(
-    { $or: [{ _id: request.babysitterProfile }, { user: request.babysitter }] },
-    {
-      verificationStatus: 'rejected',
-      verificationReviewedAt: now,
-      verificationReviewedBy: adminUser?._id,
-      verificationNotes: reason.trim(),
+  const profile = await BabysitterProfile.findOne({
+    $or: [{ _id: request.babysitterProfile }, { user: request.babysitter }],
+  });
+  if (profile) {
+    profile.verificationStatus = 'rejected';
+    profile.verificationReviewedAt = now;
+    profile.verificationReviewedBy = adminUser?._id;
+    profile.verificationNotes = reason.trim();
+    if (Array.isArray(profile.documents)) {
+      profile.documents.forEach((d) => {
+        d.status = 'rejected';
+      });
     }
-  );
+    await profile.save();
+  }
 
   // Create AuditLog
   try {
@@ -301,18 +368,29 @@ async function requestChanges(id, adminUser, notes) {
   request.reviewNotes = notes.trim();
   request.reviewedBy = adminUser?._id;
   request.reviewedAt = now;
+  if (Array.isArray(request.documents)) {
+    request.documents.forEach((d) => {
+      d.status = 'changes_requested';
+    });
+  }
   await request.save();
 
   // Synchronize BabysitterProfile
-  await BabysitterProfile.findOneAndUpdate(
-    { $or: [{ _id: request.babysitterProfile }, { user: request.babysitter }] },
-    {
-      verificationStatus: 'changes_requested',
-      verificationReviewedAt: now,
-      verificationReviewedBy: adminUser?._id,
-      verificationNotes: notes.trim(),
+  const profile = await BabysitterProfile.findOne({
+    $or: [{ _id: request.babysitterProfile }, { user: request.babysitter }],
+  });
+  if (profile) {
+    profile.verificationStatus = 'changes_requested';
+    profile.verificationReviewedAt = now;
+    profile.verificationReviewedBy = adminUser?._id;
+    profile.verificationNotes = notes.trim();
+    if (Array.isArray(profile.documents)) {
+      profile.documents.forEach((d) => {
+        d.status = 'changes_requested';
+      });
     }
-  );
+    await profile.save();
+  }
 
   // Create AuditLog
   try {

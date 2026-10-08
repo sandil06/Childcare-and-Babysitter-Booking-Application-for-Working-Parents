@@ -277,21 +277,29 @@ async function approve(req, res, next) {
       const now = new Date();
 
       request.status = 'verified';
-      request.reviewNotes = approvalNote;
-      request.reviewedBy = adminUser?._id;
-      request.reviewedAt = now;
+      if (Array.isArray(request.documents)) {
+        request.documents.forEach((d) => {
+          d.status = 'verified';
+        });
+      }
       await request.save();
 
-      // Update BabysitterProfile
-      await BabysitterProfile.findOneAndUpdate(
-        { $or: [{ _id: request.babysitterProfile }, { user: request.babysitter }] },
-        {
-          verificationStatus: 'verified',
-          verificationReviewedAt: now,
-          verificationReviewedBy: adminUser?._id,
-          verificationNotes: approvalNote,
+      // Update BabysitterProfile AND documents
+      const profile = await BabysitterProfile.findOne({
+        $or: [{ _id: request.babysitterProfile }, { user: request.babysitter }],
+      });
+      if (profile) {
+        profile.verificationStatus = 'verified';
+        profile.verificationReviewedAt = now;
+        profile.verificationReviewedBy = adminUser?._id;
+        profile.verificationNotes = approvalNote;
+        if (Array.isArray(profile.documents)) {
+          profile.documents.forEach((d) => {
+            d.status = 'verified';
+          });
         }
-      );
+        await profile.save();
+      }
 
       // Create AuditLog
       try {
@@ -375,17 +383,28 @@ async function reject(req, res, next) {
       request.reviewNotes = reason;
       request.reviewedBy = adminUser?._id;
       request.reviewedAt = now;
+      if (Array.isArray(request.documents)) {
+        request.documents.forEach((d) => {
+          d.status = 'rejected';
+        });
+      }
       await request.save();
 
-      await BabysitterProfile.findOneAndUpdate(
-        { $or: [{ _id: request.babysitterProfile }, { user: request.babysitter }] },
-        {
-          verificationStatus: 'rejected',
-          verificationReviewedAt: now,
-          verificationReviewedBy: adminUser?._id,
-          verificationNotes: reason,
+      const profile = await BabysitterProfile.findOne({
+        $or: [{ _id: request.babysitterProfile }, { user: request.babysitter }],
+      });
+      if (profile) {
+        profile.verificationStatus = 'rejected';
+        profile.verificationReviewedAt = now;
+        profile.verificationReviewedBy = adminUser?._id;
+        profile.verificationNotes = reason;
+        if (Array.isArray(profile.documents)) {
+          profile.documents.forEach((d) => {
+            d.status = 'rejected';
+          });
         }
-      );
+        await profile.save();
+      }
 
       try {
         await AuditLog.create({
@@ -428,9 +447,15 @@ async function reject(req, res, next) {
     request.reviewNotes = reason;
     request.reviewedAt = new Date();
     request.reviewedBy = adminUser?.name || 'Agency Admin';
+    if (Array.isArray(request.documents)) {
+      request.documents.forEach((d) => { d.status = 'rejected'; });
+    }
     if (request.babysitterProfile) {
       request.babysitterProfile.verificationStatus = 'rejected';
       request.babysitterProfile.verificationNotes = reason;
+      if (Array.isArray(request.babysitterProfile.documents)) {
+        request.babysitterProfile.documents.forEach((d) => { d.status = 'rejected'; });
+      }
     }
     memoryVerifications.set(id, request);
 
@@ -463,17 +488,28 @@ async function requestChanges(req, res, next) {
       request.reviewNotes = notes;
       request.reviewedBy = adminUser?._id;
       request.reviewedAt = now;
+      if (Array.isArray(request.documents)) {
+        request.documents.forEach((d) => {
+          d.status = 'changes_requested';
+        });
+      }
       await request.save();
 
-      await BabysitterProfile.findOneAndUpdate(
-        { $or: [{ _id: request.babysitterProfile }, { user: request.babysitter }] },
-        {
-          verificationStatus: 'changes_requested',
-          verificationReviewedAt: now,
-          verificationReviewedBy: adminUser?._id,
-          verificationNotes: notes,
+      const profile = await BabysitterProfile.findOne({
+        $or: [{ _id: request.babysitterProfile }, { user: request.babysitter }],
+      });
+      if (profile) {
+        profile.verificationStatus = 'changes_requested';
+        profile.verificationReviewedAt = now;
+        profile.verificationReviewedBy = adminUser?._id;
+        profile.verificationNotes = notes;
+        if (Array.isArray(profile.documents)) {
+          profile.documents.forEach((d) => {
+            d.status = 'changes_requested';
+          });
         }
-      );
+        await profile.save();
+      }
 
       try {
         await AuditLog.create({
@@ -512,9 +548,15 @@ async function requestChanges(req, res, next) {
     request.reviewNotes = notes;
     request.reviewedAt = new Date();
     request.reviewedBy = adminUser?.name || 'Agency Admin';
+    if (Array.isArray(request.documents)) {
+      request.documents.forEach((d) => { d.status = 'changes_requested'; });
+    }
     if (request.babysitterProfile) {
       request.babysitterProfile.verificationStatus = 'changes_requested';
       request.babysitterProfile.verificationNotes = notes;
+      if (Array.isArray(request.babysitterProfile.documents)) {
+        request.babysitterProfile.documents.forEach((d) => { d.status = 'changes_requested'; });
+      }
     }
     memoryVerifications.set(id, request);
 

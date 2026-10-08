@@ -54,6 +54,18 @@ async function getProfileByUserId(userId) {
         if (profile.totalReviews === 0) {
           profile.averageRating = 0.0;
         }
+        if (profile.verificationStatus === 'verified' && Array.isArray(profile.documents) && profile.documents.length > 0) {
+          let docUpdated = false;
+          profile.documents.forEach((d) => {
+            if (d.status !== 'verified') {
+              d.status = 'verified';
+              docUpdated = true;
+            }
+          });
+          if (docUpdated) {
+            await profile.save();
+          }
+        }
         return profile;
       }
     } catch (_) {}

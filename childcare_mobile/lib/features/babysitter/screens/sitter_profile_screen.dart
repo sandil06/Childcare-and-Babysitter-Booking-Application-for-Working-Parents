@@ -463,7 +463,12 @@ class _SitterProfileScreenState extends State<SitterProfileScreen> {
               child: profile.documents.isNotEmpty
                   ? Column(
                       children: profile.documents
-                          .map((doc) => _buildDocStatusRow(doc.name, doc.status))
+                          .map((doc) => _buildDocStatusRow(
+                                doc.name,
+                                (profile.isVerified || profile.verificationStatus == 'verified')
+                                    ? 'verified'
+                                    : doc.status,
+                              ))
                           .toList(),
                     )
                   : InkWell(
@@ -838,14 +843,51 @@ class _SitterProfileScreenState extends State<SitterProfileScreen> {
   }
 
   Widget _buildDocStatusRow(String docName, String status) {
-    final isVer = status.toLowerCase() == 'verified';
+    final s = status.toLowerCase();
+    final isVer = s == 'verified';
+    final isRejected = s == 'rejected';
+    final isChangesReq = s == 'changes_requested';
+    Color badgeBg;
+    Color badgeFg;
+    String badgeLabel;
+
+    if (isVer) {
+      badgeBg = AppColors.mint;
+      badgeFg = AppColors.teal;
+      badgeLabel = 'Verified';
+    } else if (isRejected) {
+      badgeBg = const Color(0xFFFDE8E8);
+      badgeFg = AppColors.coral;
+      badgeLabel = 'Rejected';
+    } else if (isChangesReq) {
+      badgeBg = const Color(0xFFFEF3C7);
+      badgeFg = const Color(0xFFD97706);
+      badgeLabel = 'Action Required';
+    } else {
+      badgeBg = const Color(0xFFE8EEF5);
+      badgeFg = const Color(0xFF336699);
+      badgeLabel = 'Pending';
+    }
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         children: [
           Icon(
-            isVer ? Icons.verified_user_rounded : Icons.file_present_rounded,
-            color: isVer ? AppColors.teal : AppColors.muted,
+            isVer
+                ? Icons.verified_user_rounded
+                : isRejected
+                    ? Icons.cancel_outlined
+                    : isChangesReq
+                        ? Icons.edit_note_rounded
+                        : Icons.file_present_rounded,
+            color: isVer
+                ? AppColors.teal
+                : isRejected
+                    ? AppColors.coral
+                    : isChangesReq
+                        ? const Color(0xFFD97706)
+                        : AppColors.muted,
             size: 18,
           ),
           const SizedBox(width: 10),
@@ -858,13 +900,13 @@ class _SitterProfileScreenState extends State<SitterProfileScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(
-              color: isVer ? AppColors.mint : AppColors.sand.withValues(alpha: 0.5),
+              color: badgeBg,
               borderRadius: BorderRadius.circular(10),
             ),
             child: Text(
-              isVer ? 'Verified' : 'Pending',
+              badgeLabel,
               style: TextStyle(
-                color: isVer ? AppColors.teal : AppColors.ink,
+                color: badgeFg,
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
               ),
