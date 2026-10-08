@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 import '../../../config/routes.dart';
@@ -402,12 +403,36 @@ class _LoginScreenState extends State<LoginScreen> {
         isSitter ? AppRoutes.sitterDashboard : AppRoutes.home,
         (_) => false,
       );
+    } on PlatformException catch (e) {
+      if (mounted) {
+        final isChannelOrPlayServices = e.code == 'channel-error' ||
+            e.code == 'sign_in_failed' ||
+            e.code == 'network_error' ||
+            (e.message != null &&
+                (e.message!.contains('channel') ||
+                    e.message!.contains('GoogleSignInApi')));
+
+        final message = isChannelOrPlayServices
+            ? 'Google Sign-In is not configured on this emulator or device. Please sign in with your email or mobile number.'
+            : (e.message ?? 'Google sign-in could not be completed.');
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(message),
+            backgroundColor: AppColors.coral,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Google sign-in failed: $e'),
+          const SnackBar(
+            content: Text(
+              'Google Sign-In is unavailable on this device. Please sign in with your email or mobile number.',
+            ),
             backgroundColor: AppColors.coral,
+            behavior: SnackBarBehavior.floating,
           ),
         );
       }
