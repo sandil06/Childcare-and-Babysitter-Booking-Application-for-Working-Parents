@@ -2,7 +2,7 @@ const ApiError = require('../utils/ApiError');
 const ROLES = require('../constants/roles');
 
 function roleMiddleware(...rolesInput) {
-  const roles = rolesInput.flat();
+  const roles = rolesInput.flat().map((r) => (typeof r === 'string' ? r.toLowerCase() : r));
 
   return (req, res, next) => {
     if (!req.user) {
@@ -12,7 +12,7 @@ function roleMiddleware(...rolesInput) {
     const userRole = (req.user.role || '').toLowerCase();
 
     // 1. Direct match or Super Admin override
-    if (roles.includes(userRole) || userRole === ROLES.ADMIN) {
+    if (userRole === ROLES.ADMIN || roles.includes(userRole)) {
       return next();
     }
 
@@ -21,7 +21,8 @@ function roleMiddleware(...rolesInput) {
       return next();
     }
 
-    return next(new ApiError(403, 'Insufficient permissions: Agency/Administrative role required'));
+    const allowed = roles.join(', ');
+    return next(new ApiError(403, `Access denied: requires one of [${allowed}] roles`));
   };
 }
 
