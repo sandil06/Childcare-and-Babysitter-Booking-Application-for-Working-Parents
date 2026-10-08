@@ -231,31 +231,7 @@ async function list(req, res, next) {
             existing.documents = docs.length > 0 ? docs : existing.documents;
             existing.qualifications = quals.length > 0 ? quals : existing.qualifications;
             if (hasPending) existing.status = 'pending';
-          } else {
-            const sampleDocs = [
-              {
-                type: 'id',
-                name: 'National Identity Card (NIC)',
-                url: 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=800',
-                status: 'pending',
-                uploadedAt: new Date(),
-              },
-              {
-                type: 'police_check',
-                name: 'Police Clearance Certificate',
-                url: 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=800',
-                status: 'pending',
-                uploadedAt: new Date(),
-              },
-              {
-                type: 'certificate',
-                name: 'First Aid & CPR Certificate',
-                url: 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=800',
-                status: 'pending',
-                uploadedAt: new Date(),
-              },
-            ];
-            const effectiveDocs = docs.length > 0 ? docs : sampleDocs;
+          } else if (docs.length > 0 || quals.length > 0) {
             const newMem = {
               _id: `ver-${sId}`,
               id: `ver-${sId}`,
@@ -269,7 +245,7 @@ async function list(req, res, next) {
               },
               babysitterProfile: p,
               status: hasPending ? 'pending' : (p.verificationStatus || 'pending'),
-              documents: effectiveDocs,
+              documents: docs,
               qualifications: quals,
               reviewNotes: '',
               submittedAt: new Date(),

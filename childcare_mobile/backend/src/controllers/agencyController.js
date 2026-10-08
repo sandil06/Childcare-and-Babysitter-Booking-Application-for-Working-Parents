@@ -388,15 +388,6 @@ async function getDashboard(req, res, next) {
         totalAmount: b.totalAmount || b.total || 0,
       }));
 
-      const formattedVerifications = (recentVerifications || []).map((v) => ({
-        ...v,
-        id: v._id ? v._id.toString() : v.id,
-        name: v.babysitter?.name || v.babysitterProfile?.name || v.name || 'Babysitter',
-        email: v.babysitter?.email || v.babysitterProfile?.email || v.email || '',
-        phone: v.babysitter?.phone || v.babysitterProfile?.phone || v.phone || '',
-        avatar: v.babysitter?.avatar || v.babysitterProfile?.profileImage || v.avatar || '',
-      }));
-
       const statsData = {
         totalUsers,
         totalParents,
@@ -419,8 +410,8 @@ async function getDashboard(req, res, next) {
         {
           stats: statsData,
           ...statsData,
-          recentVerifications: formattedVerifications,
-          recentVerificationRequests: formattedVerifications,
+          recentVerifications: recentVerifications || [],
+          recentVerificationRequests: recentVerifications || [],
           recentComplaints: recentComplaints || [],
           recentBookings: formattedBookings,
           systemActivities: [

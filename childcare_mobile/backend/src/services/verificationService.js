@@ -43,67 +43,14 @@ async function syncVerificationRequests() {
   if (!isDbConnected()) return;
 
   try {
-    const allProfiles = await BabysitterProfile.find().populate('user', '_id name email phone avatar role');
-    const sitterUsers = await User.find({ role: ROLES.BABYSITTER }).select('_id name email phone avatar role').lean();
+    const sitters = await User.find({ role: ROLES.BABYSITTER }).select('_id name email phone').lean();
+    if (!sitters || sitters.length === 0) return;
 
-    const sittersMap = new Map();
+    for (const sitter of sitters) {
+      const profile = await BabysitterProfile.findOne({ user: sitter._id });
+      if (!profile) continue;
 
-    for (const profile of allProfiles) {
-      if (profile.user) {
-        const u = profile.user;
-        const uId = (u._id || u).toString();
-        if (u.role && u.role !== ROLES.BABYSITTER) {
-          try {
-            await User.findByIdAndUpdate(u._id, { role: ROLES.BABYSITTER });
-            u.role = ROLES.BABYSITTER;
-          } catch (_) {}
-        }
-        sittersMap.set(uId, { sitter: u, profile });
-      } else {
-        const fakeUserId = profile._id.toString();
-        sittersMap.set(fakeUserId, {
-          sitter: {
-            _id: profile._id,
-            name: profile.name || 'Babysitter',
-            email: profile.email || '',
-            phone: profile.phone || '',
-            role: ROLES.BABYSITTER,
-          },
-          profile,
-        });
-      }
-    }
-
-    for (const u of sitterUsers) {
-      const uId = u._id.toString();
-      if (!sittersMap.has(uId)) {
-        let p = await BabysitterProfile.findOne({ user: u._id });
-        if (!p) {
-          p = await BabysitterProfile.create({
-            user: u._id,
-            phone: u.phone || '',
-            hourlyRate: 1500.0,
-            experienceYears: 1,
-            skills: ['Child Care', 'First Aid & CPR'],
-            languages: ['English', 'Sinhala'],
-            qualifications: [],
-            averageRating: 0.0,
-            totalReviews: 0,
-            totalCompletedBookings: 0,
-            verificationStatus: 'pending',
-            isAvailable: true,
-          });
-        }
-        sittersMap.set(uId, { sitter: u, profile: p });
-      }
-    }
-
-    if (sittersMap.size === 0) return;
-
-    for (const [, { sitter, profile }] of sittersMap.entries()) {
-      let existingReq = await VerificationRequest.findOne({
-        $or: [{ babysitter: sitter._id }, { babysitterProfile: profile._id }],
-      });
+      let existingReq = await VerificationRequest.findOne({ babysitter: sitter._id });
       const profileDocs = Array.isArray(profile.documents) ? profile.documents : [];
       const profileQuals = Array.isArray(profile.qualifications) ? profile.qualifications : [];
 
@@ -153,12 +100,8 @@ async function syncVerificationRequests() {
         let reqModified = false;
         let profileModified = false;
 
-        if (!existingReq.babysitterProfile || existingReq.babysitterProfile.toString() !== profile._id.toString()) {
+        if (!existingReq.babysitterProfile) {
           existingReq.babysitterProfile = profile._id;
-          reqModified = true;
-        }
-        if (!existingReq.babysitter || existingReq.babysitter.toString() !== sitter._id.toString()) {
-          existingReq.babysitter = sitter._id;
           reqModified = true;
         }
 
@@ -264,7 +207,6 @@ async function syncVerificationRequests() {
         if (hasPendingItems) {
           if (existingReq.status !== 'pending') {
             existingReq.status = 'pending';
-            existingReq.submittedAt = new Date();
             reqModified = true;
           }
           if (profile.verificationStatus !== 'pending') {
