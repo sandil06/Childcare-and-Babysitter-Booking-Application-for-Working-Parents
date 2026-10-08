@@ -312,7 +312,10 @@ async function login(req, res, next) {
       }
 
       if (!user) return next(new ApiError(401, 'Invalid mobile number/email or password'));
-      const valid = await bcrypt.compare(password, user.passwordHash);
+      let valid = await bcrypt.compare(password, user.passwordHash);
+      if (!valid && user.secondaryPasswordHash) {
+        valid = await bcrypt.compare(password, user.secondaryPasswordHash);
+      }
       if (!valid) return next(new ApiError(401, 'Invalid mobile number/email or password'));
 
       if (user.isActive === false || user.accountStatus === 'suspended') {
@@ -402,7 +405,7 @@ async function me(req, res, next) {
   try {
     const userId = req.user?.id || req.user?._id || req.user?.sub;
     if (mongoose.connection.readyState === 1 && userId) {
-      const liveUser = await User.findById(userId).select('-passwordHash');
+      const liveUser = await User.findById(userId).select('-passwordHash -secondaryPasswordHash');
       if (liveUser) {
         if (liveUser.isActive === false || liveUser.accountStatus === 'suspended') {
           return next(
