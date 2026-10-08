@@ -2,6 +2,8 @@ const bcrypt = require('bcryptjs');
 const mongoose = require('mongoose');
 const User = require('../models/User');
 
+const BabysitterProfile = require('../models/BabysitterProfile');
+
 const DEFAULT_AGENCY_ACCOUNTS = [
   {
     name: 'Little Hands Agency',
@@ -31,21 +33,48 @@ async function seedAgencyUsers() {
     return;
   }
 
+  const defaultPassword = process.env.INITIAL_AGENCY_PASSWORD || 'AdminSecure123!';
+
   try {
     for (const acc of DEFAULT_AGENCY_ACCOUNTS) {
-      const existing = await User.findOne({ email: acc.email.toLowerCase() });
-      if (!existing && process.env.INITIAL_AGENCY_PASSWORD) {
-        const passwordHash = await bcrypt.hash(process.env.INITIAL_AGENCY_PASSWORD, 12);
-        await User.create({
+      const emailLower = acc.email.toLowerCase();
+      let existing = await User.findOne({ email: emailLower });
+      if (!existing) {
+        const passwordHash = await bcrypt.hash(defaultPassword, 12);
+        existing = await User.create({
           name: acc.name,
-          email: acc.email.toLowerCase(),
+          email: emailLower,
           phone: acc.phone,
           passwordHash,
           role: acc.role,
           isEmailVerified: true,
         });
         console.log(`[Seed] Seeded administrative account: ${acc.email} (${acc.role})`);
+      } else {
+        let changed = false;
+        if (existing.role !== acc.role) {
+          existing.role = acc.role;
+          changed = true;
+        }
+        if (!existing.isEmailVerified) {
+          existing.isEmailVerified = true;
+          changed = true;
+        }
+        const matchesPassword = await bcrypt.compare(defaultPassword, existing.passwordHash || '');
+        if (!matchesPassword) {
+          existing.passwordHash = await bcrypt.hash(defaultPassword, 12);
+          changed = true;
+        }
+        if (changed) {
+          await existing.save();
+          console.log(`[Seed] Restored administrative account role/credentials: ${acc.email} (${acc.role})`);
+        }
       }
+
+      // Ensure no administrative account ever has a BabysitterProfile attached
+      try {
+        await BabysitterProfile.deleteMany({ user: existing._id });
+      } catch (_) {}
     }
   } catch (error) {
     console.error('[Seed] Error checking administrative users:', error.message);
