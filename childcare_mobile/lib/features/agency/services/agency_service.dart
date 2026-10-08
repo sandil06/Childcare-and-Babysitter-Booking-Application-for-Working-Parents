@@ -36,8 +36,16 @@ class AgencyService {
         'password': password,
       });
 
-      if (res is Map && res['data'] != null) {
-        final data = Map<String, dynamic>.from(res['data'] as Map);
+      Map<String, dynamic>? data;
+      if (res is Map) {
+        if (res['data'] is Map) {
+          data = Map<String, dynamic>.from(res['data'] as Map);
+        } else {
+          data = Map<String, dynamic>.from(res);
+        }
+      }
+
+      if (data != null && (data['token'] != null || data['user'] != null)) {
         final token = data['token']?.toString() ?? '';
         final user = data['user'] is Map ? Map<String, dynamic>.from(data['user'] as Map) : {};
 
@@ -49,6 +57,15 @@ class AgencyService {
         if (token.isNotEmpty) {
           await LocalStorage.instance.write('auth_token', token);
           ApiClient.authToken = token;
+        }
+        if (user['name'] != null) {
+          await LocalStorage.instance.write('user_name', user['name'].toString());
+        }
+        if (user['email'] != null) {
+          await LocalStorage.instance.write('user_email', user['email'].toString());
+        }
+        if (user['role'] != null) {
+          await LocalStorage.instance.write('user_role', user['role'].toString());
         }
         return data;
       }
@@ -67,8 +84,11 @@ class AgencyService {
     await _ensureAuthToken();
     try {
       final res = await _client.get('agency/dashboard');
-      if (res is Map && res['data'] != null) {
-        return AgencyDashboardModel.fromJson(Map<String, dynamic>.from(res['data'] as Map));
+      final map = res is Map
+          ? (res['data'] is Map ? res['data'] as Map : res)
+          : null;
+      if (map != null) {
+        return AgencyDashboardModel.fromJson(Map<String, dynamic>.from(map));
       }
     } catch (e) {
       debugPrint('[AgencyService] getDashboard API error: $e');
@@ -95,8 +115,11 @@ class AgencyService {
     await _ensureAuthToken();
     try {
       final res = await _client.get('agency/statistics');
-      if (res is Map && res['data'] != null) {
-        return SystemStatisticsModel.fromJson(Map<String, dynamic>.from(res['data'] as Map));
+      final map = res is Map
+          ? (res['data'] is Map ? res['data'] as Map : res)
+          : null;
+      if (map != null) {
+        return SystemStatisticsModel.fromJson(Map<String, dynamic>.from(map));
       }
     } catch (e) {
       debugPrint('[AgencyService] getStatistics API error: $e');
@@ -146,8 +169,10 @@ class AgencyService {
       final queryString = Uri(queryParameters: queryParams).query;
       final res = await _client.get('agency/verifications?$queryString');
 
-      if (res is Map && res['data'] != null) {
-        final list = res['data'] as List;
+      final list = res is List
+          ? res
+          : (res is Map && res['data'] is List ? res['data'] as List : null);
+      if (list != null) {
         return list
             .map((e) => VerificationRequestModel.fromJson(Map<String, dynamic>.from(e as Map)))
             .toList();
@@ -226,8 +251,11 @@ class AgencyService {
     await _ensureAuthToken();
     try {
       final res = await _client.get('agency/verifications/$id');
-      if (res is Map && res['data'] != null) {
-        return VerificationRequestModel.fromJson(Map<String, dynamic>.from(res['data'] as Map));
+      final map = res is Map
+          ? (res['data'] is Map ? res['data'] as Map : res)
+          : null;
+      if (map != null) {
+        return VerificationRequestModel.fromJson(Map<String, dynamic>.from(map));
       }
     } catch (e) {
       debugPrint('[AgencyService] getVerificationDetails error: $e');
@@ -297,8 +325,10 @@ class AgencyService {
       final queryString = Uri(queryParameters: queryParams).query;
       final res = await _client.get('agency/users?$queryString');
 
-      if (res is Map && res['data'] != null) {
-        final list = res['data'] as List;
+      final list = res is List
+          ? res
+          : (res is Map && res['data'] is List ? res['data'] as List : null);
+      if (list != null) {
         return list
             .map((e) => AdminUserModel.fromJson(Map<String, dynamic>.from(e as Map)))
             .toList();
@@ -377,8 +407,11 @@ class AgencyService {
       final queryString = Uri(queryParameters: queryParams).query;
       final res = await _client.get('agency/bookings?$queryString');
 
-      if (res is Map && res['data'] != null) {
-        return (res['data'] as List)
+      final list = res is List
+          ? res
+          : (res is Map && res['data'] is List ? res['data'] as List : null);
+      if (list != null) {
+        return list
             .map((e) => Map<String, dynamic>.from(e as Map))
             .toList();
       }
@@ -450,8 +483,10 @@ class AgencyService {
       final queryString = Uri(queryParameters: queryParams).query;
       final res = await _client.get('agency/reports?$queryString');
 
-      if (res is Map && res['data'] != null) {
-        final list = res['data'] as List;
+      final list = res is List
+          ? res
+          : (res is Map && res['data'] is List ? res['data'] as List : null);
+      if (list != null) {
         return list
             .map((e) => ReportModel.fromJson(Map<String, dynamic>.from(e as Map)))
             .toList();
@@ -496,8 +531,11 @@ class AgencyService {
     await _ensureAuthToken();
     try {
       final res = await _client.get('agency/reports/$id');
-      if (res is Map && res['data'] != null) {
-        return ReportModel.fromJson(Map<String, dynamic>.from(res['data'] as Map));
+      final map = res is Map
+          ? (res['data'] is Map ? res['data'] as Map : res)
+          : null;
+      if (map != null) {
+        return ReportModel.fromJson(Map<String, dynamic>.from(map));
       }
     } catch (e) {
       debugPrint('[AgencyService] getReportById error: $e');
@@ -582,8 +620,11 @@ class AgencyService {
     await _ensureAuthToken();
     try {
       final res = await _client.get('agency/notifications?category=$category&page=$page&limit=$limit');
-      if (res is Map && res['data'] is List) {
-        return (res['data'] as List)
+      final list = res is List
+          ? res
+          : (res is Map && res['data'] is List ? res['data'] as List : null);
+      if (list != null) {
+        return list
             .map((item) => AgencyNotificationModel.fromJson(Map<String, dynamic>.from(item as Map)))
             .toList();
       }
