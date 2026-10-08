@@ -109,7 +109,7 @@ class _AgencyDashboardScreenState extends State<AgencyDashboardScreen> {
             actions: [
               IconButton(
                 icon: const Icon(Icons.notifications_outlined, color: AppColors.ink),
-                onPressed: () => Navigator.pushNamed(context, AppRoutes.parentNotifications),
+                onPressed: () => Navigator.pushNamed(context, AppRoutes.agencyNotifications),
                 tooltip: 'System Alerts',
               ),
               IconButton(

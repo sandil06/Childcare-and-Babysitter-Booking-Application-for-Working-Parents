@@ -7,6 +7,7 @@ import '../models/agency_dashboard_model.dart';
 import '../models/report_model.dart';
 import '../models/statistics_model.dart';
 import '../models/verification_request_model.dart';
+import '../models/agency_notification_model.dart';
 
 class AgencyService {
   static final AgencyService _instance = AgencyService._internal();
@@ -569,4 +570,79 @@ class AgencyService {
       return false;
     }
   }
+
+  // ==========================================
+  // 6. SYSTEM NOTIFICATIONS & BROADCASTS
+  // ==========================================
+  Future<List<AgencyNotificationModel>> getAgencyNotifications({
+    String category = 'all',
+    int page = 1,
+    int limit = 20,
+  }) async {
+    await _ensureAuthToken();
+    try {
+      final res = await _client.get('agency/notifications?category=$category&page=$page&limit=$limit');
+      if (res is Map && res['data'] is List) {
+        return (res['data'] as List)
+            .map((item) => AgencyNotificationModel.fromJson(Map<String, dynamic>.from(item as Map)))
+            .toList();
+      }
+    } catch (e) {
+      debugPrint('[AgencyService] getAgencyNotifications error: $e');
+    }
+
+    // Offline mock fallback
+    return [
+      AgencyNotificationModel(
+        id: 'anotif-1',
+        title: 'New Verification Request Submitted',
+        message: 'Amaya Fernando uploaded police clearance and qualification certificates for review.',
+        type: 'verification_submitted',
+        category: 'verification',
+        priority: 'high',
+        createdAt: DateTime.now().subtract(const Duration(minutes: 25)),
+      ),
+      AgencyNotificationModel(
+        id: 'anotif-2',
+        title: 'Urgent Safety Report Filed',
+        message: 'Parent Dulani Senanayake filed an urgent safety incident report regarding booking BK-901.',
+        type: 'high_priority_complaint',
+        category: 'safety',
+        priority: 'urgent',
+        createdAt: DateTime.now().subtract(const Duration(minutes: 90)),
+      ),
+      AgencyNotificationModel(
+        id: 'anotif-3',
+        title: 'Automated Atlas Backup Completed',
+        message: 'Daily encrypted cluster snapshot and audit log backup completed without anomalies.',
+        type: 'system_alert',
+        category: 'system',
+        priority: 'normal',
+        isRead: true,
+        createdAt: DateTime.now().subtract(const Duration(hours: 6)),
+      ),
+    ];
+  }
+
+  Future<bool> broadcastNotification({
+    required String title,
+    required String message,
+    String targetAudience = 'all',
+    String priority = 'normal',
+  }) async {
+    await _ensureAuthToken();
+    try {
+      final res = await _client.post('agency/notifications/broadcast', body: {
+        'title': title,
+        'message': message,
+        'targetAudience': targetAudience,
+        'priority': priority,
+      });
+      return res is Map && res['success'] == true;
+    } catch (e) {
+      debugPrint('[AgencyService] broadcastNotification error: $e');
+      return false;
+    }
+  }
 }
+

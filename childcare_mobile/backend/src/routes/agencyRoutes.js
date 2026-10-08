@@ -20,16 +20,22 @@ const {
   dismissReport,
   getStatistics,
   getAuditLogs,
+  getAgencyNotifications,
+  broadcastNotification,
 } = require('../controllers/agencyController');
 const verificationController = require('../controllers/verificationController');
 
 // All agency endpoints require authenticated agency or admin role
 const requireAgency = roleMiddleware(ROLES.AGENCY, ROLES.ADMIN);
 
-// Dashboard & System Statistics
+// Dashboard, System Statistics & Audit Trails
 router.get('/dashboard', auth, requireAgency, getDashboard);
 router.get('/statistics', auth, requireAgency, getStatistics);
 router.get('/audit-logs', auth, requireAgency, getAuditLogs);
+
+// System Notifications & Platform Broadcasts
+router.get('/notifications', auth, requireAgency, getAgencyNotifications);
+router.post('/notifications/broadcast', auth, requireAgency, broadcastNotification);
 
 // Verifications
 router.get('/verifications', auth, requireAgency, verificationController.list);

@@ -5,6 +5,7 @@ import '../models/agency_dashboard_model.dart';
 import '../models/report_model.dart';
 import '../models/statistics_model.dart';
 import '../models/verification_request_model.dart';
+import '../models/agency_notification_model.dart';
 import '../services/agency_service.dart';
 
 class AgencyProvider extends ChangeNotifier {
@@ -23,6 +24,7 @@ class AgencyProvider extends ChangeNotifier {
   List<AdminUserModel> _users = [];
   List<ReportModel> _reports = [];
   List<Map<String, dynamic>> _bookings = [];
+  List<AgencyNotificationModel> _agencyNotifications = [];
 
   // Granular Loading States (Requirement 30)
   bool _isInitialLoading = false;
@@ -35,6 +37,7 @@ class AgencyProvider extends ChangeNotifier {
   String _verificationFilter = 'pending';
   String _userRoleFilter = 'all';
   String _reportStatusFilter = 'open';
+  String _notificationFilter = 'all';
   int _verificationsPage = 1;
   bool _verificationsHasMore = true;
 
@@ -46,6 +49,7 @@ class AgencyProvider extends ChangeNotifier {
   List<AdminUserModel> get users => _users;
   List<ReportModel> get reports => _reports;
   List<Map<String, dynamic>> get bookings => _bookings;
+  List<AgencyNotificationModel> get agencyNotifications => _agencyNotifications;
 
   bool get isInitialLoading => _isInitialLoading;
   bool get isRefreshing => _isRefreshing;
@@ -61,6 +65,7 @@ class AgencyProvider extends ChangeNotifier {
   String get verificationFilter => _verificationFilter;
   String get userRoleFilter => _userRoleFilter;
   String get reportStatusFilter => _reportStatusFilter;
+  String get notificationFilter => _notificationFilter;
   bool get verificationsHasMore => _verificationsHasMore;
 
   // ==========================================
@@ -431,5 +436,62 @@ class AgencyProvider extends ChangeNotifier {
 
   Future<ReportModel?> getReportById(String id) async {
     return _service.getReportById(id);
+  }
+
+  // ==========================================
+  // SYSTEM NOTIFICATIONS & BROADCASTS
+  // ==========================================
+  void setNotificationFilter(String filter) {
+    if (_notificationFilter != filter) {
+      _notificationFilter = filter;
+      loadAgencyNotifications(refresh: true);
+    }
+  }
+
+  Future<void> loadAgencyNotifications({bool refresh = false}) async {
+    if (refresh) {
+      _isRefreshing = true;
+    } else {
+      _isInitialLoading = true;
+    }
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      _agencyNotifications = await _service.getAgencyNotifications(
+        category: _notificationFilter,
+      );
+    } catch (e) {
+      _errorMessage = e.toString();
+    } finally {
+      _isInitialLoading = false;
+      _isRefreshing = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> broadcastNotification({
+    required String title,
+    required String message,
+    String targetAudience = 'all',
+    String priority = 'normal',
+  }) async {
+    _isSubmitting = true;
+    notifyListeners();
+    try {
+      final ok = await _service.broadcastNotification(
+        title: title,
+        message: message,
+        targetAudience: targetAudience,
+        priority: priority,
+      );
+      if (ok) {
+        await loadAgencyNotifications(refresh: true);
+      }
+      return ok;
+    } finally {
+      _isSubmitting = false;
+      notifyListeners();
+    }
   }
 }

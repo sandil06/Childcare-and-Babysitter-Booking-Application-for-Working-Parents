@@ -1592,6 +1592,257 @@ async function getAuditLogs(req, res, next) {
   }
 }
 
+const memoryAgencyNotifications = [];
+
+function initSampleAgencyNotifications() {
+  if (memoryAgencyNotifications.length > 0) return;
+
+  const samples = [
+    {
+      _id: 'anotif-1',
+      id: 'anotif-1',
+      title: 'New Verification Request Submitted',
+      message: 'Amaya Fernando uploaded police clearance and qualification certificates for review.',
+      type: 'verification_submitted',
+      category: 'verification',
+      targetAudience: 'agency',
+      priority: 'high',
+      isRead: false,
+      createdAt: new Date(Date.now() - 1000 * 60 * 25),
+      data: { verificationId: 'ver-101', babysitterId: 'sitter-1' },
+    },
+    {
+      _id: 'anotif-2',
+      id: 'anotif-2',
+      title: 'Urgent Safety Report Filed',
+      message: 'Parent Dulani Senanayake filed an urgent safety incident report regarding booking BK-901.',
+      type: 'high_priority_complaint',
+      category: 'safety',
+      targetAudience: 'agency',
+      priority: 'urgent',
+      isRead: false,
+      createdAt: new Date(Date.now() - 1000 * 60 * 90),
+      data: { reportId: 'rep-401', bookingId: 'BK-901' },
+    },
+    {
+      _id: 'anotif-3',
+      id: 'anotif-3',
+      title: 'Automated Atlas Backup Completed',
+      message: 'Daily encrypted cluster snapshot and audit log backup completed without anomalies.',
+      type: 'system_alert',
+      category: 'system',
+      targetAudience: 'agency',
+      priority: 'normal',
+      isRead: true,
+      createdAt: new Date(Date.now() - 1000 * 3600 * 6),
+      data: { component: 'mongodb_atlas' },
+    },
+    {
+      _id: 'anotif-4',
+      id: 'anotif-4',
+      title: 'Verification Changes Submitted',
+      message: 'Kavindi Perera updated first aid certification documents per agency feedback.',
+      type: 'verification_updated',
+      category: 'verification',
+      targetAudience: 'agency',
+      priority: 'normal',
+      isRead: true,
+      createdAt: new Date(Date.now() - 1000 * 3600 * 18),
+      data: { verificationId: 'ver-102' },
+    },
+  ];
+
+  memoryAgencyNotifications.push(...samples);
+}
+
+initSampleAgencyNotifications();
+
+/**
+ * GET /api/v1/agency/notifications
+ * Administrative notifications feed with category filter and unread count
+ */
+async function getAgencyNotifications(req, res, next) {
+  try {
+    const { category = 'all', unreadOnly, page = 1, limit = 20 } = req.query;
+    initSampleAgencyNotifications();
+
+    const verificationTypes = [
+      'verification_submitted',
+      'verification_updated',
+      'verification_approved',
+      'verification_rejected',
+      'verification_changes_requested',
+    ];
+    const safetyTypes = ['safety_report', 'high_priority_complaint'];
+    const systemTypes = ['system_alert', 'agency_broadcast', 'system', 'user_suspended', 'user_reactivated'];
+
+    if (isDbConnected()) {
+      const query = {
+        $or: [
+          { user: req.user?._id || req.user?.id },
+          { 'data.targetAudience': { $in: ['all', 'agency'] } },
+          { type: { $in: [...verificationTypes, ...safetyTypes, ...systemTypes] } },
+        ],
+      };
+
+      if (category === 'verification') {
+        query.type = { $in: verificationTypes };
+      } else if (category === 'safety') {
+        query.type = { $in: safetyTypes };
+      } else if (category === 'system') {
+        query.type = { $in: systemTypes };
+      }
+
+      if (unreadOnly === 'true') {
+        query.isRead = false;
+      }
+
+      const skip = (Number(page) - 1) * Number(limit);
+      const [notifs, total, unreadCount] = await Promise.all([
+        Notification.find(query).sort({ createdAt: -1 }).skip(skip).limit(Number(limit)).lean(),
+        Notification.countDocuments(query),
+        Notification.countDocuments({ ...query, isRead: false }),
+      ]);
+
+      res.set('X-Unread-Count', String(unreadCount));
+      return ApiResponse.paginated(res, notifs, { page, limit, total }, 'Agency notifications retrieved');
+    }
+
+    let list = [...memoryAgencyNotifications];
+    if (category === 'verification') {
+      list = list.filter((n) => n.category === 'verification' || verificationTypes.includes(n.type));
+    } else if (category === 'safety') {
+      list = list.filter((n) => n.category === 'safety' || safetyTypes.includes(n.type));
+    } else if (category === 'system') {
+      list = list.filter((n) => n.category === 'system' || systemTypes.includes(n.type));
+    }
+
+    if (unreadOnly === 'true') {
+      list = list.filter((n) => !n.isRead);
+    }
+
+    list.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    const total = list.length;
+    const unreadCount = list.filter((n) => !n.isRead).length;
+    const startIndex = (Number(page) - 1) * Number(limit);
+    const paginated = list.slice(startIndex, startIndex + Number(limit));
+
+    res.set('X-Unread-Count', String(unreadCount));
+    return ApiResponse.paginated(res, paginated, { page, limit, total }, 'Agency notifications retrieved (mock)');
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * POST /api/v1/agency/notifications/broadcast
+ * Broadcast platform alert to specific or all audience groups
+ */
+async function broadcastNotification(req, res, next) {
+  try {
+    const { title, message, targetAudience = 'all', priority = 'normal', type = 'agency_broadcast' } = req.body;
+    const adminUser = req.user;
+
+    if (!title || !title.trim()) {
+      return next(new ApiError(400, 'Notification title is required'));
+    }
+    if (!message || !message.trim()) {
+      return next(new ApiError(400, 'Notification message is required'));
+    }
+
+    const validAudiences = ['all', 'parents', 'babysitters', 'agency'];
+    if (!validAudiences.includes(targetAudience)) {
+      return next(new ApiError(400, `Invalid target audience. Allowed: ${validAudiences.join(', ')}`));
+    }
+
+    const broadcastId = `bcast-${Date.now()}`;
+    let recipientCount = 0;
+
+    if (isDbConnected()) {
+      let roleFilter = {};
+      if (targetAudience === 'parents') roleFilter = { role: 'parent', isActive: true };
+      else if (targetAudience === 'babysitters') roleFilter = { role: 'babysitter', isActive: true };
+      else if (targetAudience === 'agency') roleFilter = { role: { $in: ['agency', 'admin'] } };
+      else roleFilter = { isActive: true };
+
+      const users = await User.find(roleFilter).select('_id');
+      recipientCount = users.length;
+
+      if (users.length > 0) {
+        const notifs = users.map((u) => ({
+          user: u._id,
+          title: title.trim(),
+          message: message.trim(),
+          type: type || 'agency_broadcast',
+          data: {
+            broadcastId,
+            targetAudience,
+            priority,
+            sentBy: adminUser?._id,
+          },
+        }));
+        await Notification.insertMany(notifs);
+      }
+    } else {
+      initSampleUsers();
+      let users = Array.from(memoryUsers.values());
+      if (targetAudience === 'parents') users = users.filter((u) => u.role === 'parent');
+      else if (targetAudience === 'babysitters') users = users.filter((u) => u.role === 'babysitter');
+      else if (targetAudience === 'agency') users = users.filter((u) => u.role === 'agency' || u.role === 'admin');
+
+      recipientCount = Math.max(users.length, 12);
+
+      initSampleAgencyNotifications();
+      memoryAgencyNotifications.unshift({
+        _id: broadcastId,
+        id: broadcastId,
+        title: title.trim(),
+        message: message.trim(),
+        type: type || 'agency_broadcast',
+        category: 'system',
+        targetAudience,
+        priority,
+        isRead: false,
+        createdAt: new Date(),
+        data: {
+          broadcastId,
+          recipientCount,
+          sentBy: adminUser?.name || 'Agency Administrator',
+        },
+      });
+    }
+
+    // Record administrative audit trail
+    await AuditLog.record({
+      actor: adminUser?._id || 'agency-admin-1',
+      adminName: adminUser?.name || 'Agency Administrator',
+      adminEmail: adminUser?.email || 'admin@littlehands.lk',
+      action: 'broadcast_notification',
+      targetType: 'Notification',
+      targetId: broadcastId,
+      notes: `Dispatched system broadcast [${targetAudience}]: "${title.trim()}"`,
+      metadata: { targetAudience, priority, recipientCount },
+    });
+
+    return ApiResponse.success(
+      res,
+      {
+        broadcastId,
+        title: title.trim(),
+        message: message.trim(),
+        targetAudience,
+        priority,
+        recipientCount,
+        dispatchedAt: new Date(),
+      },
+      'Notification broadcast dispatched successfully',
+      201
+    );
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   getDashboard,
   dashboard: getDashboard,
@@ -1611,9 +1862,12 @@ module.exports = {
   dismissReport,
   getStatistics,
   getAuditLogs,
+  getAgencyNotifications,
+  broadcastNotification,
   memoryUsers,
   memoryBookings,
   memoryVerifications,
   memoryReports,
   memoryAuditLogs,
+  memoryAgencyNotifications,
 };
