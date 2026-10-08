@@ -8,6 +8,8 @@ const configureSocket = require('./config/socket');
 async function startServer() {
   try {
     await connectDatabase();
+    const seedAgencyUsers = require('./utils/seedAgencyUsers');
+    await seedAgencyUsers();
   } catch (error) {
     console.error(`MongoDB connection failed: ${error.message}`);
     console.error('Backend starting without a database connection');
