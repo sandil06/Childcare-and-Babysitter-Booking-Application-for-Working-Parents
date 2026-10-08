@@ -7,6 +7,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/storage/local_storage.dart';
+import '../../agency/providers/agency_provider.dart';
 import '../../babysitter/providers/babysitter_provider.dart';
 import '../../babysitter/services/babysitter_service.dart';
 
@@ -212,16 +213,25 @@ class _LoginScreenState extends State<LoginScreen> {
         body: {'email': identifier, 'password': password},
       );
 
-      if (res is Map<String, dynamic> && res['token'] != null) {
-        final token = res['token'].toString();
+      Map<String, dynamic>? data;
+      if (res is Map<String, dynamic>) {
+        if (res['data'] is Map<String, dynamic>) {
+          data = res['data'] as Map<String, dynamic>;
+        } else {
+          data = res;
+        }
+      }
+
+      if (data != null && data['token'] != null) {
+        final token = data['token'].toString();
         ApiClient.authToken = token;
         await LocalStorage.instance.write('auth_token', token);
 
         BabysitterService.clearCurrentProfile();
         BabysitterProvider.instance.reset();
 
-        final userObj = res['user'] is Map<String, dynamic>
-            ? res['user'] as Map<String, dynamic>
+        final userObj = data['user'] is Map<String, dynamic>
+            ? data['user'] as Map<String, dynamic>
             : null;
         if (userObj != null) {
           if (userObj['name'] != null) {
@@ -257,30 +267,46 @@ class _LoginScreenState extends State<LoginScreen> {
           }
         }
 
-        // Fetch fresh profile and dashboard
-        await BabysitterProvider.instance.fetchProfile();
-        await BabysitterProvider.instance.fetchDashboard();
+        final serverRole = userObj?['role']?.toString().toLowerCase();
+
+        if (serverRole == 'babysitter') {
+          await BabysitterProvider.instance.fetchProfile();
+          await BabysitterProvider.instance.fetchDashboard();
+        } else if (serverRole == 'agency' || serverRole == 'admin') {
+          await AgencyProvider.instance.loadDashboard();
+        }
 
         if (mounted) {
-          final serverRole = userObj?['role']?.toString().toLowerCase();
-          if (serverRole == 'agency' || serverRole == 'admin') {
-            Navigator.pushNamedAndRemoveUntil(
-              context,
-              AppRoutes.agencyDashboard,
-              (_) => false,
-            );
-          } else if (_isSitterMode || serverRole == 'babysitter') {
-            Navigator.pushNamedAndRemoveUntil(
-              context,
-              AppRoutes.sitterDashboard,
-              (_) => false,
-            );
-          } else {
-            Navigator.pushNamedAndRemoveUntil(
-              context,
-              AppRoutes.home,
-              (_) => false,
-            );
+          switch (serverRole) {
+            case 'agency':
+            case 'admin':
+              Navigator.pushNamedAndRemoveUntil(
+                context,
+                AppRoutes.agencyDashboard,
+                (_) => false,
+              );
+              break;
+            case 'babysitter':
+              Navigator.pushNamedAndRemoveUntil(
+                context,
+                AppRoutes.sitterDashboard,
+                (_) => false,
+              );
+              break;
+            case 'parent':
+              Navigator.pushNamedAndRemoveUntil(
+                context,
+                AppRoutes.home,
+                (_) => false,
+              );
+              break;
+            default:
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Unauthorized account role.'),
+                  backgroundColor: AppColors.coral,
+                ),
+              );
           }
         }
       } else {
@@ -993,29 +1019,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       color: Color(0xFF005B60),
                       fontSize: 12.5,
                       fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 6),
-
-              // Agency & Administrator Portal Switcher
-              Center(
-                child: TextButton.icon(
-                  onPressed: () {
-                    Navigator.pushNamed(context, AppRoutes.agencyLogin);
-                  },
-                  icon: const Icon(
-                    Icons.admin_panel_settings_outlined,
-                    size: 16,
-                    color: Color(0xFF005B60),
-                  ),
-                  label: const Text(
-                    'Agency & Administrator Portal →',
-                    style: TextStyle(
-                      color: Color(0xFF005B60),
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),

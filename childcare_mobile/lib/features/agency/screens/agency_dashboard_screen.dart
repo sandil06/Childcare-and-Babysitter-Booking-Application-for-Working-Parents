@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../../../config/routes.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_sizes.dart';
+import '../../../core/network/api_client.dart';
+import '../../../core/storage/local_storage.dart';
 import '../models/agency_dashboard_model.dart';
 import '../models/verification_request_model.dart';
 import '../providers/agency_provider.dart';
@@ -38,9 +40,18 @@ class _AgencyDashboardScreenState extends State<AgencyDashboardScreen> {
             child: const Text('Cancel', style: TextStyle(color: AppColors.muted)),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(ctx);
-              Navigator.pushNamedAndRemoveUntil(context, AppRoutes.login, (r) => false);
+              ApiClient.authToken = null;
+              await LocalStorage.instance.remove('auth_token');
+              await LocalStorage.instance.remove('user_role');
+              await LocalStorage.instance.remove('user_name');
+              await LocalStorage.instance.remove('user_email');
+              await LocalStorage.instance.remove('user_id');
+              AgencyProvider.instance.reset();
+              if (mounted) {
+                Navigator.pushNamedAndRemoveUntil(context, AppRoutes.login, (r) => false);
+              }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFDC2626),

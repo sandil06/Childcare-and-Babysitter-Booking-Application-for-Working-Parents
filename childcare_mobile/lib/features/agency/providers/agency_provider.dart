@@ -494,4 +494,21 @@ class AgencyProvider extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+  void reset() {
+    _dashboard = null;
+    _statistics = null;
+    _verificationRequests = [];
+    _selectedVerification = null;
+    _users = [];
+    _reports = [];
+    _bookings = [];
+    _agencyNotifications = [];
+    _errorMessage = null;
+    _isInitialLoading = false;
+    _isRefreshing = false;
+    _isLoadingMore = false;
+    _isSubmitting = false;
+    notifyListeners();
+  }
 }

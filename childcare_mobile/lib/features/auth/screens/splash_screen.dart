@@ -2,6 +2,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../../config/routes.dart';
+import '../../../core/network/api_client.dart';
+import '../../../core/storage/local_storage.dart';
+import '../../agency/providers/agency_provider.dart';
+import '../../babysitter/providers/babysitter_provider.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -12,8 +16,9 @@ class SplashScreen extends StatefulWidget {
 
 class _SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
-  Timer? _timer;
   late AnimationController _animController;
+  bool _hasNavigated = false;
+  String _destinationRoute = AppRoutes.onboarding;
 
   @override
   void initState() {
@@ -23,20 +28,74 @@ class _SplashScreenState extends State<SplashScreen>
       duration: const Duration(milliseconds: 1200),
     )..repeat(reverse: true);
 
-    _timer = Timer(const Duration(milliseconds: 2600), _navigateToNext);
+    _checkSessionAndNavigate();
   }
 
   @override
   void dispose() {
-    _timer?.cancel();
     _animController.dispose();
     super.dispose();
   }
 
+  Future<void> _checkSessionAndNavigate() async {
+    final minDisplayDuration = Future.delayed(const Duration(milliseconds: 1800));
+
+    try {
+      final token = await LocalStorage.instance.read('auth_token');
+      if (token != null && token.toString().trim().isNotEmpty) {
+        ApiClient.authToken = token.toString().trim();
+        try {
+          final res = await ApiClient().get('auth/me');
+          Map<String, dynamic>? data;
+          if (res is Map<String, dynamic>) {
+            if (res['data'] is Map<String, dynamic>) {
+              data = res['data'] as Map<String, dynamic>;
+            } else {
+              data = res;
+            }
+          }
+
+          final userObj = data?['user'] is Map<String, dynamic>
+              ? data!['user'] as Map<String, dynamic>
+              : null;
+          final serverRole = userObj?['role']?.toString().toLowerCase();
+
+          if (serverRole == 'agency' || serverRole == 'admin') {
+            await AgencyProvider.instance.loadDashboard();
+            _destinationRoute = AppRoutes.agencyDashboard;
+          } else if (serverRole == 'babysitter') {
+            await BabysitterProvider.instance.fetchProfile();
+            await BabysitterProvider.instance.fetchDashboard();
+            _destinationRoute = AppRoutes.sitterDashboard;
+          } else if (serverRole == 'parent') {
+            _destinationRoute = AppRoutes.home;
+          } else {
+            _destinationRoute = AppRoutes.login;
+          }
+        } catch (_) {
+          ApiClient.authToken = null;
+          await LocalStorage.instance.remove('auth_token');
+          await LocalStorage.instance.remove('user_role');
+          _destinationRoute = AppRoutes.login;
+        }
+      } else {
+        _destinationRoute = AppRoutes.onboarding;
+      }
+    } catch (_) {
+      _destinationRoute = AppRoutes.onboarding;
+    }
+
+    await minDisplayDuration;
+
+    if (!mounted || _hasNavigated) return;
+    _hasNavigated = true;
+    Navigator.pushReplacementNamed(context, _destinationRoute);
+  }
+
   void _navigateToNext() {
-    if (!mounted) return;
-    _timer?.cancel();
-    Navigator.pushReplacementNamed(context, AppRoutes.onboarding);
+    if (!mounted || _hasNavigated) return;
+    _hasNavigated = true;
+    Navigator.pushReplacementNamed(context, _destinationRoute);
   }
 
   @override
