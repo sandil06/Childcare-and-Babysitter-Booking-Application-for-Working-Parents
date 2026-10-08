@@ -77,6 +77,10 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> with SingleTick
       onStatusUpdate: (newStatus) {
         if (!mounted) return;
         setState(() => _sitterStatus = newStatus);
+        if (newStatus == 'completed' || newStatus == 'cancelled' || newStatus == 'rejected') {
+          _trackingService.stopTrackingSubscription();
+          _locationService.stopLocationUpdates();
+        }
       },
     );
 
@@ -85,6 +89,10 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> with SingleTick
       bookingId: bookingId,
       onLocationChanged: (point) {
         if (!mounted) return;
+        if (_sitterStatus == 'completed' || _sitterStatus == 'cancelled' || _sitterStatus == 'rejected') {
+          _locationService.stopLocationUpdates();
+          return;
+        }
         setState(() {
           _sitterLat = point.latitude;
           _sitterLng = point.longitude;

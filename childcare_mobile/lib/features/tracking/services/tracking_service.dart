@@ -82,12 +82,6 @@ class TrackingService {
         }
       });
 
-      _socket.on('tracking:update', (data) {
-        if (data is Map && data['bookingId'] == bookingId) {
-          onLocationUpdate(Map<String, dynamic>.from(data));
-        }
-      });
-
       _socket.on('sitter_status_update', (data) {
         if (data is Map && data['bookingId'] == bookingId) {
           final s = data['status']?.toString();
