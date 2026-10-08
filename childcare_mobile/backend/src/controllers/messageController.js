@@ -140,24 +140,38 @@ async function getMessages(req, res, next) {
   try {
     const userId = getUserId(req);
     const { conversationId } = req.params;
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 30));
+    const skip = (page - 1) * limit;
 
     if (isDbConnected() && mongoose.Types.ObjectId.isValid(conversationId)) {
-      const page = parseInt(req.query.page) || 1;
-      const limit = parseInt(req.query.limit) || 30;
-      const skip = (page - 1) * limit;
-
+      const total = await Message.countDocuments({ conversation: conversationId });
       const messages = await Message.find({ conversation: conversationId })
         .populate('sender', 'name email avatar')
-        .sort({ createdAt: 1 })
+        .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit);
 
-      return ApiResponse.success(res, messages, 'Messages retrieved');
+      // Return chronological order (oldest to newest within this page)
+      const chronological = messages.reverse();
+      return ApiResponse.paginated(
+        res,
+        chronological,
+        { page, limit, total, hasMore: skip + messages.length < total },
+        'Messages retrieved'
+      );
     }
 
     initMemoryData(userId);
     const msgs = memoryMessages.get(conversationId) || [];
-    return ApiResponse.success(res, msgs, 'Messages retrieved');
+    const reversed = [...msgs].reverse();
+    const paged = reversed.slice(skip, skip + limit).reverse();
+    return ApiResponse.paginated(
+      res,
+      paged,
+      { page, limit, total: msgs.length, hasMore: skip + limit < msgs.length },
+      'Messages retrieved'
+    );
   } catch (err) {
     next(err);
   }

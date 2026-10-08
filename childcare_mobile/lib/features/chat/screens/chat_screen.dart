@@ -79,8 +79,16 @@ class _ChatScreenState extends State<ChatScreen> {
       onNewMessage: (newMsg) {
         if (!mounted) return;
         setState(() {
-          // Avoid duplicate insertion
-          if (!_messages.any((m) => m.id == newMsg.id)) {
+          // If this incoming message corresponds to a temporary optimistic message, replace it
+          final tempIdx = _messages.indexWhere(
+            (m) =>
+                (m.id.startsWith('temp-') || m.id == newMsg.id) &&
+                m.text == newMsg.text &&
+                m.senderId == newMsg.senderId,
+          );
+          if (tempIdx != -1) {
+            _messages[tempIdx] = newMsg;
+          } else if (!_messages.any((m) => m.id == newMsg.id)) {
             _messages.add(newMsg);
           }
         });
@@ -146,12 +154,15 @@ class _ChatScreenState extends State<ChatScreen> {
     });
     _scrollToBottom();
 
-    // Send via Socket with REST fallback
+    bool ackReceived = false;
+
+    // Primary send via Socket.IO
     _socketService.sendMessage(
       conversationId: _convId,
       text: text,
       recipientId: _otherId,
       onAck: (savedMsg) {
+        ackReceived = true;
         if (!mounted) return;
         setState(() {
           final idx = _messages.indexWhere((m) => m.id == localMsg.id);
@@ -162,12 +173,27 @@ class _ChatScreenState extends State<ChatScreen> {
       },
     );
 
-    // Fallback REST call to ensure persistence
-    _chatService.sendMessage(
-      conversationId: _convId,
-      text: text,
-      recipientId: _otherId,
-    );
+    // Fallback REST call only if socket ACK is delayed or disconnected
+    Future.delayed(const Duration(milliseconds: 1500), () {
+      if (!ackReceived && mounted) {
+        _chatService
+            .sendMessage(
+              conversationId: _convId,
+              text: text,
+              recipientId: _otherId,
+            )
+            .then((saved) {
+              if (!mounted || saved == null) return;
+              setState(() {
+                final idx = _messages.indexWhere((m) => m.id == localMsg.id);
+                if (idx != -1) {
+                  _messages[idx] = saved;
+                }
+              });
+            })
+            .catchError((_) {});
+      }
+    });
   }
 
   @override
