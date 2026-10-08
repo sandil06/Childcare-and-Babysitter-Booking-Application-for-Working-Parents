@@ -15,28 +15,92 @@ class NotificationsScreen extends StatefulWidget {
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
   final NotificationService _service = NotificationService();
+  late final ScrollController _scrollController;
   List<AppNotificationModel> _notifications = [];
-  bool _isLoading = true;
+  bool _isInitialLoading = true;
+  bool _isRefreshing = false;
+  bool _isLoadingMore = false;
+  bool _hasMore = true;
+  int _currentPage = 1;
+  static const int _limit = 15;
   String _selectedCategory = 'all'; // 'all', 'bookings', 'messages'
 
   @override
   void initState() {
     super.initState();
-    _loadNotifications();
+    _scrollController = ScrollController()..addListener(_onScroll);
+    _loadNotifications(isInitial: true);
   }
 
-  Future<void> _loadNotifications() async {
-    setState(() => _isLoading = true);
+  @override
+  void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.hasClients &&
+        _scrollController.position.pixels >=
+            _scrollController.position.maxScrollExtent - 300) {
+      _loadMore();
+    }
+  }
+
+  Future<void> _loadNotifications({bool isInitial = false, bool isRefresh = false}) async {
+    if (isInitial) {
+      setState(() => _isInitialLoading = true);
+    } else if (isRefresh) {
+      setState(() => _isRefreshing = true);
+    }
+
     try {
-      final list = await _service.getNotifications(category: _selectedCategory);
+      _currentPage = 1;
+      final list = await _service.getNotifications(
+        category: _selectedCategory,
+        page: _currentPage,
+        limit: _limit,
+      );
       if (mounted) {
         setState(() {
           _notifications = list;
-          _isLoading = false;
+          _hasMore = list.length >= _limit;
         });
       }
     } catch (_) {
-      if (mounted) setState(() => _isLoading = false);
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isInitialLoading = false;
+          _isRefreshing = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _loadMore() async {
+    if (_isLoadingMore || !_hasMore || _isInitialLoading || _isRefreshing) {
+      return;
+    }
+
+    setState(() => _isLoadingMore = true);
+    try {
+      final nextPage = _currentPage + 1;
+      final list = await _service.getNotifications(
+        category: _selectedCategory,
+        page: nextPage,
+        limit: _limit,
+      );
+      if (mounted) {
+        setState(() {
+          _currentPage = nextPage;
+          _notifications.addAll(list);
+          _hasMore = list.length >= _limit;
+        });
+      }
+    } catch (_) {
+    } finally {
+      if (mounted) setState(() => _isLoadingMore = false);
     }
   }
 
@@ -175,20 +239,39 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
           // Notifications List
           Expanded(
-            child: _isLoading
+            child: _isInitialLoading && _notifications.isEmpty
                 ? const Center(
                     child: CircularProgressIndicator(color: AppColors.teal),
                   )
                 : RefreshIndicator(
-                    onRefresh: _loadNotifications,
+                    onRefresh: () => _loadNotifications(isRefresh: true),
                     color: AppColors.teal,
                     child: _notifications.isEmpty
                         ? _buildEmptyState()
                         : ListView.separated(
+                            controller: _scrollController,
+                            physics: const AlwaysScrollableScrollPhysics(
+                              parent: ClampingScrollPhysics(),
+                            ),
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                            itemCount: _notifications.length,
+                            itemCount: _notifications.length + (_isLoadingMore ? 1 : 0),
                             separatorBuilder: (_, index) => const SizedBox(height: 10),
                             itemBuilder: (context, index) {
+                              if (index == _notifications.length) {
+                                return const Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 16),
+                                  child: Center(
+                                    child: SizedBox(
+                                      width: 24,
+                                      height: 24,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: AppColors.teal,
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }
                               final notif = _notifications[index];
                               return _buildNotificationCard(notif);
                             },
@@ -320,45 +403,53 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 }
 
   Widget _buildEmptyState() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 76,
-              height: 76,
-              decoration: const BoxDecoration(
-                color: Color(0xFFE6F5F2),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.notifications_off_outlined,
-                color: Color(0xFF005B60),
-                size: 36,
+    return LayoutBuilder(
+      builder: (context, constraints) => SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minHeight: constraints.maxHeight),
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 76,
+                    height: 76,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFE6F5F2),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.notifications_off_outlined,
+                      color: Color(0xFF005B60),
+                      size: 36,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'No notifications',
+                    style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.ink,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'You have no notifications in this category. Important booking updates will appear here.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: AppColors.muted,
+                      height: 1.4,
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 16),
-            const Text(
-              'No notifications',
-              style: TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.w700,
-                color: AppColors.ink,
-              ),
-            ),
-            const SizedBox(height: 6),
-            const Text(
-              'You have no notifications in this category. Important booking updates will appear here.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 13,
-                color: AppColors.muted,
-                height: 1.4,
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
