@@ -121,7 +121,7 @@ build/
 
 **University:** Sri Lanka Institute of Information Technology (SLIIT)
 
-**Academic Year:** 2026 (3 Year)
+**Academic Year:** 2026 (3rd Year 2nd Semester)
 
 ---
 
