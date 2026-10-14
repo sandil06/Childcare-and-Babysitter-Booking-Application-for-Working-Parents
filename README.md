@@ -1,5 +1,3 @@
-
-
 # 👶 LittleHands – Childcare & Babysitter Booking App
 
 **Childcare & Babysitter Booking Management System** — Babysitter Search, Bookings, Scheduling, Payments & User Management.
@@ -123,7 +121,7 @@ build/
 
 **University:** Sri Lanka Institute of Information Technology (SLIIT)
 
-**Academic Year:** 2026
+**Academic Year:** 2026 (3 Year)
 
 ---
 
